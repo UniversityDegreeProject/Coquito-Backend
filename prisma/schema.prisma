@@ -1,0 +1,426 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("POSTGRES_URL")
+}
+
+// ============================================
+//* MODELOS DE AUTENTICACIÓN Y USUARIOS
+// ============================================
+
+enum UserRole {
+  ADMIN     // Administrador: acceso completo al sistema (incluyendo gestión de usuarios)
+  CASHIER   // Cajero: puede hacer TODO excepto gestionar usuarios (crear/editar/eliminar/cambiar roles)
+}
+
+enum UserStatus {
+  ACTIVE    // Usuario activo
+  INACTIVE  // Usuario inactivo
+  SUSPENDED // Usuario suspendido
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  password  String   // Hash de la contraseña
+  firstName String   @map("first_name")
+  lastName  String   @map("last_name")
+  phone     String?
+  role      UserRole @default(CASHIER)
+  status    UserStatus @default(ACTIVE)
+  
+  // Relaciones
+  orders          Order[]          // Órdenes creadas por este usuario
+  cashRegisters   CashRegister[]   // Cajas asignadas a este usuario
+  stockMovements  StockMovement[]  // Movimientos de inventario realizados
+  activityLogs    ActivityLog[]    // Registro de actividades del usuario
+  
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  
+  @@map("users")
+}
+
+// ============================================
+// MODELOS DE CATÁLOGO (Productos y Categorías)
+// ============================================
+
+enum CategoryStatus {
+  ACTIVE
+  INACTIVE
+}
+
+model Category {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  description String?
+  status      CategoryStatus @default(ACTIVE)
+  
+  // Relaciones
+  products    Product[]
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@map("categories")
+}
+
+enum ProductStatus {
+  AVAILABLE     // Disponible para venta
+  OUT_OF_STOCK  // Sin stock
+  DISCONTINUED  // Descontinuado
+}
+
+model Product {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  price       Decimal  @db.Decimal(10, 2) // Precio de venta
+  sku         String?  @unique // Código único del producto
+  stock       Int      @default(0) // Inventario actual
+  minStock    Int      @default(5) @map("min_stock") // Stock mínimo para alerta
+  image       String?  // URL de la imagen del producto
+  status      ProductStatus @default(AVAILABLE)
+  
+  // Relación con categoría
+  categoryId  String   @map("category_id")
+  category    Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+  
+  // Relaciones
+  orderItems      OrderItem[] // Items de órdenes que incluyen este producto
+  stockMovements  StockMovement[] // Historial de movimientos de inventario
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@map("products")
+  @@index([categoryId])
+  @@index([status])
+  @@index([stock]) // Para consultas de productos con stock bajo
+}
+
+// ============================================
+// MODELOS DE CLIENTES
+// ============================================
+
+enum CustomerType {
+  REGULAR    // Cliente regular
+  VIP        // Cliente VIP
+  OCCASIONAL // Cliente ocasional
+}
+
+model Customer {
+  id          String   @id @default(uuid())
+  firstName   String   @map("first_name")
+  lastName    String   @map("last_name")
+  email       String?  @unique
+  phone       String?
+  address     String?
+  type        CustomerType @default(REGULAR)
+  
+  // Relaciones
+  orders      Order[]
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@map("customers")
+}
+
+// ============================================
+// MODELOS DE INVENTARIO
+// ============================================
+
+enum StockMovementType {
+  PURCHASE      // Compra/Entrada de mercancía
+  SALE          // Venta (salida por orden)
+  ADJUSTMENT    // Ajuste manual (corrección de inventario)
+  RETURN        // Devolución (entrada)
+  DAMAGED       // Producto dañado (salida)
+}
+
+model StockMovement {
+  id          String   @id @default(uuid())
+  
+  // Relación con producto
+  productId   String   @map("product_id")
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  // Relación con usuario que realizó el movimiento
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  
+  // Información del movimiento
+  type        StockMovementType
+  quantity    Int      // Cantidad (positivo para entradas, negativo para salidas)
+  previousStock Int    @map("previous_stock") // Stock antes del movimiento
+  newStock    Int      @map("new_stock") // Stock después del movimiento
+  
+  // Información adicional
+  reason      String?  // Razón del movimiento (ej: "Compra factura #123", "Venta orden #456")
+  reference   String?  // Referencia externa (ID de orden, factura, etc.)
+  notes       String?  // Notas adicionales
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@map("stock_movements")
+  @@index([productId])
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+}
+
+// ============================================
+// MODELOS DE ÓRDENES Y VENTAS
+// ============================================
+
+enum OrderStatus {
+  PENDING    // Orden pendiente
+  COMPLETED  // Orden completada
+  CANCELLED  // Orden cancelada
+  REFUNDED   // Orden reembolsada
+}
+
+enum PaymentMethod {
+  CASH       // Efectivo
+  CARD       // Tarjeta
+  TRANSFER   // Transferencia
+  MULTIPLE   // Pago múltiple (combinación de métodos)
+}
+
+model Order {
+  id              String   @id @default(uuid())
+  orderNumber     String   @unique @map("order_number") // Número de orden secuencial
+  
+  // Relaciones
+  customerId      String?  @map("customer_id")
+  customer        Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  
+  userId          String   @map("user_id") // Usuario (cajero) que creó la orden
+  user            User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  
+  cashRegisterId  String?  @map("cash_register_id") // Caja en la que se registró
+  cashRegister    CashRegister? @relation(fields: [cashRegisterId], references: [id], onDelete: SetNull)
+  
+  // Items de la orden
+  items           OrderItem[]
+  
+  // Información de la orden
+  subtotal        Decimal  @db.Decimal(10, 2) // Suma de todos los items
+  tax             Decimal  @db.Decimal(10, 2) @default(0) // Impuestos
+  total           Decimal  @db.Decimal(10, 2) // Total final (subtotal + tax)
+  
+  // Información de pago
+  paymentMethod   PaymentMethod @map("payment_method")
+  amountPaid      Decimal  @db.Decimal(10, 2) @map("amount_paid") // Monto pagado
+  change          Decimal  @db.Decimal(10, 2) @default(0) // Cambio devuelto
+  
+  // Estado y notas
+  status          OrderStatus @default(PENDING)
+  notes           String?  // Notas adicionales de la orden
+  
+  // Timestamps
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+  completedAt     DateTime? @map("completed_at") // Fecha de completación
+  
+  @@map("orders")
+  @@index([userId])
+  @@index([customerId])
+  @@index([cashRegisterId])
+  @@index([status])
+  @@index([createdAt])
+}
+
+model OrderItem {
+  id         String   @id @default(uuid())
+  
+  // Relaciones
+  orderId    String   @map("order_id")
+  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  
+  productId  String   @map("product_id")
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
+  
+  // Información del item
+  quantity   Int      // Cantidad del producto
+  unitPrice  Decimal  @db.Decimal(10, 2) @map("unit_price") // Precio unitario al momento de la venta
+  total      Decimal  @db.Decimal(10, 2) // quantity * unitPrice
+  
+  // Timestamps
+  createdAt  DateTime @default(now()) @map("created_at")
+  
+  @@map("order_items")
+  @@index([orderId])
+  @@index([productId])
+}
+
+// ============================================
+// MODELOS DE CAJA Y CIERRE
+// ============================================
+
+enum CashRegisterStatus {
+  OPEN      // Caja abierta
+  CLOSED    // Caja cerrada
+}
+
+model CashRegister {
+  id                String   @id @default(uuid())
+  
+  // Usuario (cajero) asignado
+  userId            String   @map("user_id")
+  user              User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  
+  // Información de apertura
+  openingAmount     Decimal  @db.Decimal(10, 2) @map("opening_amount") // Monto inicial en caja
+  openedAt          DateTime @default(now()) @map("opened_at")
+  
+  // Información de cierre
+  closingAmount     Decimal? @db.Decimal(10, 2) @map("closing_amount") // Monto final en caja
+  expectedAmount    Decimal? @db.Decimal(10, 2) @map("expected_amount") // Monto esperado según ventas
+  difference        Decimal? @db.Decimal(10, 2) // Diferencia entre expected y closing
+  closedAt          DateTime? @map("closed_at")
+  
+  // Resumen de ventas
+  totalSales        Decimal  @db.Decimal(10, 2) @default(0) @map("total_sales")
+  totalOrders       Int      @default(0) @map("total_orders")
+  cashSales         Decimal  @db.Decimal(10, 2) @default(0) @map("cash_sales")
+  cardSales         Decimal  @db.Decimal(10, 2) @default(0) @map("card_sales")
+  transferSales     Decimal  @db.Decimal(10, 2) @default(0) @map("transfer_sales")
+  
+  // Estado
+  status            CashRegisterStatus @default(OPEN)
+  notes             String?  // Notas del cierre
+  
+  // Relaciones
+  orders            Order[]
+  
+  // Timestamps
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  @@map("cash_registers")
+  @@index([userId])
+  @@index([status])
+  @@index([openedAt])
+}
+
+// ============================================
+// MODELOS DE REPORTES Y MÉTRICAS
+// ============================================
+
+model DailySalesReport {
+  id                String   @id @default(uuid())
+  date              DateTime @unique @db.Date // Fecha del reporte
+  
+  // Métricas del día
+  totalSales        Decimal  @db.Decimal(10, 2) @map("total_sales")
+  totalOrders       Int      @map("total_orders")
+  averageTicket     Decimal  @db.Decimal(10, 2) @map("average_ticket") // Ticket promedio
+  newCustomers      Int      @default(0) @map("new_customers")
+  
+  // Ventas por método de pago
+  cashSales         Decimal  @db.Decimal(10, 2) @map("cash_sales")
+  cardSales         Decimal  @db.Decimal(10, 2) @map("card_sales")
+  transferSales     Decimal  @db.Decimal(10, 2) @map("transfer_sales")
+  
+  // Timestamps
+  createdAt         DateTime @default(now()) @map("created_at")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+  
+  @@map("daily_sales_reports")
+  @@index([date])
+}
+
+model HourlySales {
+  id          String   @id @default(uuid())
+  date        DateTime @db.Date
+  hour        Int      // Hora del día (0-23)
+  
+  // Métricas de la hora
+  totalSales  Decimal  @db.Decimal(10, 2) @map("total_sales")
+  totalOrders Int      @map("total_orders")
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@unique([date, hour])
+  @@map("hourly_sales")
+  @@index([date])
+}
+
+model TopProduct {
+  id             String   @id @default(uuid())
+  date           DateTime @db.Date
+  
+  // Información del producto
+  productId      String   @map("product_id")
+  productName    String   @map("product_name")
+  
+  // Métricas
+  totalQuantity  Int      @map("total_quantity") // Unidades vendidas
+  totalRevenue   Decimal  @db.Decimal(10, 2) @map("total_revenue") // Ingreso generado
+  
+  // Timestamps
+  createdAt      DateTime @default(now()) @map("created_at")
+  
+  @@unique([date, productId])
+  @@map("top_products")
+  @@index([date])
+}
+
+// ============================================
+// MODELOS DE CONFIGURACIÓN Y SISTEMA
+// ============================================
+
+model SystemConfig {
+  id          String   @id @default(uuid())
+  key         String   @unique // Clave de configuración (ej: "tax_rate", "currency", "business_name")
+  value       String   // Valor de configuración (JSON si es complejo)
+  description String?  // Descripción de la configuración
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@map("system_config")
+}
+
+model ActivityLog {
+  id          String   @id @default(uuid())
+  
+  // Usuario que realizó la acción
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  // Información de la actividad
+  action      String   // Acción realizada (ej: "CREATE_PRODUCT", "UPDATE_ORDER", "CLOSE_CASH_REGISTER")
+  entity      String   // Entidad afectada (ej: "Product", "Order", "CashRegister")
+  entityId    String?  @map("entity_id") // ID de la entidad afectada
+  description String   // Descripción legible de la acción
+  metadata    String?  @db.Text // Datos adicionales en formato JSON
+  
+  // Información de la sesión
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  
+  @@map("activity_logs")
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+}
