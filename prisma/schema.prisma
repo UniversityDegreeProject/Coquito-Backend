@@ -16,25 +16,26 @@ datasource db {
 // ============================================
 
 enum UserRole {
-  ADMIN     // Administrador: acceso completo al sistema (incluyendo gestión de usuarios)
-  CASHIER   // Cajero: puede hacer TODO excepto gestionar usuarios (crear/editar/eliminar/cambiar roles)
+  Administrador  // Administrador: acceso completo al sistema (incluyendo gestión de usuarios)
+  Cajero         // Cajero: puede hacer TODO excepto gestionar usuarios (crear/editar/eliminar/cambiar roles)
 }
 
 enum UserStatus {
-  ACTIVE    // Usuario activo
-  INACTIVE  // Usuario inactivo
-  SUSPENDED // Usuario suspendido
+  Activo      // Usuario activo
+  Inactivo    // Usuario inactivo
+  Suspendido  // Usuario suspendido
 }
 
 model User {
-  id        String   @id @default(uuid())
-  email     String   @unique
-  password  String   // Hash de la contraseña
-  firstName String   @map("first_name")
-  lastName  String   @map("last_name")
-  phone     String?
-  role      UserRole @default(CASHIER)
-  status    UserStatus @default(ACTIVE)
+  id            String     @id @default(uuid())
+  email         String     @unique
+  emailVerified Boolean    @default(false) @map("email_verified") // Verificación de email
+  password      String     // Hash de la contraseña
+  firstName     String     @map("first_name")
+  lastName      String     @map("last_name")
+  phone         String?
+  role          UserRole   @default(Cajero)
+  status        UserStatus @default(Activo)
   
   // Relaciones
   orders          Order[]          // Órdenes creadas por este usuario
@@ -54,15 +55,15 @@ model User {
 // ============================================
 
 enum CategoryStatus {
-  ACTIVE
-  INACTIVE
+  Activo
+  Inactivo
 }
 
 model Category {
-  id          String   @id @default(uuid())
-  name        String   @unique
+  id          String         @id @default(uuid())
+  name        String         @unique
   description String?
-  status      CategoryStatus @default(ACTIVE)
+  status      CategoryStatus @default(Activo)
   
   // Relaciones
   products    Product[]
@@ -75,21 +76,21 @@ model Category {
 }
 
 enum ProductStatus {
-  AVAILABLE     // Disponible para venta
-  OUT_OF_STOCK  // Sin stock
-  DISCONTINUED  // Descontinuado
+  Disponible    // Disponible para venta
+  SinStock      // Sin stock
+  Descontinuado // Descontinuado
 }
 
 model Product {
-  id          String   @id @default(uuid())
+  id          String        @id @default(uuid())
   name        String
   description String?
-  price       Decimal  @db.Decimal(10, 2) // Precio de venta
-  sku         String?  @unique // Código único del producto
-  stock       Int      @default(0) // Inventario actual
-  minStock    Int      @default(5) @map("min_stock") // Stock mínimo para alerta
-  image       String?  // URL de la imagen del producto
-  status      ProductStatus @default(AVAILABLE)
+  price       Decimal       @db.Decimal(10, 2) // Precio de venta
+  sku         String?       @unique // Código único del producto
+  stock       Int           @default(0) // Inventario actual
+  minStock    Int           @default(5) @map("min_stock") // Stock mínimo para alerta
+  image       String?       // URL de la imagen del producto
+  status      ProductStatus @default(Disponible)
   
   // Relación con categoría
   categoryId  String   @map("category_id")
@@ -114,19 +115,19 @@ model Product {
 // ============================================
 
 enum CustomerType {
-  REGULAR    // Cliente regular
-  VIP        // Cliente VIP
-  OCCASIONAL // Cliente ocasional
+  Regular   // Cliente regular
+  VIP       // Cliente VIP
+  Ocasional // Cliente ocasional
 }
 
 model Customer {
-  id          String   @id @default(uuid())
-  firstName   String   @map("first_name")
-  lastName    String   @map("last_name")
-  email       String?  @unique
+  id          String       @id @default(uuid())
+  firstName   String       @map("first_name")
+  lastName    String       @map("last_name")
+  email       String?      @unique
   phone       String?
   address     String?
-  type        CustomerType @default(REGULAR)
+  type        CustomerType @default(Regular)
   
   // Relaciones
   orders      Order[]
@@ -143,11 +144,11 @@ model Customer {
 // ============================================
 
 enum StockMovementType {
-  PURCHASE      // Compra/Entrada de mercancía
-  SALE          // Venta (salida por orden)
-  ADJUSTMENT    // Ajuste manual (corrección de inventario)
-  RETURN        // Devolución (entrada)
-  DAMAGED       // Producto dañado (salida)
+  Compra     // Compra/Entrada de mercancía
+  Venta      // Venta (salida por orden)
+  Ajuste     // Ajuste manual (corrección de inventario)
+  Devolucion // Devolución (entrada)
+  Dañado     // Producto dañado (salida)
 }
 
 model StockMovement {
@@ -187,17 +188,17 @@ model StockMovement {
 // ============================================
 
 enum OrderStatus {
-  PENDING    // Orden pendiente
-  COMPLETED  // Orden completada
-  CANCELLED  // Orden cancelada
-  REFUNDED   // Orden reembolsada
+  Pendiente   // Orden pendiente
+  Completado  // Orden completada
+  Cancelado   // Orden cancelada
+  Reembolsado // Orden reembolsada
 }
 
 enum PaymentMethod {
-  CASH       // Efectivo
-  CARD       // Tarjeta
-  TRANSFER   // Transferencia
-  MULTIPLE   // Pago múltiple (combinación de métodos)
+  Efectivo      // Efectivo
+  Tarjeta       // Tarjeta
+  Transferencia // Transferencia
+  Multiplo      // Pago múltiple (combinación de métodos)
 }
 
 model Order {
@@ -228,8 +229,8 @@ model Order {
   change          Decimal  @db.Decimal(10, 2) @default(0) // Cambio devuelto
   
   // Estado y notas
-  status          OrderStatus @default(PENDING)
-  notes           String?  // Notas adicionales de la orden
+  status          OrderStatus @default(Pendiente)
+  notes           String?     // Notas adicionales de la orden
   
   // Timestamps
   createdAt       DateTime @default(now()) @map("created_at")
@@ -272,36 +273,36 @@ model OrderItem {
 // ============================================
 
 enum CashRegisterStatus {
-  OPEN      // Caja abierta
-  CLOSED    // Caja cerrada
+  Abierto // Caja abierta
+  Cerrado // Caja cerrada
 }
 
 model CashRegister {
-  id                String   @id @default(uuid())
+  id                String             @id @default(uuid())
   
   // Usuario (cajero) asignado
-  userId            String   @map("user_id")
-  user              User     @relation(fields: [userId], references: [id], onDelete: Restrict)
+  userId            String             @map("user_id")
+  user              User               @relation(fields: [userId], references: [id], onDelete: Restrict)
   
   // Información de apertura
-  openingAmount     Decimal  @db.Decimal(10, 2) @map("opening_amount") // Monto inicial en caja
-  openedAt          DateTime @default(now()) @map("opened_at")
+  openingAmount     Decimal            @db.Decimal(10, 2) @map("opening_amount") // Monto inicial en caja
+  openedAt          DateTime           @default(now()) @map("opened_at")
   
   // Información de cierre
-  closingAmount     Decimal? @db.Decimal(10, 2) @map("closing_amount") // Monto final en caja
-  expectedAmount    Decimal? @db.Decimal(10, 2) @map("expected_amount") // Monto esperado según ventas
-  difference        Decimal? @db.Decimal(10, 2) // Diferencia entre expected y closing
-  closedAt          DateTime? @map("closed_at")
+  closingAmount     Decimal?           @db.Decimal(10, 2) @map("closing_amount") // Monto final en caja
+  expectedAmount    Decimal?           @db.Decimal(10, 2) @map("expected_amount") // Monto esperado según ventas
+  difference        Decimal?           @db.Decimal(10, 2) // Diferencia entre expected y closing
+  closedAt          DateTime?          @map("closed_at")
   
   // Resumen de ventas
-  totalSales        Decimal  @db.Decimal(10, 2) @default(0) @map("total_sales")
-  totalOrders       Int      @default(0) @map("total_orders")
-  cashSales         Decimal  @db.Decimal(10, 2) @default(0) @map("cash_sales")
-  cardSales         Decimal  @db.Decimal(10, 2) @default(0) @map("card_sales")
-  transferSales     Decimal  @db.Decimal(10, 2) @default(0) @map("transfer_sales")
+  totalSales        Decimal            @db.Decimal(10, 2) @default(0) @map("total_sales")
+  totalOrders       Int                @default(0) @map("total_orders")
+  cashSales         Decimal            @db.Decimal(10, 2) @default(0) @map("cash_sales")
+  cardSales         Decimal            @db.Decimal(10, 2) @default(0) @map("card_sales")
+  transferSales     Decimal            @db.Decimal(10, 2) @default(0) @map("transfer_sales")
   
   // Estado
-  status            CashRegisterStatus @default(OPEN)
+  status            CashRegisterStatus @default(Abierto)
   notes             String?  // Notas del cierre
   
   // Relaciones
