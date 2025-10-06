@@ -28,6 +28,7 @@ enum UserStatus {
 
 model User {
   id            String     @id @default(uuid())
+  username      String     @unique
   email         String     @unique
   emailVerified Boolean    @default(false) @map("email_verified") // Verificación de email
   password      String     // Hash de la contraseña
