@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { AuthController } from "../controller/auth.controller";
 import { UserDatasourceImpl, UserRepositoryImpl, AuthDatasourceImpl, AuthRepositoryImpl } from "../../../infrastructure";
+import { JwtAdapter, env } from "../../../config";
 
 
 export class AuthRoutes {
@@ -21,8 +22,11 @@ export class AuthRoutes {
     const authDatasourceImpl = new AuthDatasourceImpl();
     const authRepositoryImpl = new AuthRepositoryImpl(authDatasourceImpl);
     
-    //* Controller con ambos repositorios
-    const authController = new AuthController(userRepositoryImpl, authRepositoryImpl);
+    //* Instancia de JWT adapter
+    const jwtAdapter = new JwtAdapter(env.JWT_SEED);
+    
+    //* Controller con repositorios y JWT adapter
+    const authController = new AuthController(userRepositoryImpl, authRepositoryImpl, jwtAdapter);
     
     router.post('/login', authController.loginUser);
     router.post('/register', authController.registerUser);

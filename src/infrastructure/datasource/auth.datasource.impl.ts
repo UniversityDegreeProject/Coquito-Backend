@@ -12,10 +12,10 @@ export class AuthDatasourceImpl implements AuthDatasource {
       where: { username }
     });
     
-    if (!user) throw HttpCustomErrors.notFound("El usuario no existe o es incorrecto");
+    if (!user) throw HttpCustomErrors.notFound("El usuario no existe o credenciales incorrectas");
     
     const isPasswordValid = await bcrypt.compare(password, user.password);
-    if (!isPasswordValid) throw HttpCustomErrors.unauthorized("Invalid password");
+    if (!isPasswordValid) throw HttpCustomErrors.unauthorized("Credenciales incorrectas");
     
     return UserEntity.mapFromPrisma(user);
   }
