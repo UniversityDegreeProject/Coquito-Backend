@@ -1,5 +1,7 @@
 import { get } from "env-var";
+import dotenv from "dotenv";
 
+dotenv.config();
 
 export const env = {
   PORT : get("PORT").default(3000).asPortNumber(),

@@ -26,6 +26,7 @@ export class AuthRoutes {
     
     router.post('/login', authController.loginUser);
     router.post('/register', authController.registerUser);
+    router.get('/users', authController.getUsers);
     
     return router;
   }

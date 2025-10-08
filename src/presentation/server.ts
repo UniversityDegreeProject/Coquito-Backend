@@ -23,10 +23,11 @@ export class Server {
 
   async start() {
     //* Middlewares
-    this.app.use(cors());
     this.app.use(express.json());
     this.app.use(express.urlencoded({ extended: true }));
-
+    
+    this.app.use(cors());
+    
     //* Public path
     this.app.use(express.static(this.publicPath));
 

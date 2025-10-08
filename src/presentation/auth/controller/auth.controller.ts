@@ -31,7 +31,7 @@ export class AuthController {
   public loginUser = async(req: Request, res: Response) => {
     const body = req.body;
     const [ error, loginUserDto ] = LoginUserDto.create(body);
-    if( error ) return this.handleHttpStatusError(error, res);
+    if( error ) return res.status(400).json({ error: error });
     if( !loginUserDto ) return res.status(400).json({ error: "El usuario no pudo ser creado" });
     new LoginUseCaseImpl(this.authRepository).execute(loginUserDto).then( user => {
       return res.status(200).json({ 
@@ -47,7 +47,7 @@ export class AuthController {
   public registerUser = async(req: Request, res: Response) => {
     const body = req.body;
     const [ error, registerUserDto ] = RegisterUserDto.create(body);
-    if( error ) return this.handleHttpStatusError(error, res);
+    if( error ) return res.status(400).json({ error: error });
     if( !registerUserDto ) return res.status(400).json({ error: "Datos incorrectos" });
 
     new CreateUserUseCaseImpl(this.userRepository).execute(registerUserDto).then( user => {
