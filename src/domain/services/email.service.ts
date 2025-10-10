@@ -1,10 +1,10 @@
 import { EmailAdapter } from "../../config";
 
-
 export class EmailService {
   constructor(
     private readonly emailAdapter: EmailAdapter,
-    private readonly webServiceUrl: string
+    private readonly webServiceUrl: string,
+    private readonly frontendUrl: string
   ) {}
 
   /**
@@ -22,8 +22,17 @@ export class EmailService {
         <head>
           <style>
             body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
-            .container { background-color: white; padding: 30px; border-radius: 10px; max-width: 600px; margin: 0 auto; }
-            .header { color:rgb(98, 101, 26); font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+            .container { background-color: white; padding: 30px; border-radius: 10px; max-width: 600px; margin: 0 auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+            .logo-container { text-align: center; margin-bottom: 30px; }
+            .logo { 
+              max-width: 280px; 
+              height: auto; 
+              border-radius: 15px; 
+              box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+              background: white;
+              padding: 15px;
+            }
+            .header { color:rgb(98, 101, 26); font-size: 24px; font-weight: bold; margin-bottom: 20px; text-align: center; }
             .span { color:rgb(98, 101, 26); font-size: 14px; font-weight: bold; margin-bottom: 20px; }
             .button { 
               background-color: #4CAF50; 
@@ -34,11 +43,14 @@ export class EmailService {
               display: inline-block;
               margin: 20px 0;
             }
-            .footer { color: #666; font-size: 12px; margin-top: 30px; }
+            .footer { color: #666; font-size: 12px; margin-top: 30px; text-align: center; }
           </style>
         </head>
         <body>
           <div class="container">
+            <div class="logo-container">
+              <img src="https://i.ytimg.com/vi/DYDUIHhfBws/hq720.jpg" alt="Embutidos Coquito" class="logo">
+            </div>
             <div class="header">¡Bienvenido a Embutidos Coquito!</div>
             <p>Hola <strong>${username}</strong>,</p>
             <p>Gracias por ser parte de "Embutidos Coquito". Para activar tu cuenta, por favor verifica tu email haciendo clic en el siguiente botón:</p>
@@ -69,7 +81,8 @@ export class EmailService {
    * @param token - Token de recuperación JWT
    */
   async sendPasswordRecovery(email: string, username: string, token: string): Promise<boolean> {
-    const recoveryLink = `${this.webServiceUrl}/auth/reset-password/${token}`;
+    // Link apunta al BACKEND que sirve la página HTML
+    const recoveryLink = `${this.webServiceUrl}/auth/reset-password-page/${token}`;
 
     const htmlContent = `
       <!DOCTYPE html>
@@ -77,8 +90,17 @@ export class EmailService {
         <head>
           <style>
             body { font-family: Arial, sans-serif; background-color: #f4f4f4; padding: 20px; }
-            .container { background-color: white; padding: 30px; border-radius: 10px; max-width: 600px; margin: 0 auto; }
-            .header { color: #FF5722; font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+            .container { background-color: white; padding: 30px; border-radius: 10px; max-width: 600px; margin: 0 auto; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+            .logo-container { text-align: center; margin-bottom: 30px; }
+            .logo { 
+              max-width: 280px; 
+              height: auto; 
+              border-radius: 15px; 
+              box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+              background: white;
+              padding: 15px;
+            }
+            .header { color: #FF5722; font-size: 24px; font-weight: bold; margin-bottom: 20px; text-align: center; }
             .button { 
               background-color: #FF5722; 
               color: white; 
@@ -88,11 +110,14 @@ export class EmailService {
               display: inline-block;
               margin: 20px 0;
             }
-            .footer { color: #666; font-size: 12px; margin-top: 30px; }
+            .footer { color: #666; font-size: 12px; margin-top: 30px; text-align: center; }
           </style>
         </head>
         <body>
           <div class="container">
+            <div class="logo-container">
+              <img src="https://i.ytimg.com/vi/DYDUIHhfBws/hq720.jpg" alt="Embutidos Coquito" class="logo">
+            </div>
             <div class="header">Recuperación de Contraseña</div>
             <p>Hola <strong>${username}</strong>,</p>
             <p>Recibimos una solicitud para restablecer tu contraseña. Haz clic en el siguiente botón para crear una nueva contraseña:</p>
@@ -110,7 +135,7 @@ export class EmailService {
 
     return this.emailAdapter.sendEmail({
       to: email,
-      subject: "Embutidos Coquito",
+      subject: "Recuperación de Contraseña - Embutidos Coquito",
       html: htmlContent,
     });
   }

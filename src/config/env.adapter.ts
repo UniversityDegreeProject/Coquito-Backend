@@ -14,4 +14,5 @@ export const env = {
   MAILER_SECRET_KEY: get("MAILER_SECRET_KEY").required().asString(),
 
   WEBSERVICE_URL: get("WEBSERVICE_URL").default("http://localhost:3000/api").asString(),
+  FRONTEND_URL: get("FRONTEND_URL").default("http://localhost:5173").asString(),
 }

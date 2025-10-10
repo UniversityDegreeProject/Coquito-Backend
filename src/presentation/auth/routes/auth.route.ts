@@ -35,7 +35,11 @@ export class AuthRoutes {
       env.MAILER_EMAIL,
       env.MAILER_SECRET_KEY
     );
-    const emailService = new EmailService(emailAdapter, env.WEBSERVICE_URL);
+    const emailService = new EmailService(
+      emailAdapter, 
+      env.WEBSERVICE_URL,
+      env.FRONTEND_URL
+    );
     
     //* Controller con repositorios, JWT adapter y Email service
     const authController = new AuthController(
@@ -47,8 +51,11 @@ export class AuthRoutes {
     
     router.post('/login', authController.loginUser);
     router.post('/register', authController.registerUser);
+    router.post('/retry-verify-email', authController.retryVerifyEmail);
     router.get('/verify-email/:token', authController.verifyEmail);
     router.post('/forgot-password', authController.forgotPassword);
+    router.get('/reset-password-page/:token', authController.resetPasswordPage);
+    router.post('/reset-password-submit', authController.resetPasswordSubmit);
     router.post('/reset-password', authController.resetPassword);
     
     return router;

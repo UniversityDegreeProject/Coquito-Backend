@@ -23,7 +23,7 @@ export class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
       const user = await this.userRepository.getUserById(payload.id);
   
       if (user.emailVerified) {
-        return { message: "Tu email ya estaba verificado. Puedes iniciar sesión." };
+        return { message: `<h1>Tu email ya ha sido verificado. Puedes iniciar sesión.</h1>` };
       }
   
       const [error, updateUserDto] = UpdateUserDto.create({
@@ -36,7 +36,7 @@ export class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
   
       await this.userRepository.updateUser(updateUserDto);
   
-      return { message: "Email verificado exitosamente. Ya puedes iniciar sesión." };
+      return { message: `<h1>Email verificado exitosamente. Ya puedes iniciar sesión.</h1>` };
   }
 }
 

@@ -106,6 +106,15 @@ export class AuthController {
     });
   }
   
+  // *Retry Verify Email
+  public retryVerifyEmail = async(req: Request, res: Response) => {
+    const { email } = req.body;
+    const user = await this.userRepository.getUserByEmail(email);
+    if( !user ) return res.status(400).json({ error: "Usuario no encontrado" });
+    const emailSent = await this.sendEmailValidationLink(user.id, user.email, user.username);
+    if( !emailSent ) return res.status(500).json({ error: "Error al enviar el email de verificación" });
+    return res.status(200).json({ message: "Email de verificación enviado nuevamente" });
+  }
 
   // *Verify Email
   public verifyEmail = async(req: Request, res: Response) => {
@@ -115,11 +124,10 @@ export class AuthController {
       return res.status(400).json({ error: "Token no proporcionado" });
     }
     
-    // Usar el caso de uso de verificación de email
     new VerifyEmailUseCaseImpl(this.userRepository, this.jwtAdapter)
       .execute(token)
       .then((result) => {
-        return res.status(200).json(result);
+        return res.status(200).send(result.message);
       })
       .catch((error) => {
         return this.handleHttpStatusError(error, res);
@@ -146,7 +154,78 @@ export class AuthController {
       });
   }
 
-  // *Reset Password
+  // *Reset Password Page (GET - Sirve HTML)
+  public resetPasswordPage = async(req: Request, res: Response) => {
+    const { token } = req.params;
+    
+    if (!token) {
+      return res.status(400).send('<h1>Token no proporcionado</h1>');
+    }
+
+    try {
+      const fs = require('fs');
+      const path = require('path');
+      const htmlPath = path.join(__dirname, '..', 'views', 'reset-password.html');
+      let html = fs.readFileSync(htmlPath, 'utf8');
+      
+      html = html.replace('{{TOKEN}}', token);
+      
+      return res.send(html);
+    } catch (error) {
+      return res.status(500).send('<h1>Error al cargar la página</h1>');
+    }
+  }
+
+  // *Reset Password Submit (POST - Procesa el formulario)
+  public resetPasswordSubmit = async(req: Request, res: Response) => {
+    const { token, newPassword } = req.body;
+    const [error, resetPasswordDto] = ResetPasswordDto.create({ token, newPassword });
+    
+    if (error) {
+      return res.status(400).send(`
+        <html>
+          <body style="font-family: Arial; text-align: center; padding: 50px;">
+            <h1 style="color: red;">Error</h1>
+            <p>${error}</p>
+            <a href="/api/auth/reset-password-page/${token}" style="color: blue;">Volver a intentar</a>
+          </body>
+        </html>
+      `);
+    }
+    if (!resetPasswordDto) return res.status(400).send('<h1>Datos incorrectos</h1>');
+
+    new ResetPasswordUseCaseImpl(this.userRepository, this.jwtAdapter)
+      .execute(resetPasswordDto)
+      .then((result) => {
+        // Leer página de éxito
+        try {
+          const fs = require('fs');
+          const path = require('path');
+          const htmlPath = path.join(__dirname, '..', 'views', 'reset-password-success.html');
+          let html = fs.readFileSync(htmlPath, 'utf8');
+          
+          // Reemplazar URL de login (puedes cambiarla según tu frontend)
+          html = html.replace(/{{LOGIN_URL}}/g, '/login');
+          
+          return res.send(html);
+        } catch (error) {
+          return res.send('<h1>Contraseña actualizada exitosamente. Puedes cerrar esta ventana.</h1>');
+        }
+      })
+      .catch((error) => {
+        return res.status(400).send(`
+          <html>
+            <body style="font-family: Arial; text-align: center; padding: 50px;">
+              <h1 style="color: red;">Error</h1>
+              <p>${error.message || 'Error al actualizar contraseña'}</p>
+              <a href="/api/auth/forgot-password" style="color: blue;">Solicitar nuevo enlace</a>
+            </body>
+          </html>
+        `);
+      });
+  }
+
+  // *Reset Password (API JSON - mantiene compatibilidad con frontend)
   public resetPassword = async(req: Request, res: Response) => {
     const body = req.body;
     const [error, resetPasswordDto] = ResetPasswordDto.create(body);
