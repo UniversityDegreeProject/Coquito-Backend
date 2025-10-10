@@ -1,4 +1,5 @@
 import { JwtAdapter } from "../../../config";
+import { messageNotifications } from "../../../presentation/auth";
 import { UpdateUserDto } from "../../dto/user/update-user.dto";
 import { HttpCustomErrors } from "../../errors/http-custom-errors";
 import { UserRepository } from "../../repositories";
@@ -23,7 +24,8 @@ export class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
       const user = await this.userRepository.getUserById(payload.id);
   
       if (user.emailVerified) {
-        return { message: `<h1>Tu email ya ha sido verificado. Puedes iniciar sesión.</h1>` };
+        return { message: messageNotifications.emailVerified
+        };
       }
   
       const [error, updateUserDto] = UpdateUserDto.create({
@@ -36,7 +38,9 @@ export class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
   
       await this.userRepository.updateUser(updateUserDto);
   
-      return { message: `<h1>Email verificado exitosamente. Ya puedes iniciar sesión.</h1>` };
+      return {
+        message: messageNotifications.emailVerifiedSuccess
+      };
   }
 }
 
