@@ -1,33 +1,36 @@
-import { z as zod } from "zod";
-
-const updateUserSchema = zod.object({
-  id: zod.string().uuid("Id inválido"),
-  email: zod.string().email("Email inválido"),
-  firstName: zod.string().min(1, "Nombre requerido"),
-  lastName: zod.string().min(1, "Apellido requerido"),
-  phone: zod.string().min(1, "Teléfono requerido"),
-  updatedAt: zod.date().optional(),
-});
-
-type UpdateUserSchema = zod.infer<typeof updateUserSchema>;
+import { UpdateUserSchema, updateUserSchema } from "../../schemas/user/update-user-validator.schema";
 
 export class UpdateUserDto {  
   constructor(
-    public readonly id: string,
-    public readonly email: string,
-    public readonly firstName: string,
-    public readonly lastName: string,
-    public readonly phone: string,
-    public readonly updatedAt?: Date | null,
+    public readonly id: UpdateUserSchema["id"],
+    public readonly username: UpdateUserSchema["username"],
+    public readonly emailVerified: UpdateUserSchema["emailVerified"],
+    public readonly password: UpdateUserSchema["password"],
+    public readonly email: UpdateUserSchema["email"],
+    public readonly firstName: UpdateUserSchema["firstName"],
+    public readonly lastName: UpdateUserSchema["lastName"],
+    public readonly status: UpdateUserSchema["status"],
+    public readonly role: UpdateUserSchema["role"],
+    public readonly phone: UpdateUserSchema["phone"],
+    public readonly updatedAt: UpdateUserSchema["updatedAt"],
   ){};
 
+  /**
+   * Retorna solo los campos que tienen valor (excluyendo el ID)
+   * Útil para hacer updates parciales en Prisma
+   */
   get values() {
     const returnObj: {[key: string]: any} = {};
-    if (this.email) returnObj.email = this.email;
-    if (this.firstName) returnObj.firstName = this.firstName;
-    if (this.lastName) returnObj.lastName = this.lastName;
-    if (this.phone) returnObj.phone = this.phone;
-    if (this.updatedAt) returnObj.updatedAt = this.updatedAt;
+    if (this.username !== undefined) returnObj.username = this.username;
+    if (this.emailVerified !== undefined) returnObj.emailVerified = this.emailVerified;
+    if (this.password !== undefined) returnObj.password = this.password;
+    if (this.email !== undefined) returnObj.email = this.email;
+    if (this.firstName !== undefined) returnObj.firstName = this.firstName;
+    if (this.lastName !== undefined) returnObj.lastName = this.lastName;
+    if (this.status !== undefined) returnObj.status = this.status;
+    if (this.role !== undefined) returnObj.role = this.role;
+    if (this.phone !== undefined) returnObj.phone = this.phone;
+    if (this.updatedAt !== undefined) returnObj.updatedAt = this.updatedAt;
     return returnObj;
   }
 
@@ -38,7 +41,7 @@ export class UpdateUserDto {
       return [firstError?.message, undefined];
     }
 
-    const { id, email, firstName, lastName, phone } = result.data;
-    return [undefined, new UpdateUserDto(id, email, firstName, lastName, phone)];
+    const { id, email, firstName, lastName, phone, updatedAt, emailVerified, password, username, role, status } = result.data;
+    return [undefined, new UpdateUserDto(id, username, emailVerified, password, email, firstName, lastName, status, role, phone, updatedAt)];
   }
 }

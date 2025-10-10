@@ -17,5 +17,4 @@ export const loginUserSchema = zod.object({
     .max(16, { error: "Contraseña debe tener menos de 16 caracteres" }),
 });
 
-
 export type LoginUserSchema = zod.infer<typeof loginUserSchema>;

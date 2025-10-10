@@ -1,17 +1,25 @@
 import { prismaClient } from "../../data/postgres";
 import { RegisterUserDto, UpdateUserDto, UserDatasource, UserEntity } from "../../domain";
 import { HttpCustomErrors } from "../../domain/errors/http-custom-errors";
-import { bcrypt } from "../../config";
+import { BcryptAdapter } from "../../config";
 
 
 export class UserDatasourceImpl implements UserDatasource {
 
 
+  constructor(
+    private readonly bcrypt: BcryptAdapter
+  ) {
+  }
+
+
+  // * Obtener usuarios
   async getUsers(): Promise<UserEntity[]> {
     const users = await prismaClient.user.findMany();
     return users.map(user => UserEntity.mapFromPrisma(user));
   }
 
+  // * Obtener usuario por username
   async getUserByUsername(username: string): Promise<UserEntity> {
     const user = await prismaClient.user.findUnique({
       where: { username },
@@ -22,6 +30,7 @@ export class UserDatasourceImpl implements UserDatasource {
     return UserEntity.mapFromPrisma(user);
   }
 
+  // * Obtener usuario por id
   async getUserById(id: string | number): Promise<UserEntity> {
     const user = await prismaClient.user.findUnique({
       where: { id: id.toString() },
@@ -33,6 +42,7 @@ export class UserDatasourceImpl implements UserDatasource {
   }
 
 
+  // * Obtener usuario por email
   async getUserByEmail(email: string): Promise<UserEntity> {
     const user = await prismaClient.user.findUnique({
       where: { email },
@@ -44,6 +54,7 @@ export class UserDatasourceImpl implements UserDatasource {
   }
 
 
+  // * Crear usuario
   async createUser(user: RegisterUserDto): Promise<UserEntity> {
     const { password, ...rest } = user;
     
@@ -63,10 +74,10 @@ export class UserDatasourceImpl implements UserDatasource {
       throw HttpCustomErrors.badRequest("El username ya está en uso");
     }
 
-    //* Hash de contraseña
-    const hashedPassword = await bcrypt.hash(password);
+    //? Hash de contraseña
+    const hashedPassword = await this.bcrypt.hash(password);
     
-    //* Crear usuario
+    //? Crear usuario
     const newUser = await prismaClient.user.create({
       data: {
         ...rest,
@@ -78,12 +89,31 @@ export class UserDatasourceImpl implements UserDatasource {
   }
 
 
-
+  // * Actualizar usuario
   async updateUser(user: UpdateUserDto): Promise<UserEntity> {
-    throw new Error("Method not implemented.");
+    const { id } = user;
+    
+    const userToUpdate = await prismaClient.user.findUnique({
+      where: { id },
+    });
+    
+    if (!userToUpdate) throw HttpCustomErrors.notFound("Usuario no encontrado");
+    
+    const updateData = user.values;
+    if (updateData.password) {
+      updateData.password = await this.bcrypt.hash(updateData.password);
+    }
+    
+    const updatedUser = await prismaClient.user.update({
+      where: { id },
+      data: updateData,
+    });
+    
+    return UserEntity.mapFromPrisma(updatedUser);
   }
 
 
+  // * Eliminar usuario
   async deleteUser(id: string | number): Promise<UserEntity> {
     throw new Error("Method not implemented.");
   }

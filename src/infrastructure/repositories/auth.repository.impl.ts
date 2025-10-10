@@ -10,4 +10,7 @@ export class AuthRepositoryImpl implements AuthRepository{
   loginUser(loginUserDto: LoginUserDto): Promise<UserEntity> {
     return this.authDatasource.loginUser(loginUserDto);
   }
+  verifyEmail(token: string): Promise<{ message: string }> {
+    return this.authDatasource.verifyEmail(token);
+  }
 }
