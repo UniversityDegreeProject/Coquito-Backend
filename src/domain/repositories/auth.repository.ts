@@ -4,5 +4,4 @@ import { UserEntity } from "../entities";
 
 export abstract class AuthRepository {
   abstract loginUser(loginUserDto: LoginUserDto): Promise<UserEntity>;
-  abstract verifyEmail(token: string): Promise<{ message: string }>;
 }

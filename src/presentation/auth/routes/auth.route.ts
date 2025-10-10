@@ -26,7 +26,7 @@ export class AuthRoutes {
     
     
     //* Instancias de auth login
-    const authDatasourceImpl = new AuthDatasourceImpl(bcryptAdapter,jwtAdapter,userRepositoryImpl);
+    const authDatasourceImpl = new AuthDatasourceImpl(bcryptAdapter);
     const authRepositoryImpl = new AuthRepositoryImpl(authDatasourceImpl);
     
     //* Instancia de Email adapter y servicio

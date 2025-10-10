@@ -116,7 +116,7 @@ export class AuthController {
     }
     
     // Usar el caso de uso de verificación de email
-    new VerifyEmailUseCaseImpl(this.authRepository)
+    new VerifyEmailUseCaseImpl(this.userRepository, this.jwtAdapter)
       .execute(token)
       .then((result) => {
         return res.status(200).json(result);
