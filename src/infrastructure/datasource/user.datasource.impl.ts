@@ -1,5 +1,5 @@
 import { prismaClient } from "../../data/postgres";
-import { RegisterUserDto, UpdateUserDto, UserDatasource, UserEntity } from "../../domain";
+import { DeleteUserByIdDto, GetUserByEmailDto, GetUserByIdDto, RegisterUserDto, UpdateUserDto, UserDatasource, UserEntity } from "../../domain";
 import { HttpCustomErrors } from "../../domain/errors/http-custom-errors";
 import { BcryptAdapter } from "../../config";
 
@@ -31,9 +31,9 @@ export class UserDatasourceImpl implements UserDatasource {
   }
 
   // * Obtener usuario por id
-  async getUserById(id: string | number): Promise<UserEntity> {
+  async getUserById(id: GetUserByIdDto): Promise<UserEntity> {
     const user = await prismaClient.user.findUnique({
-      where: { id: id.toString() },
+      where: { id: id.id },
     });
 
     if (!user) throw HttpCustomErrors.notFound("User not found");
@@ -43,9 +43,9 @@ export class UserDatasourceImpl implements UserDatasource {
 
 
   // * Obtener usuario por email
-  async getUserByEmail(email: string): Promise<UserEntity> {
+  async getUserByEmail(email: GetUserByEmailDto): Promise<UserEntity> {
     const user = await prismaClient.user.findUnique({
-      where: { email },
+      where: { email: email.email },
     });
     
     if (!user) throw HttpCustomErrors.notFound("Usuario no encontrado");
@@ -114,8 +114,19 @@ export class UserDatasourceImpl implements UserDatasource {
 
 
   // * Eliminar usuario
-  async deleteUser(id: string | number): Promise<UserEntity> {
-    throw new Error("Method not implemented.");
+  async deleteUser(id: DeleteUserByIdDto): Promise<UserEntity> {
+
+    const userToDelete = await prismaClient.user.findUnique({
+      where: { id: id.id },
+    });
+
+    if (!userToDelete) throw HttpCustomErrors.notFound("Usuario no encontrado");
+
+    const user = await prismaClient.user.delete({
+      where: { id: id.id },
+    });
+
+    return UserEntity.mapFromPrisma(user);
   }
 
 

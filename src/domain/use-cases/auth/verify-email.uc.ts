@@ -1,5 +1,6 @@
 import { JwtAdapter } from "../../../config";
 import { messageNotifications } from "../../../presentation/auth";
+import { GetUserByIdDto } from "../../dto/user";
 import { UpdateUserDto } from "../../dto/user/update-user.dto";
 import { HttpCustomErrors } from "../../errors/http-custom-errors";
 import { UserRepository } from "../../repositories";
@@ -20,8 +21,11 @@ export class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
       if (!payload || !payload.id || !payload.email) {
         throw HttpCustomErrors.badRequest("Token inválido o expirado");
       }
+      const [errorOfId, getUserByIdDto] = GetUserByIdDto.create({ id: payload.id });
+      if( errorOfId ) throw HttpCustomErrors.badRequest(errorOfId);
+      if( !getUserByIdDto ) throw HttpCustomErrors.badRequest("User not found");
   
-      const user = await this.userRepository.getUserById(payload.id);
+      const user = await this.userRepository.getUserById(getUserByIdDto);
   
       if (user.emailVerified) {
         return { message: messageNotifications.emailVerified

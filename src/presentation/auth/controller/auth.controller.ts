@@ -13,7 +13,8 @@ import {
   ForgotPasswordDto,
   ForgotPasswordUseCaseImpl,
   ResetPasswordDto,
-  ResetPasswordUseCaseImpl
+  ResetPasswordUseCaseImpl,
+  GetUserEmailUseCaseImpl
 } from "../../../domain";
 import { JwtAdapter } from "../../../config";
 import { EmailService } from "../../../domain/services/email.service";
@@ -42,15 +43,6 @@ export class AuthController {
     
     return this.emailService.sendEmailVerification(email, username, emailToken);
 
-  }
-
-  //* Get Users
-  public getUsers = async(req: Request, res: Response) => {
-    new GetUsersUseCaseImpl(this.userRepository).execute().then( users => {
-      return res.status(200).json({ users });
-    }).catch( error => {
-      return this.handleHttpStatusError(error, res);
-    });
   }
 
   // *Login User
@@ -99,7 +91,7 @@ export class AuthController {
       
       return res.status(201).json({ 
         user: userWithoutPassword,
-        message: "Usuario creado exitosamente. Revisa tu email para verificar tu cuenta."
+        message: "Usuario creado exitosamente. Revisa el email para verificar tu cuenta."
       });
     }).catch( error => {
       return this.handleHttpStatusError(error, res);
@@ -109,7 +101,7 @@ export class AuthController {
   // *Retry Verify Email
   public retryVerifyEmail = async(req: Request, res: Response) => {
     const { email } = req.body;
-    const user = await this.userRepository.getUserByEmail(email);
+    const user = await new GetUserEmailUseCaseImpl(this.userRepository).execute(email);
     if( !user ) return res.status(400).json({ error: "Usuario no encontrado" });
     const emailSent = await this.sendEmailValidationLink(user.id, user.email, user.username);
     if( !emailSent ) return res.status(500).json({ error: "Error al enviar el email de verificación" });
@@ -197,14 +189,14 @@ export class AuthController {
     new ResetPasswordUseCaseImpl(this.userRepository, this.jwtAdapter)
       .execute(resetPasswordDto)
       .then((result) => {
-        // Leer página de éxito
+        //? Leer página de éxito
         try {
           const fs = require('fs');
           const path = require('path');
           const htmlPath = path.join(__dirname, '..', 'views', 'reset-password-success.html');
           let html = fs.readFileSync(htmlPath, 'utf8');
           
-          // Reemplazar URL de login (puedes cambiarla según tu frontend)
+          //? Reemplazar URL de login (puedes cambiarla según tu frontend)
           html = html.replace(/{{LOGIN_URL}}/g, '/login');
           
           return res.send(html);

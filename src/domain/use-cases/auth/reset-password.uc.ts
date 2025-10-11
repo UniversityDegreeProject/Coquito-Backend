@@ -1,4 +1,5 @@
 import { ResetPasswordDto } from "../../dto/auth/reset-password.dto";
+import { GetUserByIdDto } from "../../dto/user";
 import { UpdateUserDto } from "../../dto/user/update-user.dto";
 import { UserRepository } from "../../repositories";
 import { JwtAdapter } from "../../../config";
@@ -23,7 +24,11 @@ export class ResetPasswordUseCaseImpl implements ResetPasswordUseCase {
       throw HttpCustomErrors.badRequest("Token inválido o expirado");
     }
 
-    const user = await this.userRepository.getUserById(payload.id);
+    const [errorOfId, getUserByIdDto] = GetUserByIdDto.create({ id: payload.id });
+    if( errorOfId ) throw HttpCustomErrors.badRequest(errorOfId);
+    if( !getUserByIdDto ) throw HttpCustomErrors.badRequest("User not found");
+
+    const user = await this.userRepository.getUserById(getUserByIdDto);
 
     const [error, updateUserDto] = UpdateUserDto.create({
       id: user.id,

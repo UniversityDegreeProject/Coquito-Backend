@@ -1,7 +1,9 @@
 import { ForgotPasswordDto } from "../../dto/auth/forgot-password.dto";
+import { GetUserByEmailDto } from "../../dto/user";
 import { UserRepository } from "../../repositories";
 import { JwtAdapter } from "../../../config";
 import { EmailService } from "../../../domain/services/email.service";
+import { HttpCustomErrors } from "../../errors/http-custom-errors";
 
 export interface ForgotPasswordUseCase {
   execute(forgotPasswordDto: ForgotPasswordDto): Promise<{ message: string }>;
@@ -17,7 +19,11 @@ export class ForgotPasswordUseCaseImpl implements ForgotPasswordUseCase {
   async execute(forgotPasswordDto: ForgotPasswordDto): Promise<{ message: string }> {
     const { email } = forgotPasswordDto;
 
-    const user = await this.userRepository.getUserByEmail(email);
+    const [error, getUserByEmailDto] = GetUserByEmailDto.create({ email: email });
+    if( error ) throw HttpCustomErrors.badRequest(error);
+    if( !getUserByEmailDto ) throw HttpCustomErrors.badRequest("User not found");
+
+    const user = await this.userRepository.getUserByEmail(getUserByEmailDto);
 
     const token = await this.jwtAdapter.generateToken(
       { id: user.id, email: user.email },

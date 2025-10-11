@@ -22,24 +22,31 @@ export class UserEntity {
   public static mapFromPrisma( prismaUser: {[key:string]: any} ): UserEntity {
     const { id, username, email, emailVerified, password, firstName, lastName, phone, role, status, createdAt, updatedAt } = prismaUser;
     
-    if (!id) throw HttpCustomErrors.badRequest("id is required");
-    if (!email) throw HttpCustomErrors.badRequest("email is required");
-    if (!username) throw HttpCustomErrors.badRequest("username is required");
-    if (emailVerified === undefined) throw HttpCustomErrors.badRequest("emailVerified is required");
-    if (!password) throw HttpCustomErrors.badRequest("password is required");
-    if (!firstName) throw HttpCustomErrors.badRequest("firstName is required");
-    if (!lastName) throw HttpCustomErrors.badRequest("lastName is required");
-    if (!role) throw HttpCustomErrors.badRequest("role is required");
-    if (!status) throw HttpCustomErrors.badRequest("status is required");
+    if (!id) throw HttpCustomErrors.badRequest("id es requerido");
+    if (!email) throw HttpCustomErrors.badRequest("email es requerido");
+    if (!username) throw HttpCustomErrors.badRequest("username es requerido");
+    if (emailVerified === undefined) throw HttpCustomErrors.badRequest("emailVerified es requerido");
+    if (!password) throw HttpCustomErrors.badRequest("password es requerido");
+    if (!firstName) throw HttpCustomErrors.badRequest("nombre es requerido");
+    if (!lastName) throw HttpCustomErrors.badRequest("apellido es requerido");
+    if (!role) throw HttpCustomErrors.badRequest("role es requerido");
+    if (!status) throw HttpCustomErrors.badRequest("status es requerido");
 
-    // CreatedAt por defecto es la fecha actual
-    const createdAtDate = createdAt ? new Date(createdAt) : new Date();
+    //? createdAt por defecto es la fecha actual en caso de que no se proporcione
+    let createdAtDate: Date = new Date();
+    if (createdAt){
+      createdAtDate = new Date(createdAt);
+      if (isNaN(createdAtDate.getTime()) || createdAtDate.toString() === "Invalid Date") {
+        throw HttpCustomErrors.badRequest("createdAt no es una fecha valida");
+      }
+    }
 
+    //? updatedAt por defecto es null en caso de que no se proporcione
     let updatedAtDate: Date | null = null;
     if (updatedAt) {
       updatedAtDate = new Date(updatedAt);
       if (isNaN(updatedAtDate.getTime()) || updatedAtDate.toString() === "Invalid Date") {
-        throw HttpCustomErrors.badRequest("updatedAt is not a valid date");
+        throw HttpCustomErrors.badRequest("updatedAt no es una fecha valida");
       }
     }
 

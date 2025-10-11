@@ -16,22 +16,22 @@ datasource db {
 // ============================================
 
 enum UserRole {
-  Administrador  // Administrador: acceso completo al sistema (incluyendo gestión de usuarios)
-  Cajero         // Cajero: puede hacer TODO excepto gestionar usuarios (crear/editar/eliminar/cambiar roles)
+  Administrador  
+  Cajero
 }
 
 enum UserStatus {
-  Activo      // Usuario activo
-  Inactivo    // Usuario inactivo
-  Suspendido  // Usuario suspendido
+  Activo      
+  Inactivo    
+  Suspendido  
 }
 
 model User {
   id            String     @id @default(uuid())
   username      String     @unique
   email         String     @unique
-  emailVerified Boolean    @default(false) @map("email_verified") // Verificación de email
-  password      String     // Hash de la contraseña
+  emailVerified Boolean    @default(false) @map("email_verified") 
+  password      String     
   firstName     String     @map("first_name")
   lastName      String     @map("last_name")
   phone         String?
@@ -39,10 +39,10 @@ model User {
   status        UserStatus @default(Activo)
   
   // Relaciones
-  orders          Order[]          // Órdenes creadas por este usuario
-  cashRegisters   CashRegister[]   // Cajas asignadas a este usuario
-  stockMovements  StockMovement[]  // Movimientos de inventario realizados
-  activityLogs    ActivityLog[]    // Registro de actividades del usuario
+  orders          Order[]          
+  cashRegisters   CashRegister[]   
+  stockMovements  StockMovement[]  
+  activityLogs    ActivityLog[]    
   
   // Timestamps
   createdAt DateTime @default(now()) @map("created_at")
@@ -77,20 +77,20 @@ model Category {
 }
 
 enum ProductStatus {
-  Disponible    // Disponible para venta
-  SinStock      // Sin stock
-  Descontinuado // Descontinuado
+  Disponible    
+  SinStock      
+  Descontinuado 
 }
 
 model Product {
   id          String        @id @default(uuid())
   name        String
   description String?
-  price       Decimal       @db.Decimal(10, 2) // Precio de venta
-  sku         String?       @unique // Código único del producto
-  stock       Int           @default(0) // Inventario actual
-  minStock    Int           @default(5) @map("min_stock") // Stock mínimo para alerta
-  image       String?       // URL de la imagen del producto
+  price       Decimal       @db.Decimal(10, 2) 
+  sku         String?       @unique 
+  stock       Int           @default(0)
+  minStock    Int           @default(5) @map("min_stock") 
+  image       String?       
   status      ProductStatus @default(Disponible)
   
   // Relación con categoría
@@ -98,8 +98,8 @@ model Product {
   category    Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   
   // Relaciones
-  orderItems      OrderItem[] // Items de órdenes que incluyen este producto
-  stockMovements  StockMovement[] // Historial de movimientos de inventario
+  orderItems      OrderItem[] 
+  stockMovements  StockMovement[] 
   
   // Timestamps
   createdAt   DateTime @default(now()) @map("created_at")
@@ -108,7 +108,7 @@ model Product {
   @@map("products")
   @@index([categoryId])
   @@index([status])
-  @@index([stock]) // Para consultas de productos con stock bajo
+  @@index([stock]) 
 }
 
 // ============================================
@@ -116,9 +116,9 @@ model Product {
 // ============================================
 
 enum CustomerType {
-  Regular   // Cliente regular
-  VIP       // Cliente VIP
-  Ocasional // Cliente ocasional
+  Regular   
+  VIP       
+  Ocasional 
 }
 
 model Customer {
@@ -130,10 +130,10 @@ model Customer {
   address     String?
   type        CustomerType @default(Regular)
   
-  // Relaciones
+  
   orders      Order[]
   
-  // Timestamps
+  
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   
@@ -145,11 +145,11 @@ model Customer {
 // ============================================
 
 enum StockMovementType {
-  Compra     // Compra/Entrada de mercancía
-  Venta      // Venta (salida por orden)
-  Ajuste     // Ajuste manual (corrección de inventario)
-  Devolucion // Devolución (entrada)
-  Dañado     // Producto dañado (salida)
+  Compra     
+  Venta      
+  Ajuste     
+  Devolucion 
+  Dañado     
 }
 
 model StockMovement {
@@ -165,9 +165,9 @@ model StockMovement {
   
   // Información del movimiento
   type        StockMovementType
-  quantity    Int      // Cantidad (positivo para entradas, negativo para salidas)
-  previousStock Int    @map("previous_stock") // Stock antes del movimiento
-  newStock    Int      @map("new_stock") // Stock después del movimiento
+  quantity    Int      
+  previousStock Int    @map("previous_stock")
+  newStock    Int      @map("new_stock") 
   
   // Información adicional
   reason      String?  // Razón del movimiento (ej: "Compra factura #123", "Venta orden #456")
@@ -189,54 +189,54 @@ model StockMovement {
 // ============================================
 
 enum OrderStatus {
-  Pendiente   // Orden pendiente
-  Completado  // Orden completada
-  Cancelado   // Orden cancelada
-  Reembolsado // Orden reembolsada
+  Pendiente   
+  Completado  
+  Cancelado   
+  Reembolsado 
 }
 
 enum PaymentMethod {
-  Efectivo      // Efectivo
-  Tarjeta       // Tarjeta
-  Transferencia // Transferencia
-  Multiplo      // Pago múltiple (combinación de métodos)
+  Efectivo      
+  Tarjeta       
+  Transferencia 
+  Multiplo      
 }
 
 model Order {
   id              String   @id @default(uuid())
-  orderNumber     String   @unique @map("order_number") // Número de orden secuencial
+  orderNumber     String   @unique @map("order_number") 
   
   // Relaciones
   customerId      String?  @map("customer_id")
   customer        Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
   
-  userId          String   @map("user_id") // Usuario (cajero) que creó la orden
+  userId          String   @map("user_id") 
   user            User     @relation(fields: [userId], references: [id], onDelete: Restrict)
   
-  cashRegisterId  String?  @map("cash_register_id") // Caja en la que se registró
+  cashRegisterId  String?  @map("cash_register_id") 
   cashRegister    CashRegister? @relation(fields: [cashRegisterId], references: [id], onDelete: SetNull)
   
   // Items de la orden
   items           OrderItem[]
   
   // Información de la orden
-  subtotal        Decimal  @db.Decimal(10, 2) // Suma de todos los items
-  tax             Decimal  @db.Decimal(10, 2) @default(0) // Impuestos
-  total           Decimal  @db.Decimal(10, 2) // Total final (subtotal + tax)
+  subtotal        Decimal  @db.Decimal(10, 2) 
+  tax             Decimal  @db.Decimal(10, 2) @default(0) 
+  total           Decimal  @db.Decimal(10, 2) 
   
   // Información de pago
   paymentMethod   PaymentMethod @map("payment_method")
-  amountPaid      Decimal  @db.Decimal(10, 2) @map("amount_paid") // Monto pagado
-  change          Decimal  @db.Decimal(10, 2) @default(0) // Cambio devuelto
+  amountPaid      Decimal  @db.Decimal(10, 2) @map("amount_paid") 
+  change          Decimal  @db.Decimal(10, 2) @default(0) 
   
   // Estado y notas
   status          OrderStatus @default(Pendiente)
-  notes           String?     // Notas adicionales de la orden
+  notes           String?     
   
   // Timestamps
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
-  completedAt     DateTime? @map("completed_at") // Fecha de completación
+  completedAt     DateTime? @map("completed_at") 
   
   @@map("orders")
   @@index([userId])
