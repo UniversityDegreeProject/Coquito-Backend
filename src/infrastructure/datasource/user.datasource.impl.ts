@@ -1,5 +1,6 @@
 import { prismaClient } from "../../data/postgres";
 import { DeleteUserByIdDto, GetUserByEmailDto, GetUserByIdDto, RegisterUserDto, UpdateUserDto, UserDatasource, UserEntity } from "../../domain";
+import { SearchUsersDto } from "../../domain/dto/user/search-users.dto";
 import { HttpCustomErrors } from "../../domain/errors/http-custom-errors";
 import { BcryptAdapter } from "../../config";
 
@@ -130,6 +131,62 @@ export class UserDatasourceImpl implements UserDatasource {
   }
 
 
-  
- 
+  // * Buscar usuarios con filtros
+  async searchUsers(searchUsersDto: SearchUsersDto): Promise<{
+    users: UserEntity[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    const { search, role, status, page, limit } = searchUsersDto;
+
+    // Construir el objeto where para Prisma
+    const where: any = {};
+
+    // Búsqueda general (username, email, firstName, lastName)
+    if (search && search.trim() !== "") {
+      where.OR = [
+        { username: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+
+    if (role) {
+      where.role = role;
+    }
+
+    if (status) {
+      where.status = status;
+    }
+
+
+    const skip = (page - 1) * limit;
+
+    const [users, total] = await Promise.all([
+      prismaClient.user.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: {
+          createdAt: 'desc', 
+        },
+      }),
+      prismaClient.user.count({ where }), 
+    ]);
+
+    // Calcular total de páginas
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      users: users.map(user => UserEntity.mapFromPrisma(user)),
+      total,
+      page,
+      limit,
+      totalPages,
+    };
+  }
 }

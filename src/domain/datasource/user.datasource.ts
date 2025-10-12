@@ -1,6 +1,7 @@
 import { RegisterUserDto } from "../dto/auth/register-user.dto";
 import { DeleteUserByIdDto, GetUserByEmailDto, GetUserByIdDto } from "../dto/user";
 import { UpdateUserDto } from "../dto/user/update-user.dto";
+import { SearchUsersDto } from "../dto/user/search-users.dto";
 import { UserEntity } from "../entities";
 
 
@@ -13,4 +14,11 @@ export abstract class UserDatasource {
   abstract getUserById(id: GetUserByIdDto): Promise<UserEntity>;
   abstract getUserByEmail(email: GetUserByEmailDto): Promise<UserEntity>;
   abstract getUserByUsername(username: string): Promise<UserEntity>;
+  abstract searchUsers(searchUsersDto: SearchUsersDto): Promise<{
+    users: UserEntity[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }>;
 }

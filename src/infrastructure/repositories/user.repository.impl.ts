@@ -1,4 +1,5 @@
 import { UserEntity, RegisterUserDto, UpdateUserDto, UserDatasource, UserRepository, GetUserByIdDto, GetUserByEmailDto, DeleteUserByIdDto } from "../../domain";
+import { SearchUsersDto } from "../../domain/dto/user/search-users.dto";
 
 
 export class UserRepositoryImpl implements UserRepository {
@@ -30,5 +31,14 @@ export class UserRepositoryImpl implements UserRepository {
   }
   getUserByUsername(username: string): Promise<UserEntity> {
     return this.userDatasource.getUserByUsername(username);
+  }
+  searchUsers(searchUsersDto: SearchUsersDto): Promise<{
+    users: UserEntity[];
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  }> {
+    return this.userDatasource.searchUsers(searchUsersDto);
   }
 }

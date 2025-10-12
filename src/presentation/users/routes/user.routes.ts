@@ -22,8 +22,9 @@ export class UserRoutes {
 
     //* RESTful users routes
     router.get('/', userController.getAllUsers);                    
-    router.get('/:id', userController.getUserById);                 
+    router.get('/search', userController.searchUsers);              
     router.get('/search/by-email', userController.getUserByEmail);  
+    router.get('/:id', userController.getUserById);                 
     router.patch('/:id', userController.updateUser);                
     router.delete('/:id', userController.deleteUser);               
     

@@ -1,5 +1,7 @@
 import { Request, Response } from "express";
 import { DeleteUserByIdDto, DeleteUserUseCaseImpl, GetUserByEmailDto, GetUserByIdDto, GetUserByIdUseCaseImpl, GetUserEmailUseCaseImpl, GetUsersUseCaseImpl, HttpCustomErrors, UpdateUserDto, UpdateUserUseCaseImpl, UserRepository } from "../../../domain";
+import { SearchUsersDto } from "../../../domain/dto/user/search-users.dto";
+import { SearchUsersUseCaseImpl } from "../../../domain/use-cases/user/search-users.uc";
 
 export class UserController {
   constructor(
@@ -39,7 +41,7 @@ export class UserController {
   }
 
   getUserById = async (req: Request, res: Response) => {
-    const { id } = req.params; // PATH PARAM
+    const { id } = req.params; 
 
     const [ error, getUserByIdDto ] = GetUserByIdDto.create({ id });
     if( error ) return res.status(400).json({ error: error });
@@ -82,6 +84,19 @@ export class UserController {
         message: "Usuario eliminado exitosamente",
         user
        });
+    }).catch( error => {
+      return this.handleHttpStatusError(error, res);
+    });
+  }
+
+  searchUsers = async (req: Request, res: Response) => {
+    const query = req.query; 
+    const [ error, searchUsersDto ] = SearchUsersDto.create(query);
+    if( error ) return res.status(400).json({ error: error });
+    if( !searchUsersDto ) return res.status(400).json({ error: "Invalid search parameters" });
+
+    new SearchUsersUseCaseImpl(this.userRepository).execute(searchUsersDto).then( result => {
+      return res.status(200).json(result);
     }).catch( error => {
       return this.handleHttpStatusError(error, res);
     });
