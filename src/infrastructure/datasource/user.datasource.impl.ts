@@ -141,10 +141,10 @@ export class UserDatasourceImpl implements UserDatasource {
   }> {
     const { search, role, status, page, limit } = searchUsersDto;
 
-    // Construir el objeto where para Prisma
+    //? Construir el objeto where para Prisma
     const where: any = {};
 
-    // Búsqueda general (username, email, firstName, lastName)
+    //? Búsqueda general (username, email, firstName, lastName)
     if (search && search.trim() !== "") {
       where.OR = [
         { username: { contains: search, mode: 'insensitive' } },

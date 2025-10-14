@@ -14,7 +14,8 @@ import {
   ForgotPasswordUseCaseImpl,
   ResetPasswordDto,
   ResetPasswordUseCaseImpl,
-  GetUserEmailUseCaseImpl
+  GetUserEmailUseCaseImpl,
+  GetUserByEmailDto
 } from "../../../domain";
 import { JwtAdapter } from "../../../config";
 import { EmailService } from "../../../domain/services/email.service";
@@ -101,7 +102,10 @@ export class AuthController {
   // *Retry Verify Email
   public retryVerifyEmail = async(req: Request, res: Response) => {
     const { email } = req.body;
-    const user = await new GetUserEmailUseCaseImpl(this.userRepository).execute(email);
+    const [ error, getUserByEmailDto ] = GetUserByEmailDto.create({ email: email });
+    if( error ) return res.status(400).json({ error: error });
+    if( !getUserByEmailDto ) return res.status(400).json({ error: "Usuario no encontrado" });
+    const user = await new GetUserEmailUseCaseImpl(this.userRepository).execute(getUserByEmailDto);
     if( !user ) return res.status(400).json({ error: "Usuario no encontrado" });
     const emailSent = await this.sendEmailValidationLink(user.id, user.email, user.username);
     if( !emailSent ) return res.status(500).json({ error: "Error al enviar el email de verificación" });

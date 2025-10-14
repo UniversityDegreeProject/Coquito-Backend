@@ -1,10 +1,11 @@
-import zod from "zod";
+import {z as zod} from "zod";
 
 
 export const loginUserSchema = zod.object({
   username: zod
     .string({ error: "Usuario es requerido" })
-    .min(1, { error: "El usuario no puede estar vacio" }),
+    .min(1, { error: "El usuario no puede estar vacio" })
+    .toLowerCase(),
   password: zod
     .string({ error: "Contraseña es requerida" })
     .min(6, { error: "Contraseña debe tener al menos 6 caracteres" })

@@ -4,13 +4,14 @@ export const createUserSchema = zod.object({
   username: zod
     .string({ error: "Usuario es requerido" })
     .min(3, { error: "El usuario debe tener al menos 3 caracteres" })
-    .max(20, { error: "El usuario debe tener máximo 20 caracteres" }),
+    .max(20, { error: "El usuario debe tener máximo 20 caracteres" })
+    .toLowerCase(),
 
   email: zod
-    .string({ error: "Email es requerido" })
+    .email({ error: "Formato de email invalido" })
     .min(1, { error: "El email no puede estar vacio" })
-    .email({ error: "Formato de email invalido" }),
-  
+    .toLowerCase(),
+
   password: zod
     .string({ error: "Contraseña es requerida" })
     .min(6, { error: "Contraseña debe tener al menos 6 caracteres" })

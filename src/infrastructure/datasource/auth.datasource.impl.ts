@@ -16,9 +16,9 @@ export class AuthDatasourceImpl implements AuthDatasource {
     const user = await prismaClient.user.findUnique({
       where: { username }
     });
-    if (!user) throw HttpCustomErrors.notFound("Credenciales incorrectas");
+    if (!user) throw HttpCustomErrors.notFound("Usuario no encontrado");
     
-    // Validar que el email esté verificado
+    //? Validamos que el email este verificado
     if (!user.emailVerified) {
       throw HttpCustomErrors.forbidden("Debes verificar tu email antes de iniciar sesión. Revisa la bandeja de entrada o spam de tu email.");
     }
