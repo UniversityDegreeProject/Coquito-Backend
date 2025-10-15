@@ -47,6 +47,7 @@ model User {
   // Timestamps
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
+  lastConnection DateTime? @map("last_connection")
   
   @@map("users")
 }
