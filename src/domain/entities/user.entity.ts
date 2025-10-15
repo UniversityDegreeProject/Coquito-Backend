@@ -16,11 +16,12 @@ export class UserEntity {
     public status: string,
     public createdAt: Date,
     public updatedAt?: Date | null,
+    public lastConnection?: Date | null,
   ) {};
 
 
   public static mapFromPrisma( prismaUser: {[key:string]: any} ): UserEntity {
-    const { id, username, email, emailVerified, password, firstName, lastName, phone, role, status, createdAt, updatedAt } = prismaUser;
+  const { id, username, email, emailVerified, password, firstName, lastName, phone, role, status, createdAt, updatedAt, lastConnection } = prismaUser;
     
     if (!id) throw HttpCustomErrors.badRequest("id es requerido");
     if (!email) throw HttpCustomErrors.badRequest("email es requerido");
@@ -50,7 +51,16 @@ export class UserEntity {
       }
     }
 
-    return new UserEntity(id, username, email, emailVerified, password, firstName, lastName, phone, role, status, createdAtDate, updatedAtDate);
+    //? lastConnection por defecto es null
+    let lastConnectionDate: Date | null = null;
+    if (lastConnection) {
+      lastConnectionDate = new Date(lastConnection);
+      if (isNaN(lastConnectionDate.getTime()) || lastConnectionDate.toString() === "Invalid Date") {
+        throw HttpCustomErrors.badRequest("lastConnection no es una fecha valida");
+      }
+    }
+
+    return new UserEntity(id, username, email, emailVerified, password, firstName, lastName, phone, role, status, createdAtDate, updatedAtDate, lastConnectionDate);
   }
 
 };

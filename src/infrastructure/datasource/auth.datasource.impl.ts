@@ -26,7 +26,13 @@ export class AuthDatasourceImpl implements AuthDatasource {
     const isPasswordValid = await this.bcrypt.compare(password, user.password);
     if (!isPasswordValid) throw HttpCustomErrors.unauthorized("Credenciales incorrectas");
     
-    return UserEntity.mapFromPrisma(user);
+    //? Actualizamos la fecha de última conexión
+    const userWithLastConnection = await prismaClient.user.update({
+      where: { id: user.id },
+      data: { lastConnection: new Date() }
+    });
+    
+    return UserEntity.mapFromPrisma(userWithLastConnection);
   }
 
 

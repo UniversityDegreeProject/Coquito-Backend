@@ -6,7 +6,6 @@ export const createUserSchema = zod.object({
     .min(3, { error: "El usuario debe tener al menos 3 caracteres" })
     .max(20, { error: "El usuario debe tener máximo 20 caracteres" })
     .toLowerCase(),
-
   email: zod
     .email({ error: "Formato de email invalido" })
     .min(1, { error: "El email no puede estar vacio" })
@@ -21,19 +20,22 @@ export const createUserSchema = zod.object({
       { 
         error: "Contraseña debe tener al menos una letra mayuscula, una letra minuscula, un numero y un caracter especial" 
       }
-    ),
-  
+    )
+    .optional(),
   firstName: zod
     .string({ error: "Nombre es requerido" })
-    .min(1, { error: "El nombre no puede estar vacio" }),
+    .min(1, { error: "El nombre no puede estar vacio" })
+    .regex(/^[A-Z][a-z]+$/, { error: "El nombre debe comenzar con letra mayúscula y no puede contener numeros" }),
   
   lastName: zod
     .string({ error: "Apellido es requerido" })
-    .min(1, { error: "El apellido no puede estar vacio" }),
+    .min(1, { error: "El apellido no puede estar vacio" })
+    .regex(/^[A-Z][a-z]+$/, { error: "El apellido debe comenzar con letra mayúscula y no puede contener numeros" }),
   
   phone: zod
     .string({ error: "Teléfono es requerido" })
-    .min(1, { error: "El teléfono no puede estar vacio" }),
+    .min(1, { error: "El teléfono no puede estar vacio" })
+    .regex(/^[0-9]+$/, { error: "El teléfono debe contener solo numeros" }),
   
   role: zod.enum(["Administrador", "Cajero"], { 
     error: "Rol es requerido" 

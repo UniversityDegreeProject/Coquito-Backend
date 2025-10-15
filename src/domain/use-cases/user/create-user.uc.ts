@@ -14,6 +14,20 @@ export class CreateUserUseCaseImpl implements CreateUserUseCase {
   ) {}
 
   execute(user: RegisterUserDto): Promise<UserEntity> {
-    return this.userRepository.createUser(user);
+    const ensurePassword = (user: RegisterUserDto): RegisterUserDto => {
+      if (user.password && user.password !== undefined && user.password !== null && user.password !== "") return user;
+      
+      //? Política: Primeras 2 iniciales del nombre (minúsculas) + Primeras 2 iniciales del apellido (mayúsculas) + Año actual + @
+      const firstNameInitials = user.firstName.substring(0, 1).toUpperCase().substring(1,2).toLowerCase();
+      const lastNameInitials = user.lastName.substring(0, 1).toUpperCase().substring(1,2).toLowerCase();
+      const currentYear = new Date().getFullYear();
+      const passwordGenerated = `${firstNameInitials}${lastNameInitials}${currentYear}@`;
+      
+      // Retornar un nuevo DTO con la contraseña generada
+      return new RegisterUserDto(user.username, user.email, user.firstName, user.lastName, user.phone, user.role, user.status, passwordGenerated);
+    }
+    const userWithPassword = ensurePassword(user);
+
+    return this.userRepository.createUser(userWithPassword);
   }
 }

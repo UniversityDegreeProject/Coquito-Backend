@@ -76,7 +76,7 @@ export class UserDatasourceImpl implements UserDatasource {
     }
 
     //? Hash de contraseña
-    const hashedPassword = await this.bcrypt.hash(password);
+    const hashedPassword = await this.bcrypt.hash(password!);
     
     //? Crear usuario
     const newUser = await prismaClient.user.create({
