@@ -18,8 +18,8 @@ export class CreateUserUseCaseImpl implements CreateUserUseCase {
       if (user.password && user.password !== undefined && user.password !== null && user.password !== "") return user;
       
       //? Política: Primeras 2 iniciales del nombre (minúsculas) + Primeras 2 iniciales del apellido (mayúsculas) + Año actual + @
-      const firstNameInitials = user.firstName.substring(0, 1).toUpperCase().substring(1,2).toLowerCase();
-      const lastNameInitials = user.lastName.substring(0, 1).toUpperCase().substring(1,2).toLowerCase();
+      const firstNameInitials = user.firstName.substring(0, 1).toUpperCase().concat(user.firstName.substring(1, 2).toLowerCase());
+      const lastNameInitials = user.lastName.substring(0, 1).toUpperCase().concat(user.lastName.substring(1, 2).toLowerCase());
       const currentYear = new Date().getFullYear();
       const passwordGenerated = `${firstNameInitials}${lastNameInitials}${currentYear}@`;
       

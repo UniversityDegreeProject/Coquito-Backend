@@ -18,16 +18,15 @@ export const updateUserSchema = zod.object({
     .boolean(),
   
   firstName: zod
-    .string()
-    .trim()
-    .min(1, "Nombre no puede estar vacio")
-    .regex(/^[A-Z][a-z]+$/, { error: "El nombre debe comenzar con letra mayúscula y no puede contener numeros" }),
+  .string({ error: "Nombre es requerido" })
+  .min(1, { error: "El nombre no puede estar vacio" })
+  .regex(/^[A-Z][a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, { error: "El nombre debe comenzar con letra mayúscula y solo puede contener letras" }),
+  
 
   lastName: zod
-    .string()
-    .trim()
-    .min(1, "Apellido no puede estar vacio")
-    .regex(/^[A-Z][a-z]+$/, { error: "El apellido debe comenzar con letra mayúscula y no puede contener numeros" }),
+  .string({ error: "Apellido es requerido" })
+  .min(1, { error: "El apellido no puede estar vacio" })
+  .regex(/^[A-Z][a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, { error: "El apellido debe comenzar con letra mayúscula y solo puede contener letras" }),
 
   role: zod
     .enum(["Administrador", "Cajero"], { error: "Rol inválido" }),
@@ -36,11 +35,18 @@ export const updateUserSchema = zod.object({
     .enum(["Activo", "Inactivo", "Suspendido"], { error: "Estado inválido" }),
 
   phone: zod
-    .string()
-    .trim()
-    .min(1, "Teléfono no puede estar vacio")
-    .regex(/^[0-9]+$/, { error: "El teléfono debe contener solo numeros" })
-    .optional(),
+  .string({ error: "Teléfono es requerido" })
+  .refine(
+    val =>
+      // Exact 8 dígitos SIN el "+" (local)
+      (/^\d{8}$/.test(val)) ||
+      // Exactamente '+' seguido de 11 dígitos (internacional)
+      (/^\+\d{11}$/.test(val)),
+    {
+      message:
+        "Debe ingresar 8 números si es local o 11 números con el prefijo internacional, usando '+', ejemplo: +595981234567",
+    }
+  ),
 
   password: zod
     .string()
