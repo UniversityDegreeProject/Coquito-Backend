@@ -111,6 +111,7 @@ El backend está construido siguiendo **Clean Architecture** con las siguientes 
   status: "Activo" | "Inactivo" | "Suspendido"
   createdAt: DateTime
   updatedAt: DateTime
+  lastConnection: DateTime | null
 }
 ```
 
@@ -205,10 +206,36 @@ Registrar un nuevo usuario (solo admins - próximamente protegido).
 }
 ```
 
+**⚡ Contraseña Autogenerada (NUEVO):**
+
+Si no se envía el campo `password`, el sistema **generará automáticamente** una contraseña siguiendo la política de la empresa:
+
+**Política de generación:**
+- Primeras 2 iniciales del **nombre** en minúsculas
+- Primeras 2 iniciales del **apellido** en MAYÚSCULAS
+- Año actual
+- Carácter especial `@`
+
+**Ejemplo:** Juan Carlos Pérez Gómez → `juPE2025@`
+
+**Request Body sin contraseña (autogenerada):**
+```json
+{
+  "username": "juan123",
+  "email": "juan@example.com",
+  "firstName": "Juan",
+  "lastName": "Pérez",
+  "phone": "3001234567",
+  "role": "Cajero",
+  "status": "Activo"
+}
+```
+> ⚠️ **Nota:** En este caso, el sistema generará automáticamente la contraseña: `juPE2025@`
+
 **Validaciones:**
 - `username`: 3-20 caracteres, único
 - `email`: formato válido, único
-- `password`: 6-16 caracteres, debe incluir:
+- `password` (OPCIONAL): 6-16 caracteres, debe incluir:
   - Al menos 1 mayúscula
   - Al menos 1 minúscula
   - Al menos 1 número
@@ -233,7 +260,8 @@ Registrar un nuevo usuario (solo admins - próximamente protegido).
     "role": "Cajero",
     "status": "Activo",
     "createdAt": "2024-10-12T10:30:00.000Z",
-    "updatedAt": "2024-10-12T10:30:00.000Z"
+    "updatedAt": "2024-10-12T10:30:00.000Z",
+    "lastConnection":"2024-10-12T10:30:00.000Z"
   },
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
@@ -254,7 +282,7 @@ Registrar un nuevo usuario (solo admins - próximamente protegido).
 ---
 
 #### 2️⃣ **POST** `/api/auth/login`
-Iniciar sesión.
+Iniciar sesión y actualizar la última conexión del usuario.
 
 **Request Body:**
 ```json
@@ -267,6 +295,9 @@ Iniciar sesión.
 **Validaciones:**
 - `username`: requerido, no vacío
 - `password`: 6-16 caracteres con formato válido
+
+**🔄 Comportamiento Automático (NUEVO):**
+Al iniciar sesión exitosamente, el sistema actualiza automáticamente el campo `lastConnection` con la fecha y hora actual del servidor.
 
 **Response 200:**
 ```json
@@ -282,7 +313,8 @@ Iniciar sesión.
     "role": "Cajero",
     "status": "Activo",
     "createdAt": "2024-10-12T10:30:00.000Z",
-    "updatedAt": "2024-10-12T10:30:00.000Z"
+    "updatedAt": "2024-10-12T10:30:00.000Z",
+    "lastConnection": "2024-10-16T14:25:30.000Z"
   },
   "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
@@ -443,7 +475,8 @@ Obtener todos los usuarios.
       "role": "Cajero",
       "status": "Activo",
       "createdAt": "2024-10-12T10:30:00.000Z",
-      "updatedAt": "2024-10-12T10:30:00.000Z"
+      "updatedAt": "2024-10-12T10:30:00.000Z",
+      "lastConnection":"2024-10-12T10:30:00.000Z"
     },
     {
       "id": "uuid-2",
@@ -456,7 +489,8 @@ Obtener todos los usuarios.
       "role": "Administrador",
       "status": "Activo",
       "createdAt": "2024-10-10T08:15:00.000Z",
-      "updatedAt": "2024-10-11T14:20:00.000Z"
+      "updatedAt": "2024-10-11T14:20:00.000Z",
+      "lastConnection":"2024-10-12T10:30:00.000Z"
     }
   ]
 }
@@ -472,14 +506,14 @@ Obtener todos los usuarios.
 ---
 
 #### 2️⃣ **GET** `/api/users/search`
-Buscar usuarios con filtros y paginación.
+Buscar usuarios con filtros y paginación avanzada.
 
 **Query Parameters:**
-- `search` (opcional): Busca en username, email, firstName, lastName
+- `search` (opcional): Busca en username, email, firstName, lastName (case-insensitive, búsqueda parcial)
 - `role` (opcional): "Administrador" | "Cajero"
 - `status` (opcional): "Activo" | "Inactivo" | "Suspendido"
-- `page` (opcional): Número de página (default: 1)
-- `limit` (opcional): Items por página (default: 10)
+- `page` (opcional): Número de página (default: 1, mínimo: 1)
+- `limit` (opcional): Items por página (default: 10, mínimo: 1, máximo recomendado: 100)
 
 **Ejemplos de URLs:**
 ```
@@ -487,6 +521,106 @@ GET /api/users/search?search=Juan
 GET /api/users/search?role=Administrador
 GET /api/users/search?status=Activo&page=2&limit=20
 GET /api/users/search?search=juan&role=Cajero&status=Activo&page=1&limit=10
+```
+
+**📱 Cómo Consumir desde el Frontend:**
+
+**Ejemplo 1: Búsqueda simple**
+```typescript
+// Buscar por texto
+const searchUsers = async (searchTerm: string) => {
+  const response = await fetch(
+    `http://localhost:3000/api/users/search?search=${encodeURIComponent(searchTerm)}`
+  );
+  return await response.json();
+};
+
+// Uso
+const result = await searchUsers('Juan');
+console.log(result.users); // Array de usuarios
+console.log(result.total); // Total de usuarios encontrados
+```
+
+**Ejemplo 2: Filtros combinados con paginación**
+```typescript
+interface SearchFilters {
+  search?: string;
+  role?: 'Administrador' | 'Cajero';
+  status?: 'Activo' | 'Inactivo' | 'Suspendido';
+  page?: number;
+  limit?: number;
+}
+
+const searchUsersWithFilters = async (filters: SearchFilters) => {
+  const params = new URLSearchParams();
+  
+  if (filters.search) params.append('search', filters.search);
+  if (filters.role) params.append('role', filters.role);
+  if (filters.status) params.append('status', filters.status);
+  if (filters.page) params.append('page', filters.page.toString());
+  if (filters.limit) params.append('limit', filters.limit.toString());
+  
+  const response = await fetch(
+    `http://localhost:3000/api/users/search?${params.toString()}`
+  );
+  return await response.json();
+};
+
+// Uso
+const result = await searchUsersWithFilters({
+  search: 'juan',
+  role: 'Cajero',
+  status: 'Activo',
+  page: 2,
+  limit: 20
+});
+```
+
+**Ejemplo 3: Componente React con paginación**
+```typescript
+const UsersList = () => {
+  const [users, setUsers] = useState([]);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [filters, setFilters] = useState({
+    search: '',
+    role: '',
+    status: '',
+    limit: 10
+  });
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      const result = await searchUsersWithFilters({ ...filters, page });
+      setUsers(result.users);
+      setTotalPages(result.totalPages);
+    };
+    fetchUsers();
+  }, [page, filters]);
+
+  return (
+    <div>
+      {/* Filtros */}
+      <input 
+        value={filters.search}
+        onChange={(e) => setFilters({...filters, search: e.target.value})}
+        placeholder="Buscar usuario..."
+      />
+      
+      {/* Lista de usuarios */}
+      {users.map(user => <UserCard key={user.id} user={user} />)}
+      
+      {/* Paginación */}
+      <button onClick={() => setPage(page - 1)} disabled={page === 1}>
+        Anterior
+      </button>
+      <span>Página {page} de {totalPages}</span>
+      <button onClick={() => setPage(page + 1)} disabled={page === totalPages}>
+        Siguiente
+      </button>
+    </div>
+  );
+};
 ```
 
 **Response 200:**
@@ -504,7 +638,8 @@ GET /api/users/search?search=juan&role=Cajero&status=Activo&page=1&limit=10
       "role": "Cajero",
       "status": "Activo",
       "createdAt": "2024-10-12T10:30:00.000Z",
-      "updatedAt": "2024-10-12T10:30:00.000Z"
+      "updatedAt": "2024-10-12T10:30:00.000Z",
+      "lastConnection": "2024-10-16T14:25:30.000Z"
     }
   ],
   "total": 156,
@@ -513,6 +648,13 @@ GET /api/users/search?search=juan&role=Cajero&status=Activo&page=1&limit=10
   "totalPages": 8
 }
 ```
+
+**💡 Explicación de la Respuesta:**
+- `users`: Array con los usuarios de la página actual
+- `total`: Número total de usuarios que coinciden con los filtros
+- `page`: Página actual
+- `limit`: Cantidad de usuarios por página
+- `totalPages`: Total de páginas disponibles (calculado: `Math.ceil(total / limit)`)
 
 **Response 400:**
 ```json
@@ -754,8 +896,14 @@ interface UserEntity {
   status: "Activo" | "Inactivo" | "Suspendido";
   createdAt: Date;               // Fecha de creación
   updatedAt: Date | null;        // Fecha de última actualización
+  lastConnection: Date | null;   // Última conexión del usuario (NUEVO)
 }
 ```
+
+**💡 Notas sobre `lastConnection`:**
+- Se actualiza automáticamente cada vez que el usuario inicia sesión
+- Es `null` si el usuario nunca ha iniciado sesión
+- Útil para reportes de actividad y auditoría
 
 ### Roles y Permisos
 
@@ -887,6 +1035,7 @@ Todos los errores siguen este formato:
 
 ### 1. Registro de Usuario
 
+**Opción A: Con contraseña personalizada**
 ```typescript
 // services/authService.ts
 import axios from 'axios';
@@ -896,7 +1045,7 @@ const API_URL = 'http://localhost:3000/api';
 export const registerUser = async (userData: {
   username: string;
   email: string;
-  password: string;
+  password?: string; // AHORA ES OPCIONAL
   firstName: string;
   lastName: string;
   phone: string;
@@ -929,6 +1078,47 @@ export const registerUser = async (userData: {
 };
 ```
 
+**Opción B: Con contraseña autogenerada (NUEVO)**
+```typescript
+// Ejemplo de uso con contraseña autogenerada
+const createUser = async () => {
+  const result = await registerUser({
+    username: 'juan123',
+    email: 'juan@example.com',
+    firstName: 'Juan',
+    lastName: 'Pérez',
+    phone: '3001234567',
+    role: 'Cajero'
+    // ⚡ NO se envía password, el backend generará: juPE2025@
+  });
+  
+  if (result.success) {
+    console.log('Usuario creado con contraseña autogenerada');
+    console.log('Contraseña generada: juPE2025@');
+  }
+};
+```
+
+**Opción C: Con contraseña personalizada**
+```typescript
+// Ejemplo de uso con contraseña personalizada
+const createUserWithPassword = async () => {
+  const result = await registerUser({
+    username: 'maria456',
+    email: 'maria@example.com',
+    password: 'MiPassword123!', // ✅ Contraseña personalizada
+    firstName: 'María',
+    lastName: 'García',
+    phone: '3007654321',
+    role: 'Administrador'
+  });
+  
+  if (result.success) {
+    console.log('Usuario creado con contraseña personalizada');
+  }
+};
+```
+
 ### 2. Login
 
 ```typescript
@@ -943,6 +1133,9 @@ export const login = async (username: string, password: string) => {
     // Guardar token y usuario
     localStorage.setItem('token', response.data.token);
     localStorage.setItem('user', JSON.stringify(response.data.user));
+    
+    // 🆕 El campo lastConnection se actualiza automáticamente en el backend
+    console.log('Última conexión:', response.data.user.lastConnection);
     
     return {
       success: true,
@@ -964,7 +1157,63 @@ export const login = async (username: string, password: string) => {
 };
 ```
 
-### 3. Buscar Usuarios con Filtros
+**💡 Ejemplo de uso en componente React:**
+```typescript
+const LoginForm = () => {
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState('');
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const result = await login(username, password);
+    
+    if (result.success) {
+      // Mostrar última conexión
+      if (result.user.lastConnection) {
+        const lastLogin = new Date(result.user.lastConnection);
+        console.log(`Última conexión: ${lastLogin.toLocaleString()}`);
+      } else {
+        console.log('Primera vez que inicia sesión');
+      }
+      
+      // Redirigir al dashboard
+      window.location.href = '/dashboard';
+    } else {
+      setError(result.error);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input 
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        placeholder="Usuario"
+      />
+      <input 
+        type="password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        placeholder="Contraseña"
+      />
+      {error && <p className="error">{error}</p>}
+      <button type="submit">Iniciar Sesión</button>
+    </form>
+  );
+};
+```
+
+### 3. Buscar Usuarios con Filtros y Paginación
+
+
+  default : 
+  public readonly search?: SearchUsersSchema["search"],
+  public readonly role?: SearchUsersSchema["role"],
+  public readonly status?: SearchUsersSchema["status"],
+  public readonly page: SearchUsersSchema["page"] = 1,
+  public readonly limit: SearchUsersSchema["limit"] = 10
 
 ```typescript
 // services/userService.ts
@@ -990,7 +1239,7 @@ export const searchUsers = async (params: {
     
     return {
       success: true,
-      data: response.data
+      data: response.data // { users, total, page, limit, totalPages }
     };
   } catch (error) {
     if (axios.isAxiosError(error)) {
@@ -1005,6 +1254,181 @@ export const searchUsers = async (params: {
     };
   }
 };
+```
+
+**📋 Ejemplo Completo: Tabla de Usuarios con Búsqueda y Paginación**
+
+```typescript
+// components/UsersTable.tsx
+import { useState, useEffect } from 'react';
+import { searchUsers } from '../services/userService';
+
+interface User {
+  id: string;
+  username: string;
+  email: string;
+  firstName: string;
+  lastName: string;
+  role: string;
+  status: string;
+  lastConnection: string | null;
+}
+
+const UsersTable = () => {
+  const [users, setUsers] = useState<User[]>([]);
+  const [loading, setLoading] = useState(false);
+  
+  // Estados de filtros
+  const [searchTerm, setSearchTerm] = useState('');
+  const [roleFilter, setRoleFilter] = useState<string>('');
+  const [statusFilter, setStatusFilter] = useState<string>('');
+  
+  // Estados de paginación
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+  const [totalPages, setTotalPages] = useState(0);
+  const [total, setTotal] = useState(0);
+
+  // Función para cargar usuarios
+  const loadUsers = async () => {
+    setLoading(true);
+    
+    const result = await searchUsers({
+      search: searchTerm || undefined,
+      role: roleFilter as any || undefined,
+      status: statusFilter as any || undefined,
+      page,
+      limit
+    });
+
+    if (result.success && result.data) {
+      setUsers(result.data.users);
+      setTotal(result.data.total);
+      setTotalPages(result.data.totalPages);
+    }
+    
+    setLoading(false);
+  };
+
+  // Cargar usuarios cuando cambien los filtros o la página
+  useEffect(() => {
+    loadUsers();
+  }, [page, limit, searchTerm, roleFilter, statusFilter]);
+
+  // Reiniciar a la página 1 cuando cambien los filtros
+  useEffect(() => {
+    setPage(1);
+  }, [searchTerm, roleFilter, statusFilter]);
+
+  return (
+    <div className="users-table-container">
+      {/* Filtros */}
+      <div className="filters">
+        <input
+          type="text"
+          placeholder="Buscar por nombre, usuario o email..."
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+        
+        <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
+          <option value="">Todos los roles</option>
+          <option value="Administrador">Administrador</option>
+          <option value="Cajero">Cajero</option>
+        </select>
+        
+        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
+          <option value="">Todos los estados</option>
+          <option value="Activo">Activo</option>
+          <option value="Inactivo">Inactivo</option>
+          <option value="Suspendido">Suspendido</option>
+        </select>
+      </div>
+
+      {/* Información de resultados */}
+      <div className="results-info">
+        <p>Mostrando {users.length} de {total} usuarios</p>
+        <select value={limit} onChange={(e) => setLimit(Number(e.target.value))}>
+          <option value="10">10 por página</option>
+          <option value="20">20 por página</option>
+          <option value="50">50 por página</option>
+        </select>
+      </div>
+
+      {/* Tabla */}
+      {loading ? (
+        <p>Cargando...</p>
+      ) : (
+        <table>
+          <thead>
+            <tr>
+              <th>Usuario</th>
+              <th>Nombre</th>
+              <th>Email</th>
+              <th>Rol</th>
+              <th>Estado</th>
+              <th>Última Conexión</th>
+            </tr>
+          </thead>
+          <tbody>
+            {users.map((user) => (
+              <tr key={user.id}>
+                <td>{user.username}</td>
+                <td>{`${user.firstName} ${user.lastName}`}</td>
+                <td>{user.email}</td>
+                <td>{user.role}</td>
+                <td>{user.status}</td>
+                <td>
+                  {user.lastConnection 
+                    ? new Date(user.lastConnection).toLocaleString()
+                    : 'Nunca'
+                  }
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )}
+
+      {/* Paginación */}
+      <div className="pagination">
+        <button 
+          onClick={() => setPage(1)} 
+          disabled={page === 1}
+        >
+          ⏮ Primera
+        </button>
+        
+        <button 
+          onClick={() => setPage(page - 1)} 
+          disabled={page === 1}
+        >
+          ← Anterior
+        </button>
+        
+        <span>
+          Página {page} de {totalPages}
+        </span>
+        
+        <button 
+          onClick={() => setPage(page + 1)} 
+          disabled={page === totalPages}
+        >
+          Siguiente →
+        </button>
+        
+        <button 
+          onClick={() => setPage(totalPages)} 
+          disabled={page === totalPages}
+        >
+          Última ⏭
+        </button>
+      </div>
+    </div>
+  );
+};
+
+export default UsersTable;
 ```
 
 ### 4. Actualizar Usuario
@@ -1049,6 +1473,111 @@ export const updateUser = async (
 };
 ```
 
+**💡 Ejemplos de Uso:**
+
+**A. Actualizar solo el estado del usuario**
+```typescript
+const suspendUser = async (userId: string) => {
+  const result = await updateUser(userId, {
+    status: 'Suspendido'
+  });
+  
+  if (result.success) {
+    console.log('Usuario suspendido correctamente');
+  }
+};
+```
+
+**B. Actualizar múltiples campos**
+```typescript
+const updateUserProfile = async (userId: string) => {
+  const result = await updateUser(userId, {
+    firstName: 'Juan Carlos',
+    lastName: 'Pérez López',
+    phone: '3009876543',
+    role: 'Administrador'
+  });
+  
+  if (result.success) {
+    console.log('Perfil actualizado:', result.user);
+  }
+};
+```
+
+**C. Cambiar contraseña**
+```typescript
+const changePassword = async (userId: string, newPassword: string) => {
+  const result = await updateUser(userId, {
+    password: newPassword
+  });
+  
+  if (result.success) {
+    console.log('Contraseña actualizada');
+  }
+};
+```
+
+**📋 Ejemplo de Formulario de Edición:**
+```typescript
+const EditUserForm = ({ user }: { user: User }) => {
+  const [formData, setFormData] = useState({
+    firstName: user.firstName,
+    lastName: user.lastName,
+    phone: user.phone,
+    role: user.role,
+    status: user.status
+  });
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    const result = await updateUser(user.id, formData);
+    
+    if (result.success) {
+      alert('Usuario actualizado correctamente');
+    } else {
+      alert(`Error: ${result.error}`);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit}>
+      <input
+        value={formData.firstName}
+        onChange={(e) => setFormData({...formData, firstName: e.target.value})}
+        placeholder="Nombre"
+      />
+      <input
+        value={formData.lastName}
+        onChange={(e) => setFormData({...formData, lastName: e.target.value})}
+        placeholder="Apellido"
+      />
+      <input
+        value={formData.phone}
+        onChange={(e) => setFormData({...formData, phone: e.target.value})}
+        placeholder="Teléfono"
+      />
+      <select
+        value={formData.role}
+        onChange={(e) => setFormData({...formData, role: e.target.value as any})}
+      >
+        <option value="Administrador">Administrador</option>
+        <option value="Cajero">Cajero</option>
+      </select>
+      <select
+        value={formData.status}
+        onChange={(e) => setFormData({...formData, status: e.target.value as any})}
+      >
+        <option value="Activo">Activo</option>
+        <option value="Inactivo">Inactivo</option>
+        <option value="Suspendido">Suspendido</option>
+      </select>
+      <button type="submit">Guardar Cambios</button>
+    </form>
+  );
+};
+```
+
 ### 5. Eliminar Usuario
 
 ```typescript
@@ -1074,6 +1603,54 @@ export const deleteUser = async (userId: string) => {
       error: 'Error desconocido'
     };
   }
+};
+```
+
+**⚠️ Ejemplo con Confirmación:**
+```typescript
+const handleDeleteUser = async (userId: string, username: string) => {
+  // Confirmar antes de eliminar
+  const confirmed = window.confirm(
+    `¿Estás seguro de eliminar al usuario "${username}"? Esta acción no se puede deshacer.`
+  );
+  
+  if (!confirmed) return;
+  
+  const result = await deleteUser(userId);
+  
+  if (result.success) {
+    alert(`Usuario "${result.user.username}" eliminado correctamente`);
+    // Recargar la lista de usuarios
+    loadUsers();
+  } else {
+    alert(`Error: ${result.error}`);
+  }
+};
+```
+
+**📋 Ejemplo en Componente:**
+```typescript
+const UserActions = ({ user }: { user: User }) => {
+  const handleDelete = async () => {
+    const confirmed = window.confirm(
+      `¿Eliminar usuario ${user.username}?`
+    );
+    
+    if (confirmed) {
+      const result = await deleteUser(user.id);
+      if (result.success) {
+        // Notificar éxito y actualizar lista
+        console.log('Usuario eliminado');
+      }
+    }
+  };
+
+  return (
+    <div className="user-actions">
+      <button onClick={() => editUser(user)}>✏️ Editar</button>
+      <button onClick={handleDelete} className="danger">🗑️ Eliminar</button>
+    </div>
+  );
 };
 ```
 
@@ -1197,6 +1774,18 @@ DELETE http://localhost:3000/api/users/550e8400-e29b-41d4-a716-446655440000
 - **Máximo recomendado**: 100 items por página
 - **Formato**: Siempre incluye `total`, `page`, `limit`, `totalPages`
 
+**💡 Cálculo de Paginación:**
+```typescript
+// Ejemplo de cómo calcular páginas
+const totalPages = Math.ceil(total / limit);
+const hasNextPage = page < totalPages;
+const hasPreviousPage = page > 1;
+const startIndex = (page - 1) * limit + 1;
+const endIndex = Math.min(page * limit, total);
+
+console.log(`Mostrando ${startIndex} a ${endIndex} de ${total} resultados`);
+```
+
 ### Timestamps
 - Todas las fechas están en formato ISO 8601 UTC
 - Ejemplo: `"2024-10-12T10:30:00.000Z"`
@@ -1210,14 +1799,18 @@ DELETE http://localhost:3000/api/users/550e8400-e29b-41d4-a716-446655440000
 ## 🚀 Próximas Implementaciones
 
 - [ ] Middleware de autenticación JWT
+- [ ] Control de acceso basado en roles (RBAC)
 - [ ] Endpoints de productos y categorías
 - [ ] Endpoints de órdenes y ventas
 - [ ] Endpoints de caja y cierres
-- [ ] Endpoints de reportes
+- [ ] Endpoints de reportes y métricas
 - [ ] WebSockets para notificaciones en tiempo real
-- [ ] Rate limiting
-- [ ] Logs de auditoría
+- [ ] Rate limiting y throttling
+- [ ] Logs de auditoría completos (ActivityLog)
 - [ ] Upload de imágenes (productos, usuarios)
+- [ ] Exportación de reportes (PDF, Excel)
+- [ ] Backup automático de base de datos
+- [ ] Dashboard de métricas en tiempo real
 
 ---
 
@@ -1230,6 +1823,254 @@ Para dudas o problemas con la API:
 
 ---
 
-**Última actualización**: 12 de Octubre, 2024  
-**Versión**: 1.0.0
+---
+
+## 📖 Guía Rápida de Integración
+
+### Para Desarrolladores Frontend
+
+**1. Instalación de Dependencias**
+```bash
+npm install axios
+# o
+npm install @tanstack/react-query axios
+```
+
+**2. Configuración Base**
+```typescript
+// src/config/api.ts
+export const API_URL = 'http://localhost:3000/api';
+
+// Interfaces globales
+export interface User {
+  id: string;
+  username: string;
+  email: string;
+  emailVerified: boolean;
+  firstName: string;
+  lastName: string;
+  phone: string;
+  role: 'Administrador' | 'Cajero';
+  status: 'Activo' | 'Inactivo' | 'Suspendido';
+  createdAt: string;
+  updatedAt: string;
+  lastConnection: string | null;
+}
+
+export interface ApiResponse<T> {
+  success: boolean;
+  data?: T;
+  error?: string;
+}
+```
+
+**3. Flujo Completo de Autenticación**
+```typescript
+// 1. Login
+const { user, token } = await login('juan123', 'Password123!');
+
+// 2. Guardar datos
+localStorage.setItem('token', token);
+localStorage.setItem('user', JSON.stringify(user));
+
+// 3. Verificar última conexión
+if (user.lastConnection) {
+  const lastLogin = new Date(user.lastConnection);
+  console.log(`Última sesión: ${lastLogin.toLocaleString()}`);
+}
+
+// 4. Configurar axios con token
+axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+// 5. Navegar al dashboard
+router.push('/dashboard');
+```
+
+**4. Patrones Recomendados**
+
+**Patrón A: Custom Hooks (React)**
+```typescript
+// hooks/useUsers.ts
+import { useState, useEffect } from 'react';
+
+export const useUsers = (filters?: SearchFilters) => {
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => {
+    const fetchUsers = async () => {
+      setLoading(true);
+      const result = await searchUsers(filters);
+      if (result.success) {
+        setUsers(result.data.users);
+      } else {
+        setError(result.error);
+      }
+      setLoading(false);
+    };
+    fetchUsers();
+  }, [filters]);
+
+  return { users, loading, error };
+};
+```
+
+**Patrón B: TanStack Query (Recomendado)**
+```typescript
+// hooks/useUsers.ts
+import { useQuery } from '@tanstack/react-query';
+
+export const useUsers = (filters?: SearchFilters) => {
+  return useQuery({
+    queryKey: ['users', filters],
+    queryFn: () => searchUsers(filters),
+  });
+};
+
+// Uso en componente
+const UsersList = () => {
+  const { data, isLoading, error } = useUsers({ status: 'Activo' });
+  
+  if (isLoading) return <div>Cargando...</div>;
+  if (error) return <div>Error: {error}</div>;
+  
+  return (
+    <div>
+      {data?.users.map(user => <UserCard key={user.id} user={user} />)}
+    </div>
+  );
+};
+```
+
+---
+
+## 🔍 Búsqueda y Filtrado Avanzado
+
+### Estrategias de Búsqueda
+
+**1. Búsqueda en Tiempo Real (Debounced)**
+```typescript
+import { useState, useEffect } from 'react';
+import { useDebounce } from 'use-debounce';
+
+const UsersSearch = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [debouncedSearch] = useDebounce(searchTerm, 500);
+  
+  useEffect(() => {
+    // Se ejecuta solo después de 500ms de inactividad
+    if (debouncedSearch) {
+      searchUsers({ search: debouncedSearch });
+    }
+  }, [debouncedSearch]);
+
+  return (
+    <input
+      placeholder="Buscar usuario..."
+      value={searchTerm}
+      onChange={(e) => setSearchTerm(e.target.value)}
+    />
+  );
+};
+```
+
+**2. Filtros Persistentes (URL)**
+```typescript
+import { useSearchParams } from 'react-router-dom';
+
+const UsersPage = () => {
+  const [searchParams, setSearchParams] = useSearchParams();
+  
+  // Leer filtros de la URL
+  const filters = {
+    search: searchParams.get('search') || '',
+    role: searchParams.get('role') || '',
+    page: Number(searchParams.get('page')) || 1,
+  };
+
+  // Actualizar URL al cambiar filtros
+  const updateFilters = (newFilters: Partial<typeof filters>) => {
+    const params = { ...filters, ...newFilters };
+    setSearchParams(params);
+  };
+
+  return <UsersTable filters={filters} onFilterChange={updateFilters} />;
+};
+```
+
+**3. Exportar Resultados**
+```typescript
+const exportUsers = async (filters: SearchFilters) => {
+  // Obtener todos los resultados (sin paginación)
+  const result = await searchUsers({ 
+    ...filters, 
+    limit: 10000 // Máximo
+  });
+  
+  if (result.success) {
+    // Convertir a CSV
+    const csv = convertToCSV(result.data.users);
+    downloadFile(csv, 'usuarios.csv');
+  }
+};
+```
+
+---
+
+## 🛡️ Manejo de Errores Robusto
+
+```typescript
+// utils/errorHandler.ts
+export const handleApiError = (error: any): string => {
+  // Error de red
+  if (!error.response) {
+    return 'Error de conexión. Verifica tu internet.';
+  }
+
+  // Errores específicos por código
+  const status = error.response.status;
+  const message = error.response.data?.error;
+
+  switch (status) {
+    case 400:
+      return message || 'Datos inválidos';
+    case 401:
+      // Token expirado
+      localStorage.clear();
+      window.location.href = '/login';
+      return 'Sesión expirada. Inicia sesión nuevamente.';
+    case 403:
+      return 'No tienes permisos para esta acción';
+    case 404:
+      return message || 'Recurso no encontrado';
+    case 409:
+      return message || 'El recurso ya existe';
+    case 500:
+      return 'Error del servidor. Intenta más tarde.';
+    default:
+      return message || 'Error desconocido';
+  }
+};
+
+// Uso
+try {
+  await createUser(userData);
+} catch (error) {
+  const errorMessage = handleApiError(error);
+  showNotification(errorMessage, 'error');
+}
+```
+
+---
+
+**Última actualización**: 16 de Octubre, 2025  
+**Versión**: 2.0.0
+
+**Cambios recientes:**
+- ✅ Campo `lastConnection` agregado al modelo User
+- ✅ Contraseña autogenerada con política de la empresa
+- ✅ Documentación completa de integración frontend
+- ✅ Ejemplos de paginación y búsqueda avanzada
+- ✅ Patrones recomendados con React y TanStack Query
 

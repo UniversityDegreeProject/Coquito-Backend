@@ -92,19 +92,47 @@ export class UserDatasourceImpl implements UserDatasource {
 
   // * Actualizar usuario
   async updateUser(user: UpdateUserDto): Promise<UserEntity> {
-    const { id } = user;
+    const { id, email, username } = user;
     
+    //? Verificar que el usuario existe
     const userToUpdate = await prismaClient.user.findUnique({
       where: { id },
     });
-    
     if (!userToUpdate) throw HttpCustomErrors.notFound("Usuario no encontrado");
     
+    //? Validar que el email no esté en uso por OTRO usuario
+    if (email) {
+      const existingUserByEmail = await prismaClient.user.findUnique({
+        where: { email },
+      });
+      
+      //? Solo lanzar error si el email pertenece a OTRO usuario (no al usuario actual)
+      if (existingUserByEmail && existingUserByEmail.id !== id) {
+        throw HttpCustomErrors.badRequest("El correo electrónico esta siendo usado por otro usuario");
+      }
+    }
+    
+    //? Validar que el username no esté en uso por OTRO usuario
+    if (username) {
+      const existingUserByUsername = await prismaClient.user.findUnique({
+        where: { username },
+      });
+      
+      //? Solo lanzar error si el username pertenece a OTRO usuario (no al usuario actual)
+      if (existingUserByUsername && existingUserByUsername.id !== id) {
+        throw HttpCustomErrors.badRequest("El nombre de usuario ya esta siendo usado");
+      }
+    }
+    
+    //? Preparar datos de actualización
     const updateData = user.values;
+    
+    //? Si se actualiza la contraseña, hashearla
     if (updateData.password) {
       updateData.password = await this.bcrypt.hash(updateData.password);
     }
     
+    //? Actualizar usuario
     const updatedUser = await prismaClient.user.update({
       where: { id },
       data: updateData,
