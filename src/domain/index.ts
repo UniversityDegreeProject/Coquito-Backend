@@ -2,6 +2,8 @@
 export * from "./dto/auth";
 export * from "./dto/user";
 export * from "./dto/category";
+export * from "./dto/product";
+export * from "./dto/customer";
 
 // *Entities
 export * from "./entities";
@@ -13,3 +15,5 @@ export * from "./errors/http-custom-errors";
 export * from "./use-cases/user";
 export * from "./use-cases/auth";
 export * from "./use-cases/category";
+export * from "./use-cases/product";
+export * from "./use-cases/customer";

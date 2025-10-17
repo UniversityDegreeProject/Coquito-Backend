@@ -129,6 +129,7 @@ model Customer {
   email       String?      @unique
   phone       String?
   address     String?
+  password    String
   type        CustomerType @default(Regular)
   
   
