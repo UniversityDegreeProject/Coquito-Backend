@@ -44,7 +44,7 @@ export class ForgotPasswordUseCaseImpl implements ForgotPasswordUseCase {
       return { message: "Error al enviar el email" };
     }
 
-    return { message: "Se ha enviado un email para restablecer tu contraseña" };
+    return { message: "Se ha enviado un correo electronico para cambiar su contraseña" };
   }
 }
 

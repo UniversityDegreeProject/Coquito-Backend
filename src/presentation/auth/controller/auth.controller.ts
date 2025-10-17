@@ -199,10 +199,7 @@ export class AuthController {
           const fs = require('fs');
           const path = require('path');
           const htmlPath = path.join(__dirname, '..', 'views', 'reset-password-success.html');
-          let html = fs.readFileSync(htmlPath, 'utf8');
-          
-          //? Reemplazar URL de login (puedes cambiarla según tu frontend)
-          html = html.replace(/{{LOGIN_URL}}/g, '/login');
+          const html = fs.readFileSync(htmlPath, 'utf8');
           
           return res.send(html);
         } catch (error) {

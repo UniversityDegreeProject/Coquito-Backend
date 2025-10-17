@@ -55,8 +55,6 @@ export class EmailService {
             <p>Hola <strong>${username}</strong>,</p>
             <p>Gracias por ser parte de "Embutidos Coquito". Para activar tu cuenta, por favor verifica tu email haciendo clic en el siguiente botón:</p>
             <span>Verificar email -> </span><a href="${verificationLink}" class="button">${email}</a>
-            <p>O copia y pega este enlace en tu navegador:</p>
-            <p style="color: #666; font-size: 14px;">${verificationLink}</p>
             <p class="footer">
               Este enlace expirará en 15 minutos.<br>
               Si no solicitaste esta verificación, ignora este mensaje.
@@ -122,8 +120,6 @@ export class EmailService {
             <p>Hola <strong>${username}</strong>,</p>
             <p>Recibimos una solicitud para restablecer tu contraseña. Haz clic en el siguiente botón para crear una nueva contraseña:</p>
             <a href="${recoveryLink}" class="button">Restablecer Contraseña</a>
-            <p>O copia y pega este enlace en tu navegador:</p>
-            <p style="color: #666; font-size: 14px;">${recoveryLink}</p>
             <p class="footer">
               Este enlace expirará en 15 minutos.<br>
               Si no solicitaste este cambio, ignora este mensaje y tu contraseña permanecerá sin cambios.

@@ -21,7 +21,7 @@ export class ResetPasswordUseCaseImpl implements ResetPasswordUseCase {
     const payload = this.jwtAdapter.verifyToken<{ id: string; email: string }>(token);
 
     if (!payload || !payload.id || !payload.email) {
-      throw HttpCustomErrors.badRequest("Token inválido o expirado");
+      throw HttpCustomErrors.badRequest("Token inválido o expirado, comuniquese con su administrador");
     }
 
     const [errorOfId, getUserByIdDto] = GetUserByIdDto.create({ id: payload.id });
@@ -30,10 +30,8 @@ export class ResetPasswordUseCaseImpl implements ResetPasswordUseCase {
 
     const user = await this.userRepository.getUserById(getUserByIdDto);
 
-    const [error, updateUserDto] = UpdateUserDto.create({
-      id: user.id,
-      password: newPassword
-    });
+    const { password, ...userWithoutPassword } = user;
+    const [error, updateUserDto] = UpdateUserDto.create({ ...userWithoutPassword, password: newPassword});
 
     if (error) throw HttpCustomErrors.badRequest(error);
     if (!updateUserDto) throw HttpCustomErrors.badRequest("Error al crear DTO de actualización");
