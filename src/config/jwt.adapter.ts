@@ -1,4 +1,5 @@
 import jwt, { SignOptions } from "jsonwebtoken";
+import { HttpCustomErrors } from "../domain/errors/http-custom-errors";
 
 
 export class JwtAdapter {
@@ -27,11 +28,13 @@ export class JwtAdapter {
    * @param token - Token JWT a verificar
    * @returns Payload del token o null si es inválido
    */
-  verifyToken<T = any>(token: string): T | null {
+  verifyToken<T = any>(token: string): T {
+    if( !token ) throw HttpCustomErrors.badRequest("Token no proporcionado");
     try {
+
       return jwt.verify(token, this.jwtSeed) as T;
     } catch (error) {
-      return null;
+      throw HttpCustomErrors.badRequest("Token inválido o expirado");
     }
   } 
 }

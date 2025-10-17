@@ -40,6 +40,7 @@ export class AuthController {
 
   private sendEmailValidationLink =  async (id : string, email : string, username : string ) : Promise<boolean> => {
     const emailToken = await this.jwtAdapter.generateToken({ id, email }, "15m");
+    console.log(emailToken);
     if( !emailToken ) throw HttpCustomErrors.internalServerError("Error al generar el token de verificación de email");
     
     return this.emailService.sendEmailVerification(email, username, emailToken);
@@ -85,7 +86,7 @@ export class AuthController {
       const { password, ...userWithoutPassword } = user;
 
       
-      //? Generar token de verificación de email (válido por 2h)
+      //? Generar token de verificación de email (válido por 15m)
       const emailSent = await this.sendEmailValidationLink( user.id, user.email, user.username);
       if( !emailSent ) return res.status(500).json({ error: "Error al enviar el email de verificación" });
      

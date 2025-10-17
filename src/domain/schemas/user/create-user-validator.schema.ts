@@ -33,9 +33,16 @@ export const createUserSchema = zod.object({
     .regex(/^[A-Z][a-z]+$/, { error: "El apellido debe comenzar con letra mayúscula y no puede contener numeros" }),
   
   phone: zod
-    .string({ error: "Teléfono es requerido" })
-    .min(1, { error: "El teléfono no puede estar vacio" })
-    .regex(/^[0-9]+$/, { error: "El teléfono debe contener solo numeros" }),
+  .string({ error: "Teléfono es requerido" })
+  .refine(
+    val =>
+      (/^\d{8}$/.test(val)) ||
+      (/^\+\d{11}$/.test(val)),
+    {
+      message:
+        "Debe ingresar 8 números si es local o 11 números con el prefijo internacional ",
+    }
+  ),
   
   role: zod.enum(["Administrador", "Cajero"], { 
     error: "Rol es requerido" 

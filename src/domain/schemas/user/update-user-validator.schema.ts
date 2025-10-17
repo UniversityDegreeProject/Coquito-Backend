@@ -38,9 +38,7 @@ export const updateUserSchema = zod.object({
   .string({ error: "Teléfono es requerido" })
   .refine(
     val =>
-      // Exact 8 dígitos SIN el "+" (local)
       (/^\d{8}$/.test(val)) ||
-      // Exactamente '+' seguido de 11 dígitos (internacional)
       (/^\+\d{11}$/.test(val)),
     {
       message:

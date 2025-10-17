@@ -21,7 +21,7 @@ export class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
       if (!payload || !payload.id || !payload.email) {
         throw HttpCustomErrors.badRequest("Token inválido o expirado");
       }
-      const [errorOfId, getUserByIdDto] = GetUserByIdDto.create({ id: payload.id });
+      const [errorOfId, getUserByIdDto] = GetUserByIdDto.create({ id: payload.id! });
       if( errorOfId ) throw HttpCustomErrors.badRequest(errorOfId);
       if( !getUserByIdDto ) throw HttpCustomErrors.badRequest("User not found");
   
@@ -31,11 +31,9 @@ export class VerifyEmailUseCaseImpl implements VerifyEmailUseCase {
         return { message: messageNotifications.emailVerified
         };
       }
+      const { password , ...userWithoutPassword } = user;
   
-      const [error, updateUserDto] = UpdateUserDto.create({
-        id: user.id,
-        emailVerified: true
-      });
+      const [error, updateUserDto] = UpdateUserDto.create({...userWithoutPassword, emailVerified: true});
       
       if (error) throw HttpCustomErrors.badRequest(error);
       if (!updateUserDto) throw HttpCustomErrors.badRequest("Error al crear DTO de actualización");
