@@ -8,9 +8,13 @@
 - [Arquitectura](#arquitectura)
 - [Base de Datos](#base-de-datos)
 - [Autenticación](#autenticación)
-- [Endpoints](#endpoints)
-  - [Auth](#auth-endpoints)
-  - [Users](#users-endpoints)
+- [Endpoints](#endpoints) **(Orden Cronológico)**
+  - [1. Auth](#auth-endpoints) - Autenticación y Registro
+  - [2. Users](#users-endpoints) - Gestión de Usuarios
+  - [3. Categories](#categories-endpoints) - Gestión de Categorías
+  - [4. Products](#products-endpoints) - Gestión de Productos
+  - [5. Stock Movements](#stock-movements-endpoints) - Movimientos de Inventario
+  - [6. Customers](#customers-endpoints) - Gestión de Clientes
 - [Modelos de Datos](#modelos-de-datos)
 - [Códigos de Estado](#códigos-de-estado)
 - [Manejo de Errores](#manejo-de-errores)
@@ -873,6 +877,613 @@ DELETE /api/users/550e8400-e29b-41d4-a716-446655440000
 ```json
 {
   "error": "Id user not found"
+}
+```
+
+---
+
+### STOCK MOVEMENTS ENDPOINTS
+
+Base path: `/api/stock-movements`
+
+---
+
+#### 📦 **Contexto del Negocio**
+
+Este sistema está diseñado para una **empresa boliviana de productos derivados de pollo** (Coquito):
+
+- 🏭 **Fábrica:** Yacuiba, Bolivia (producción)
+- 🏪 **Tienda:** Tarija, Bolivia (punto de venta)
+- 🔗 **Modelo:** La fábrica reabastece continuamente la tienda (misma empresa)
+- 🍗 **Productos:** Piernas, pechuga, alas, hígados, menudencias, costillas, pollo entero, etc.
+- 💰 **Moneda:** Bolivianos (Bs.)
+
+#### 🔄 **Tipos de Movimientos de Stock**
+
+El sistema maneja 6 tipos de movimientos:
+
+| Tipo | Efecto | Descripción | Ejemplo |
+|------|--------|-------------|---------|
+| **Reabastecimiento** | ➕ Aumenta | Transferencia desde fábrica (Yacuiba) a tienda (Tarija) | +50 kg de piernas desde fábrica |
+| **Compra** | ➕ Aumenta | Compra a proveedores EXTERNOS (insumos) | +100 bolsas de empaque |
+| **Venta** | ➖ Disminuye | Venta a clientes finales o mayoristas | -15 kg vendidos a restaurante |
+| **Ajuste** | ➕➖ Ambos | Corrección de inventario físico | +3 kg encontrados / -2 kg faltantes |
+| **Devolución** | ➕ Aumenta | Cliente devuelve producto | +2 kg devueltos por mal estado |
+| **Dañado** | ➖ Disminuye | Producto dado de baja (vencido, dañado) | -1 kg descartado por vencimiento |
+
+#### 📋 **Campos del Movimiento**
+
+```typescript
+{
+  id: string;              // UUID único del movimiento
+  productId: string;       // ID del producto afectado
+  userId: string;          // ID del usuario que registró el movimiento
+  type: StockMovementType; // Tipo de movimiento
+  quantity: number;        // Cantidad del movimiento (+ o -)
+  previousStock: number;   // Stock antes del movimiento
+  newStock: number;        // Stock después del movimiento
+  reason?: string;         // Razón legible del movimiento
+  reference?: string;      // Referencia externa (factura, orden, etc.)
+  notes?: string;          // Notas adicionales
+  createdAt: DateTime;     // Fecha y hora del movimiento
+}
+```
+
+---
+
+#### 1️⃣ **POST** `/api/stock-movements`
+Crear un nuevo movimiento de stock.
+
+**📝 Comportamiento Automático:**
+- Calcula automáticamente `previousStock` y `newStock` basándose en el stock actual del producto
+- Actualiza el stock del producto automáticamente
+- Valida que el nuevo stock no sea negativo
+- Todo se ejecuta en una transacción (rollback si falla)
+
+**Request Body:**
+```json
+{
+  "productId": "uuid-del-producto",
+  "userId": "uuid-del-usuario",
+  "type": "Reabastecimiento",
+  "quantity": 50,
+  "reason": "Reabastecimiento desde fábrica Yacuiba",
+  "reference": "TRANSF-2025-045",
+  "notes": "Llegó en refrigerado. Temperatura OK: 2°C"
+}
+```
+
+**Validaciones:**
+- `productId`: UUID válido (el producto debe existir)
+- `userId`: UUID válido (el usuario debe existir)
+- `type`: Debe ser uno de: "Reabastecimiento", "Compra", "Venta", "Ajuste", "Devolucion", "Dañado"
+- `quantity`: Número entero diferente de 0 (puede ser positivo o negativo)
+- `reason`: Opcional, máximo 500 caracteres
+- `reference`: Opcional, máximo 100 caracteres
+- `notes`: Opcional, máximo 1000 caracteres
+
+**⚠️ Importante sobre `quantity`:**
+- Para aumentar stock: usar número positivo (ej: `50`)
+- Para disminuir stock: usar número negativo (ej: `-15`)
+- El sistema valida que el stock no quede negativo
+
+**Ejemplos de Request Body:**
+
+**Ejemplo 1: Reabastecimiento desde fábrica**
+```json
+{
+  "productId": "550e8400-e29b-41d4-a716-446655440000",
+  "userId": "admin-uuid",
+  "type": "Reabastecimiento",
+  "quantity": 100,
+  "reason": "Reabastecimiento desde fábrica Yacuiba",
+  "reference": "TRANSF-2025-045",
+  "notes": "Camión salió 6:00 AM, llegó 2:00 PM. Temperatura: 1°C"
+}
+```
+
+**Ejemplo 2: Venta a cliente**
+```json
+{
+  "productId": "550e8400-e29b-41d4-a716-446655440000",
+  "userId": "cajero-uuid",
+  "type": "Venta",
+  "quantity": -15,
+  "reason": "Venta a restaurante El Sabor",
+  "reference": "ORD-2025-200"
+}
+```
+
+**Ejemplo 3: Producto vencido**
+```json
+{
+  "productId": "550e8400-e29b-41d4-a716-446655440000",
+  "userId": "admin-uuid",
+  "type": "Dañado",
+  "quantity": -3,
+  "reason": "Producto vencido - Descarte",
+  "reference": "INC-2025-010",
+  "notes": "Fecha vencimiento: 20/10/2025. Se descartó según protocolo."
+}
+```
+
+**Response 201:**
+```json
+{
+  "message": "Movimiento de stock registrado exitosamente",
+  "movement": {
+    "id": "mov-uuid",
+    "productId": "550e8400-e29b-41d4-a716-446655440000",
+    "userId": "admin-uuid",
+    "type": "Reabastecimiento",
+    "quantity": 100,
+    "previousStock": 7,
+    "newStock": 107,
+    "reason": "Reabastecimiento desde fábrica Yacuiba",
+    "reference": "TRANSF-2025-045",
+    "notes": "Camión salió 6:00 AM, llegó 2:00 PM. Temperatura: 1°C",
+    "createdAt": "2025-10-18T14:30:00.000Z",
+    "user": {
+      "id": "admin-uuid",
+      "username": "admin",
+      "firstName": "Juan",
+      "lastName": "Pérez"
+    },
+    "product": {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "name": "Piernas de Pollo (1kg)",
+      "stock": 107,
+      "category": {
+        "name": "Trozos de Pollo"
+      }
+    }
+  }
+}
+```
+
+**Response 400:**
+```json
+{
+  "error": "No se puede realizar el movimiento. Stock insuficiente. Stock actual: 5, Cantidad solicitada: 10"
+}
+```
+
+**Response 404:**
+```json
+{
+  "error": "Producto no encontrado"
+}
+```
+```json
+{
+  "error": "Usuario no encontrado"
+}
+```
+
+---
+
+#### 2️⃣ **GET** `/api/stock-movements/:id`
+Obtener un movimiento de stock por ID.
+
+**URL Parameters:**
+- `id`: UUID del movimiento
+
+**Ejemplo:**
+```
+GET /api/stock-movements/mov-550e8400-e29b-41d4-a716-446655440000
+```
+
+**Response 200:**
+```json
+{
+  "movement": {
+    "id": "mov-550e8400-e29b-41d4-a716-446655440000",
+    "productId": "prod-uuid",
+    "userId": "user-uuid",
+    "type": "Reabastecimiento",
+    "quantity": 100,
+    "previousStock": 7,
+    "newStock": 107,
+    "reason": "Reabastecimiento desde fábrica Yacuiba",
+    "reference": "TRANSF-2025-045",
+    "notes": "Temperatura OK",
+    "createdAt": "2025-10-18T14:30:00.000Z",
+    "user": {
+      "id": "user-uuid",
+      "username": "admin",
+      "firstName": "Juan",
+      "lastName": "Pérez"
+    },
+    "product": {
+      "id": "prod-uuid",
+      "name": "Piernas de Pollo (1kg)",
+      "stock": 107,
+      "price": 25.50
+    }
+  }
+}
+```
+
+**Response 404:**
+```json
+{
+  "error": "Movimiento de stock no encontrado"
+}
+```
+
+---
+
+#### 3️⃣ **GET** `/api/stock-movements/search`
+Buscar movimientos de stock con filtros avanzados.
+
+**Query Parameters:**
+- `productId` (opcional): UUID del producto
+- `userId` (opcional): UUID del usuario
+- `type` (opcional): Tipo de movimiento
+- `startDate` (opcional): Fecha inicio (ISO 8601)
+- `endDate` (opcional): Fecha fin (ISO 8601)
+- `page` (opcional): Número de página (default: 1)
+- `limit` (opcional): Items por página (default: 10, máx: 100)
+
+**Ejemplos de URLs:**
+```
+GET /api/stock-movements/search?type=Reabastecimiento
+GET /api/stock-movements/search?productId=prod-uuid&page=1&limit=20
+GET /api/stock-movements/search?userId=user-uuid&type=Venta
+GET /api/stock-movements/search?startDate=2025-10-01T00:00:00Z&endDate=2025-10-31T23:59:59Z
+GET /api/stock-movements/search?type=Dañado&page=1&limit=50
+```
+
+**📱 Ejemplo Frontend:**
+```typescript
+const searchMovements = async (filters: {
+  productId?: string;
+  userId?: string;
+  type?: string;
+  startDate?: string;
+  endDate?: string;
+  page?: number;
+  limit?: number;
+}) => {
+  const params = new URLSearchParams();
+  if (filters.productId) params.append('productId', filters.productId);
+  if (filters.userId) params.append('userId', filters.userId);
+  if (filters.type) params.append('type', filters.type);
+  if (filters.startDate) params.append('startDate', filters.startDate);
+  if (filters.endDate) params.append('endDate', filters.endDate);
+  if (filters.page) params.append('page', filters.page.toString());
+  if (filters.limit) params.append('limit', filters.limit.toString());
+  
+  const response = await fetch(
+    `http://localhost:3000/api/stock-movements/search?${params.toString()}`
+  );
+  return await response.json();
+};
+
+// Uso: Buscar reabastecimientos del último mes
+const result = await searchMovements({
+  type: 'Reabastecimiento',
+  startDate: '2025-10-01T00:00:00Z',
+  endDate: '2025-10-31T23:59:59Z',
+  page: 1,
+  limit: 20
+});
+```
+
+**Response 200:**
+```json
+{
+  "movements": [
+    {
+      "id": "mov-1",
+      "type": "Reabastecimiento",
+      "quantity": 100,
+      "previousStock": 7,
+      "newStock": 107,
+      "reason": "Reabastecimiento desde fábrica Yacuiba",
+      "reference": "TRANSF-2025-045",
+      "createdAt": "2025-10-18T14:30:00.000Z",
+      "user": {
+        "username": "admin",
+        "firstName": "Juan"
+      },
+      "product": {
+        "name": "Piernas de Pollo (1kg)",
+        "stock": 107
+      }
+    },
+    {
+      "id": "mov-2",
+      "type": "Venta",
+      "quantity": -15,
+      "previousStock": 107,
+      "newStock": 92,
+      "reason": "Venta a restaurante",
+      "reference": "ORD-2025-200",
+      "createdAt": "2025-10-18T16:00:00.000Z",
+      "user": {
+        "username": "cajero1"
+      },
+      "product": {
+        "name": "Piernas de Pollo (1kg)"
+      }
+    }
+  ],
+  "total": 156,
+  "page": 1,
+  "limit": 20,
+  "totalPages": 8
+}
+```
+
+---
+
+#### 4️⃣ **GET** `/api/stock-movements/product/:productId`
+Obtener historial completo de movimientos de un producto específico.
+
+**URL Parameters:**
+- `productId`: UUID del producto
+
+**Query Parameters:**
+- `page` (opcional): Número de página (default: 1)
+- `limit` (opcional): Items por página (default: 20, máx: 100)
+
+**Ejemplo:**
+```
+GET /api/stock-movements/product/550e8400-e29b-41d4-a716-446655440000?page=1&limit=20
+```
+
+**📱 Ejemplo Frontend:**
+```typescript
+const getProductHistory = async (productId: string, page = 1, limit = 20) => {
+  const response = await fetch(
+    `http://localhost:3000/api/stock-movements/product/${productId}?page=${page}&limit=${limit}`
+  );
+  return await response.json();
+};
+
+// Uso: Ver historial de un producto
+const history = await getProductHistory('550e8400-e29b-41d4-a716-446655440000');
+console.log(history.movements); // Array de movimientos
+console.log(history.total);     // Total de movimientos del producto
+```
+
+**Response 200:**
+```json
+{
+  "movements": [
+    {
+      "id": "mov-6",
+      "type": "Reabastecimiento",
+      "quantity": 100,
+      "previousStock": 5,
+      "newStock": 105,
+      "reason": "Reabastecimiento urgente desde fábrica",
+      "reference": "TRANSF-2025-048",
+      "createdAt": "2025-10-18T08:00:00.000Z",
+      "user": {
+        "username": "admin",
+        "firstName": "Juan"
+      }
+    },
+    {
+      "id": "mov-5",
+      "type": "Venta",
+      "quantity": -8,
+      "previousStock": 13,
+      "newStock": 5,
+      "reason": "Venta a cliente final",
+      "reference": "ORD-2025-175",
+      "createdAt": "2025-10-17T15:30:00.000Z",
+      "user": {
+        "username": "cajero1"
+      }
+    },
+    {
+      "id": "mov-4",
+      "type": "Dañado",
+      "quantity": -2,
+      "previousStock": 15,
+      "newStock": 13,
+      "reason": "Producto vencido",
+      "reference": "INC-2025-008",
+      "notes": "Fecha vencimiento: 17/10/2025",
+      "createdAt": "2025-10-17T10:00:00.000Z",
+      "user": {
+        "username": "admin"
+      }
+    }
+  ],
+  "total": 45,
+  "page": 1,
+  "limit": 20,
+  "totalPages": 3
+}
+```
+
+**Response 404:**
+```json
+{
+  "error": "Producto no encontrado"
+}
+```
+
+---
+
+### 🔄 **Flujo Completo: Ejemplo Real**
+
+#### **Escenario:** Producto "Piernas de Pollo (1kg)" - Stock bajo → Reabastecimiento
+
+**1. Estado inicial del producto:**
+```json
+{
+  "id": "prod-123",
+  "name": "Piernas de Pollo (1kg)",
+  "stock": 7,
+  "minStock": 10,
+  "price": 25.50
+}
+```
+⚠️ **ALERTA:** `stock (7) <= minStock (10)` → Stock bajo detectado
+
+**2. Frontend detecta stock bajo:**
+```typescript
+// Buscar productos con stock bajo
+const lowStockProducts = products.filter(p => p.stock <= p.minStock);
+```
+
+**3. Llega reabastecimiento desde fábrica Yacuiba:**
+```typescript
+const response = await fetch('http://localhost:3000/api/stock-movements', {
+  method: 'POST',
+  headers: { 'Content-Type': 'application/json' },
+  body: JSON.stringify({
+    productId: 'prod-123',
+    userId: 'admin-uuid',
+    type: 'Reabastecimiento',
+    quantity: 100,
+    reason: 'Reabastecimiento desde fábrica Yacuiba',
+    reference: 'TRANSF-2025-045',
+    notes: 'Llegó en refrigerado. Temp: 1°C OK'
+  })
+});
+```
+
+**4. Backend procesa (automáticamente):**
+```javascript
+// El backend hace esto automáticamente:
+- Obtiene stock actual: 7 kg
+- Calcula previousStock: 7
+- Calcula newStock: 7 + 100 = 107
+- Actualiza producto.stock = 107
+- Registra el movimiento
+- Todo en transacción (rollback si falla)
+```
+
+**5. Respuesta exitosa:**
+```json
+{
+  "message": "Movimiento de stock registrado exitosamente",
+  "movement": {
+    "id": "mov-new",
+    "quantity": 100,
+    "previousStock": 7,
+    "newStock": 107,
+    "createdAt": "2025-10-18T14:30:00.000Z"
+  }
+}
+```
+
+**6. Ver historial del producto:**
+```typescript
+const history = await fetch(
+  'http://localhost:3000/api/stock-movements/product/prod-123'
+);
+// Retorna todos los movimientos del producto ordenados por fecha
+```
+
+---
+
+### 📊 **Modelo de Datos: StockMovementEntity**
+
+```typescript
+interface StockMovementEntity {
+  id: string;                    // UUID
+  productId: string;             // UUID del producto
+  userId: string;                // UUID del usuario
+  type: StockMovementType;       // Tipo de movimiento
+  quantity: number;              // Cantidad (+ o -)
+  previousStock: number;         // Stock antes
+  newStock: number;              // Stock después
+  reason: string | null;         // Razón legible
+  reference: string | null;      // Referencia externa
+  notes: string | null;          // Notas adicionales
+  createdAt: Date;               // Fecha y hora
+  user?: UserEntity;             // Usuario (populate)
+  product?: ProductEntity;       // Producto (populate)
+}
+```
+
+### 🎯 **Casos de Uso Comunes**
+
+**Caso 1: Reabastecimiento programado desde fábrica**
+```typescript
+{
+  type: "Reabastecimiento",
+  quantity: 150,
+  reason: "Reabastecimiento semanal desde fábrica Yacuiba",
+  reference: "TRANSF-2025-W42"
+}
+```
+
+**Caso 2: Venta mayorista a restaurante**
+```typescript
+{
+  type: "Venta",
+  quantity: -50,
+  reason: "Venta mayorista a Restaurante Los Hermanos",
+  reference: "ORD-2025-300"
+}
+```
+
+**Caso 3: Ajuste por inventario físico**
+```typescript
+{
+  type: "Ajuste",
+  quantity: -5,
+  reason: "Ajuste por inventario físico - Faltante detectado",
+  reference: "INV-2025-OCT",
+  notes: "Realizado conteo manual. Faltan 5 kg."
+}
+```
+
+**Caso 4: Producto vencido**
+```typescript
+{
+  type: "Dañado",
+  quantity: -3,
+  reason: "Producto vencido - Descarte según protocolo",
+  reference: "INC-2025-020",
+  notes: "Fecha vencimiento: 18/10/2025. Descartado en presencia de supervisor."
+}
+```
+
+**Caso 5: Devolución de cliente**
+```typescript
+{
+  type: "Devolucion",
+  quantity: 2,
+  reason: "Devolución cliente - Producto con olor extraño",
+  reference: "ORD-2025-285",
+  notes: "Se procesó reembolso. Producto va a análisis de calidad."
+}
+```
+
+---
+
+### 💡 **Diferencia Clave: Reabastecimiento vs Compra**
+
+| Aspecto | Reabastecimiento | Compra |
+|---------|------------------|--------|
+| **Origen** | Fábrica propia (Yacuiba) | Proveedor externo |
+| **Empresa** | Misma empresa | Empresa diferente |
+| **Factura** | Guía de remisión interna | Factura de proveedor |
+| **Reference** | `TRANSF-2025-045` | `FAC-PROVEEDOR-2025-100` |
+| **Ejemplo** | 100 kg de piernas desde tu fábrica | Comprar 500 bolsas de empaque a proveedor externo |
+
+**❌ Incorrecto:**
+```json
+{
+  "type": "Compra",  // ❌ Error
+  "reason": "Llegaron piernas desde nuestra fábrica Yacuiba"
+}
+```
+
+**✅ Correcto:**
+```json
+{
+  "type": "Reabastecimiento",  // ✅ Correcto
+  "reason": "Reabastecimiento desde fábrica Yacuiba"
 }
 ```
 
@@ -2064,10 +2675,19 @@ try {
 
 ---
 
-**Última actualización**: 16 de Octubre, 2025  
-**Versión**: 2.0.0
+**Última actualización**: 18 de Octubre, 2025  
+**Versión**: 3.0.0
 
 **Cambios recientes:**
+- ✅ **Sistema completo de Movimientos de Stock implementado**
+  - Endpoints para crear, buscar y consultar movimientos
+  - Soporte para 6 tipos de movimientos: Reabastecimiento, Compra, Venta, Ajuste, Devolución, Dañado
+  - Actualización automática de stock en transacciones
+  - Historial completo por producto
+- ✅ **Contexto de negocio actualizado**
+  - Empresa de productos derivados de pollo (Coquito)
+  - Modelo de fábrica (Yacuiba) → tienda (Tarija)
+  - Diferenciación clara entre Reabastecimiento y Compra
 - ✅ Campo `lastConnection` agregado al modelo User
 - ✅ Contraseña autogenerada con política de la empresa
 - ✅ Documentación completa de integración frontend

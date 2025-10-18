@@ -93,6 +93,7 @@ model Product {
   minStock    Int           @default(5) @map("min_stock") 
   image       String?       
   status      ProductStatus @default(Disponible)
+  ingredients String?       @db.Text // Ingredientes del producto (ej: "Carne de pollo, sal, especias")
   
   // Relación con categoría
   categoryId  String   @map("category_id")
@@ -146,11 +147,12 @@ model Customer {
 // ============================================
 
 enum StockMovementType {
-  Compra     
-  Venta      
-  Ajuste     
-  Devolucion 
-  Dañado     
+  Reabastecimiento // Transferencia desde fábrica (Yacuiba) a tienda (Tarija)
+  Compra           // Compra a proveedores externos (insumos, empaques, etc.)
+  Venta            // Venta a clientes
+  Ajuste           // Corrección de inventario físico
+  Devolucion       // Cliente devuelve producto
+  Dañado           // Producto dañado, vencido o en mal estado
 }
 
 model StockMovement {

@@ -9,6 +9,34 @@ alwaysApply: true
 
 Actúas como arquitecto de software y desarrollador fullstack senior. Eres reflexivo, riguroso y experto tanto en frontend moderno (React, TypeScript, Tailwind) como en backend robusto (Node.js, Express, NestJS, Prisma, PostgreSQL). Proporcionas respuestas precisas, prácticas y bien razonadas para guiar el desarrollo de sistemas de gestión tipo POS con control de acceso por roles.
 
+### **Contexto del Negocio: Sistema POS Coquito**
+
+Este sistema está diseñado para una **empresa boliviana de productos derivados de pollo** con las siguientes características:
+
+*   **Giro de negocio:** Producción y venta de productos de carne de pollo (hígados, piernas, costillas, alas, pechuga, menudencias, etc.)
+*   **Ubicaciones:**
+    *   🏭 **Fábrica/Producción:** Yacuiba, Bolivia (donde se procesan y preparan los productos)
+    *   🏪 **Tienda/Punto de Venta:** Tarija, Bolivia (donde se venden al público y mayoristas)
+*   **Modelo operativo:** La fábrica en Yacuiba reabastece continuamente la tienda en Tarija (son de la misma empresa, no es compra a proveedor externo)
+*   **Productos típicos:** Piernas de pollo (por kg), pechuga, alas, hígados, menudencias, costillas, pollo entero, etc.
+*   **Precios:** En bolivianos (Bs.)
+*   **Consideraciones especiales:**
+    *   Productos perecederos con fechas de vencimiento
+    *   Requiere control de cadena de frío
+    *   Alta rotación de inventario
+    *   Reabastecimientos frecuentes desde fábrica
+
+### **Tipos de Movimientos de Stock**
+
+El sistema maneja los siguientes tipos de movimientos de inventario:
+
+1.  **Reabastecimiento:** Transferencia de productos desde la fábrica (Yacuiba) a la tienda (Tarija). NO es una compra porque son de la misma empresa.
+2.  **Compra:** Compra a proveedores EXTERNOS (ej: empaques, bolsas, insumos, etiquetas, hielo, etc.)
+3.  **Venta:** Venta de productos a clientes (finales o mayoristas)
+4.  **Ajuste:** Corrección de inventario físico (sobrantes o faltantes detectados)
+5.  **Devolución:** Cliente devuelve producto (por mal estado, error, etc.)
+6.  **Dañado:** Producto dado de baja (vencido, dañado, mal estado, descarte)
+
 2\. Proceso y filosofía de trabajo
 ----------------------------------
 
