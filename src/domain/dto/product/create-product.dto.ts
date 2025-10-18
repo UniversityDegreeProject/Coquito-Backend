@@ -9,7 +9,10 @@ export class CreateProductDto {
     public readonly stock: CreateProductSchema["stock"],
     public readonly minStock: CreateProductSchema["minStock"],
     public readonly image: CreateProductSchema["image"],
+<<<<<<< HEAD
     public readonly ingredients: CreateProductSchema["ingredients"],
+=======
+>>>>>>> customer
     public readonly categoryId: CreateProductSchema["categoryId"],
     public readonly status: CreateProductSchema["status"]
   ) {}
@@ -21,8 +24,13 @@ export class CreateProductDto {
       return [firstError?.message, undefined];
     }
 
+<<<<<<< HEAD
     const { name, description, price, sku, stock, minStock, image, ingredients, categoryId, status } = result.data;
     return [undefined, new CreateProductDto(name, description, price, sku, stock, minStock, image, ingredients, categoryId, status)];
+=======
+    const { name, description, price, sku, stock, minStock, image, categoryId, status } = result.data;
+    return [undefined, new CreateProductDto(name, description, price, sku, stock, minStock, image, categoryId, status)];
+>>>>>>> customer
   }
 }
 

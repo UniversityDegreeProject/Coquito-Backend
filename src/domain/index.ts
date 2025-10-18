@@ -4,7 +4,10 @@ export * from "./dto/user";
 export * from "./dto/category";
 export * from "./dto/product";
 export * from "./dto/customer";
+<<<<<<< HEAD
 export * from "./dto/stock-movement";
+=======
+>>>>>>> customer
 
 // *Entities
 export * from "./entities";
@@ -17,5 +20,9 @@ export * from "./use-cases/user";
 export * from "./use-cases/auth";
 export * from "./use-cases/category";
 export * from "./use-cases/product";
+<<<<<<< HEAD
 export * from "./use-cases/customer";
 export * from "./use-cases/stock-movement";
+=======
+export * from "./use-cases/customer";
+>>>>>>> customer

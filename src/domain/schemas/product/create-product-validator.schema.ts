@@ -38,11 +38,14 @@ export const createProductSchema = zod.object({
     .url({ error: "Debe ser una URL válida" })
     .optional(),
   
+<<<<<<< HEAD
   ingredients: zod
     .string({ error: "Ingredientes inválidos" })
     .max(1000, { error: "Los ingredientes deben tener máximo 1000 caracteres" })
     .optional(),
   
+=======
+>>>>>>> customer
   categoryId: zod.uuid({ error: "ID de categoría inválido" }),
   
   status: zod

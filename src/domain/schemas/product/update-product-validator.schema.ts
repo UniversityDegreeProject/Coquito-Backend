@@ -45,12 +45,15 @@ export const updateProductSchema = zod.object({
     .nullable()
     .optional(),
   
+<<<<<<< HEAD
   ingredients: zod
     .string({ error: "Ingredientes inválidos" })
     .max(1000, { error: "Los ingredientes deben tener máximo 1000 caracteres" })
     .nullable()
     .optional(),
   
+=======
+>>>>>>> customer
   categoryId: zod.uuid({ error: "ID de categoría inválido" }).optional(),
   
   status: zod

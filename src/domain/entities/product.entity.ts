@@ -12,7 +12,10 @@ export class ProductEntity {
     public minStock: number,
     public image: string | null,
     public status: string,
+<<<<<<< HEAD
     public ingredients: string | null,
+=======
+>>>>>>> customer
     public categoryId: string,
     public category?: CategoryEntity,
     public createdAt?: Date,
@@ -29,8 +32,12 @@ export class ProductEntity {
       stock, 
       minStock, 
       image, 
+<<<<<<< HEAD
       status,
       ingredients,
+=======
+      status, 
+>>>>>>> customer
       categoryId,
       category,
       createdAt, 
@@ -81,7 +88,10 @@ export class ProductEntity {
       minStock,
       image ?? null,
       status,
+<<<<<<< HEAD
       ingredients ?? null,
+=======
+>>>>>>> customer
       categoryId,
       categoryEntity,
       createdAtDate,

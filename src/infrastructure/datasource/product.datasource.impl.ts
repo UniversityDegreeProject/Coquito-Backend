@@ -41,7 +41,11 @@ export class ProductDatasourceImpl implements ProductDatasource {
 
   // * Crear producto
   async createProduct(product: CreateProductDto): Promise<ProductEntity> {
+<<<<<<< HEAD
     const { name, description, price, sku, stock, minStock, image, ingredients, categoryId, status } = product;
+=======
+    const { name, description, price, sku, stock, minStock, image, categoryId, status } = product;
+>>>>>>> customer
 
     //? Verificar que la categoría existe
     const categoryExists = await prismaClient.category.findUnique({
@@ -73,7 +77,10 @@ export class ProductDatasourceImpl implements ProductDatasource {
         stock: stock ?? 0,
         minStock: minStock ?? 5,
         image: image ?? null,
+<<<<<<< HEAD
         ingredients: ingredients ?? null,
+=======
+>>>>>>> customer
         categoryId,
         status: status ?? "Disponible",
       },
