@@ -4,10 +4,7 @@ import { UserRoutes } from "./users/routes/user.routes";
 import { CategoryRoutes } from "./categories/routes/category.routes";
 import { ProductRoutes } from "./products/routes/product.routes";
 import { CustomerRoutes } from "./customers/routes/customer.routes";
-<<<<<<< HEAD
 import { StockMovementRoutes } from "./stock-movements/routes/stock-movement.routes";
-=======
->>>>>>> customer
 
 
 export class AppRoutes {
@@ -25,10 +22,7 @@ export class AppRoutes {
     router.use('/api/categories', CategoryRoutes.routes);
     router.use('/api/products', ProductRoutes.routes);
     router.use('/api/customers', CustomerRoutes.routes);
-<<<<<<< HEAD
     router.use('/api/stock-movements', StockMovementRoutes.routes);
-=======
->>>>>>> customer
     
     return router;
   }
