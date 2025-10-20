@@ -37,6 +37,7 @@ model User {
   phone         String?
   role          UserRole   @default(Cajero)
   status        UserStatus @default(Activo)
+  refreshToken  String?    @map("refresh_token") @db.Text // Token para renovar sesión
   
   // Relaciones
   orders          Order[]          

@@ -217,4 +217,31 @@ export class UserDatasourceImpl implements UserDatasource {
       totalPages,
     };
   }
+
+  // * Guardar refresh token en la base de datos
+  async saveRefreshToken(userId: string, refreshToken: string): Promise<void> {
+    await prismaClient.user.update({
+      where: { id: userId },
+      data: { refreshToken },
+    });
+  }
+
+  // * Obtener usuario por refresh token
+  async getUserByRefreshToken(refreshToken: string): Promise<UserEntity> {
+    const user = await prismaClient.user.findFirst({
+      where: { refreshToken },
+    });
+
+    if (!user) throw HttpCustomErrors.unauthorized("Refresh token inválido o expirado");
+    
+    return UserEntity.mapFromPrisma(user);
+  }
+
+  // * Eliminar refresh token (logout)
+  async removeRefreshToken(userId: string): Promise<void> {
+    await prismaClient.user.update({
+      where: { id: userId },
+      data: { refreshToken: null },
+    });
+  }
 }

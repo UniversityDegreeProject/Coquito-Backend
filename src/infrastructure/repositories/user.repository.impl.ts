@@ -41,4 +41,15 @@ export class UserRepositoryImpl implements UserRepository {
   }> {
     return this.userDatasource.searchUsers(searchUsersDto);
   }
+  
+  // Métodos para Refresh Token
+  saveRefreshToken(userId: string, refreshToken: string): Promise<void> {
+    return this.userDatasource.saveRefreshToken(userId, refreshToken);
+  }
+  getUserByRefreshToken(refreshToken: string): Promise<UserEntity> {
+    return this.userDatasource.getUserByRefreshToken(refreshToken);
+  }
+  removeRefreshToken(userId: string): Promise<void> {
+    return this.userDatasource.removeRefreshToken(userId);
+  }
 }

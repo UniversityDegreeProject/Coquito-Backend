@@ -150,24 +150,69 @@ Order (1) ──> (N) OrderItems
 
 ## 🔐 Autenticación
 
-### Sistema de Autenticación JWT
+### Sistema de Autenticación JWT con Refresh Token
 
-El sistema utiliza **JSON Web Tokens (JWT)** para autenticación.
+El sistema utiliza **JSON Web Tokens (JWT)** con un patrón de **Access Token** y **Refresh Token** para mayor seguridad.
 
-#### Flujo de Autenticación
+#### 🔑 Dos Tipos de Tokens
+
+| Token | Duración | Uso | Almacenamiento |
+|-------|----------|-----|----------------|
+| **Access Token** | 1 hora | Peticiones normales a la API | Memoria/Estado (React) |
+| **Refresh Token** | 7 días | Renovar el Access Token | localStorage (seguro) |
+
+#### Flujo de Autenticación Completo
 
 ```
-1. Usuario → POST /api/auth/login
+┌──────────────────────────────────────────────────────────────┐
+│ 1. LOGIN INICIAL                                             │
+└──────────────────────────────────────────────────────────────┘
+1. Usuario → POST /api/auth/login (username, password)
 2. Backend valida credenciales
-3. Backend genera JWT
-4. Cliente recibe token
-5. Cliente guarda token (localStorage/sessionStorage)
-6. Cliente envía token en cada request:
-   Header: Authorization: Bearer <token>
+3. Backend genera:
+   ✅ Access Token (1 hora)
+   ✅ Refresh Token (7 días) → Se guarda en BD
+4. Cliente recibe ambos tokens
+5. Cliente guarda:
+   - Access Token → En estado de la app (React/Zustand)
+   - Refresh Token → En localStorage
+
+┌──────────────────────────────────────────────────────────────┐
+│ 2. USO NORMAL (Access Token válido)                         │
+└──────────────────────────────────────────────────────────────┘
+1. Cliente hace petición con Access Token:
+   Header: Authorization: Bearer <accessToken>
+2. Backend valida Access Token
+3. Si es válido → Petición exitosa ✅
+
+┌──────────────────────────────────────────────────────────────┐
+│ 3. RENOVACIÓN AUTOMÁTICA (Access Token expirado)            │
+└──────────────────────────────────────────────────────────────┘
+1. Cliente detecta Access Token expirado (401)
+2. Cliente → POST /api/auth/refresh-token
+   Body: { "refreshToken": "..." }
+3. Backend valida Refresh Token:
+   ✅ Verifica que existe en BD
+   ✅ Verifica que no haya expirado
+   ✅ Verifica que el usuario esté activo
+4. Backend genera nuevos tokens:
+   ✅ Nuevo Access Token (1 hora)
+   ✅ Nuevo Refresh Token (7 días) → Se actualiza en BD
+5. Cliente recibe nuevos tokens y actualiza el storage
+6. Cliente reintenta la petición original con nuevo Access Token
+
+┌──────────────────────────────────────────────────────────────┐
+│ 4. SESIÓN EXPIRADA (Refresh Token inválido/expirado)        │
+└──────────────────────────────────────────────────────────────┘
+1. Cliente intenta renovar con Refresh Token expirado
+2. Backend retorna 401 Unauthorized
+3. Cliente limpia storage y redirige a /login
+4. Usuario debe iniciar sesión nuevamente
 ```
 
-#### Estructura del Token JWT
+#### Estructura de los Tokens
 
+**Access Token (1 hora):**
 ```json
 {
   "id": "uuid-del-usuario",
@@ -175,13 +220,32 @@ El sistema utiliza **JSON Web Tokens (JWT)** para autenticación.
   "email": "juan@mail.com",
   "role": "Administrador",
   "iat": 1697123456,
-  "exp": 1697209856
+  "exp": 1697127056
 }
 ```
 
-#### Expiración
-- **Duración**: 24 horas (por defecto)
-- **Refresh**: Próximamente
+**Refresh Token (7 días):**
+```json
+{
+  "id": "uuid-del-usuario",
+  "iat": 1697123456,
+  "exp": 1697728256
+}
+```
+
+#### ⏱️ Tiempos de Expiración
+
+- **Access Token**: 1 hora (3600 segundos)
+- **Refresh Token**: 7 días (604800 segundos)
+- **Renovación recomendada**: 5 minutos antes de que expire el Access Token
+
+#### 🛡️ Seguridad
+
+- ✅ Access Token corto reduce el riesgo si es interceptado
+- ✅ Refresh Token se guarda en la BD (puede invalidarse remotamente)
+- ✅ Refresh Token se valida contra la BD en cada renovación
+- ✅ Si el usuario es suspendido, no puede renovar tokens
+- ✅ Al cambiar contraseña, se invalida el Refresh Token actual
 
 ---
 
@@ -300,8 +364,12 @@ Iniciar sesión y actualizar la última conexión del usuario.
 - `username`: requerido, no vacío
 - `password`: 6-16 caracteres con formato válido
 
-**🔄 Comportamiento Automático (NUEVO):**
-Al iniciar sesión exitosamente, el sistema actualiza automáticamente el campo `lastConnection` con la fecha y hora actual del servidor.
+**🔄 Comportamiento Automático:**
+Al iniciar sesión exitosamente, el sistema:
+1. Actualiza el campo `lastConnection` con la fecha y hora actual
+2. Genera un **Access Token** (válido 1 hora)
+3. Genera un **Refresh Token** (válido 7 días)
+4. Guarda el Refresh Token en la base de datos
 
 **Response 200:**
 ```json
@@ -318,10 +386,21 @@ Al iniciar sesión exitosamente, el sistema actualiza automáticamente el campo 
     "status": "Activo",
     "createdAt": "2024-10-12T10:30:00.000Z",
     "updatedAt": "2024-10-12T10:30:00.000Z",
-    "lastConnection": "2024-10-16T14:25:30.000Z"
+    "lastConnection": "2024-10-20T14:25:30.000Z"
   },
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
 }
+```
+
+**⚠️ IMPORTANTE - Almacenamiento en el Frontend:**
+```typescript
+// ✅ Correcto
+localStorage.setItem('accessToken', data.accessToken);  // En estado de React
+localStorage.setItem('refreshToken', data.refreshToken); // En localStorage
+
+// ❌ Incorrecto
+localStorage.setItem('token', data.accessToken); // No usar 'token' genérico
 ```
 
 **Response 400:**
@@ -452,6 +531,228 @@ Restablecer contraseña (para frontend SPA).
   "error": "Token inválido o expirado"
 }
 ```
+
+---
+
+#### 9️⃣ **POST** `/api/auth/refresh-token`
+Renovar el Access Token usando el Refresh Token.
+
+**⚡ Cuándo usar este endpoint:**
+- Cuando el Access Token haya expirado (401 Unauthorized)
+- Cuando el Access Token esté por expirar (recomendado: 5 minutos antes)
+- Para renovar la sesión sin pedir credenciales al usuario
+
+**Request Body:**
+```json
+{
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Validaciones:**
+- `refreshToken`: Requerido, debe ser un JWT válido de 7 días
+
+**🔄 Proceso Interno:**
+1. Verifica que el Refresh Token sea válido (JWT)
+2. Busca el Refresh Token en la base de datos
+3. Verifica que el usuario asociado esté activo
+4. Genera nuevo Access Token (1 hora)
+5. Genera nuevo Refresh Token (7 días)
+6. Actualiza el Refresh Token en la base de datos
+7. Retorna ambos tokens nuevos
+
+**Response 200:**
+```json
+{
+  "user": {
+    "id": "uuid",
+    "username": "juan123",
+    "email": "juan@example.com",
+    "emailVerified": true,
+    "firstName": "Juan",
+    "lastName": "Pérez",
+    "phone": "3001234567",
+    "role": "Cajero",
+    "status": "Activo",
+    "createdAt": "2024-10-12T10:30:00.000Z",
+    "updatedAt": "2024-10-12T10:30:00.000Z",
+    "lastConnection": "2024-10-20T14:25:30.000Z"
+  },
+  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+**Response 401:**
+```json
+{
+  "error": "Refresh token inválido o expirado"
+}
+```
+
+**Response 403:**
+```json
+{
+  "error": "Usuario inactivo o suspendido"
+}
+```
+
+**📱 Ejemplo de Uso en Frontend:**
+
+```typescript
+// services/authService.ts
+export const refreshAccessToken = async (refreshToken: string) => {
+  try {
+    const response = await axios.post('http://localhost:3000/api/auth/refresh-token', {
+      refreshToken
+    });
+    
+    // Actualizar tokens en el storage
+    localStorage.setItem('accessToken', response.data.accessToken);
+    localStorage.setItem('refreshToken', response.data.refreshToken);
+    
+    return {
+      success: true,
+      data: response.data
+    };
+  } catch (error) {
+    // Refresh Token inválido o expirado → Cerrar sesión
+    localStorage.removeItem('accessToken');
+    localStorage.removeItem('refreshToken');
+    window.location.href = '/login';
+    
+    return {
+      success: false,
+      error: 'Sesión expirada. Por favor, inicia sesión nuevamente.'
+    };
+  }
+};
+```
+
+**🔄 Interceptor de Axios para Renovación Automática:**
+
+```typescript
+// config/axios.interceptor.ts
+import axios from 'axios';
+
+const axiosInstance = axios.create({
+  baseURL: 'http://localhost:3000/api'
+});
+
+// Interceptor de request: agregar Access Token
+axiosInstance.interceptors.request.use(
+  (config) => {
+    const accessToken = localStorage.getItem('accessToken');
+    if (accessToken) {
+      config.headers.Authorization = `Bearer ${accessToken}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+// Interceptor de response: renovar token si expiró
+axiosInstance.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    const originalRequest = error.config;
+    
+    // Si el error es 401 y no es una petición de refresh
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+      
+      const refreshToken = localStorage.getItem('refreshToken');
+      
+      if (!refreshToken) {
+        // No hay refresh token, redirigir a login
+        window.location.href = '/login';
+        return Promise.reject(error);
+      }
+      
+      try {
+        // Intentar renovar el token
+        const response = await axios.post(
+          'http://localhost:3000/api/auth/refresh-token',
+          { refreshToken }
+        );
+        
+        // Guardar nuevos tokens
+        localStorage.setItem('accessToken', response.data.accessToken);
+        localStorage.setItem('refreshToken', response.data.refreshToken);
+        
+        // Reintentar la petición original con el nuevo token
+        originalRequest.headers.Authorization = `Bearer ${response.data.accessToken}`;
+        return axiosInstance(originalRequest);
+      } catch (refreshError) {
+        // Refresh token inválido, cerrar sesión
+        localStorage.removeItem('accessToken');
+        localStorage.removeItem('refreshToken');
+        window.location.href = '/login';
+        return Promise.reject(refreshError);
+      }
+    }
+    
+    return Promise.reject(error);
+  }
+);
+
+export default axiosInstance;
+```
+
+**⏱️ Renovación Programada (Recomendado):**
+
+```typescript
+// hooks/useTokenRefresh.ts
+import { useEffect } from 'react';
+import { jwtDecode } from 'jwt-decode';
+
+export const useTokenRefresh = () => {
+  useEffect(() => {
+    const checkTokenExpiration = async () => {
+      const accessToken = localStorage.getItem('accessToken');
+      const refreshToken = localStorage.getItem('refreshToken');
+      
+      if (!accessToken || !refreshToken) return;
+      
+      try {
+        const decoded = jwtDecode(accessToken);
+        const expiresAt = decoded.exp * 1000; // Convertir a milisegundos
+        const now = Date.now();
+        const timeUntilExpiry = expiresAt - now;
+        
+        // Si faltan menos de 5 minutos para expirar, renovar
+        if (timeUntilExpiry < 5 * 60 * 1000) {
+          await refreshAccessToken(refreshToken);
+        }
+      } catch (error) {
+        console.error('Error checking token expiration:', error);
+      }
+    };
+    
+    // Verificar cada 4 minutos
+    const interval = setInterval(checkTokenExpiration, 4 * 60 * 1000);
+    
+    // Verificar inmediatamente al montar
+    checkTokenExpiration();
+    
+    return () => clearInterval(interval);
+  }, []);
+};
+
+// Uso en App.tsx
+const App = () => {
+  useTokenRefresh(); // Renovación automática en segundo plano
+  
+  return <Router>...</Router>;
+};
+```
+
+**🔐 Cuándo se Invalida un Refresh Token:**
+
+1. **Al cambiar contraseña:** El Refresh Token actual se elimina de la BD
+2. **Al cerrar sesión:** Se elimina de la BD
+3. **Al suspender usuario:** El usuario no podrá renovar tokens
+4. **Al expirar (7 días):** El token expira naturalmente
 
 ---
 
@@ -3424,14 +3725,25 @@ try {
 
 ---
 
-**Última actualización**: 18 de Octubre, 2025  
-**Versión**: 4.0.0
+**Última actualización**: 20 de Octubre, 2025  
+**Versión**: 5.0.0
 
 **Cambios recientes:**
+- ✅ **SISTEMA DE REFRESH TOKEN IMPLEMENTADO** ⭐ NUEVO
+  - Access Token: 1 hora (peticiones normales)
+  - Refresh Token: 7 días (renovar sesión)
+  - Endpoint `/api/auth/refresh-token` para renovación automática
+  - Refresh Token se guarda en base de datos (puede invalidarse)
+  - Login y Register ahora devuelven 2 tokens: `accessToken` y `refreshToken`
+  - Documentación completa con ejemplos de:
+    - Interceptor de Axios para renovación automática
+    - Hook de React para renovación programada
+    - Manejo de errores y sesiones expiradas
+  - Flujos completos de autenticación documentados
 - ✅ **Documentación completa en orden cronológico**
   - 1. Auth → 2. Users → 3. Categories → 4. Products → 5. Stock Movements → 6. Customers
 - ✅ **Sección CATEGORIES completa agregada**
-  - 7 endpoints documentados (GET, POST, PATCH, DELETE, Search, por ID)
+  - 6 endpoints documentados (GET, POST, PATCH, DELETE, Search, por ID)
   - Estructura de datos Category explicada
   - Ejemplos del catálogo real de Embutidos Coquito
 - ✅ **Sección PRODUCTS completa agregada**

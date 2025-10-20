@@ -57,6 +57,7 @@ export class AuthRoutes {
     router.get('/reset-password-page/:token', authController.resetPasswordPage);
     router.post('/reset-password-submit', authController.resetPasswordSubmit);
     router.post('/reset-password', authController.resetPassword);
+    router.post('/refresh-token', authController.refreshToken);
     
     return router;
   }

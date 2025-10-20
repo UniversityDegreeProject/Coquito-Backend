@@ -21,4 +21,9 @@ export abstract class UserRepository {
     limit: number;
     totalPages: number;
   }>;
+  
+  // Métodos para Refresh Token
+  abstract saveRefreshToken(userId: string, refreshToken: string): Promise<void>;
+  abstract getUserByRefreshToken(refreshToken: string): Promise<UserEntity>;
+  abstract removeRefreshToken(userId: string): Promise<void>;
 }

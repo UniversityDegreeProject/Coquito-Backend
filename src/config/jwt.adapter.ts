@@ -24,6 +24,24 @@ export class JwtAdapter {
   }
 
   /**
+   * Genera un Access Token (corta duración: 1 hora)
+   * @param payload - Datos a incluir en el token (ej: { id, username, email, role })
+   * @returns Promise que resuelve el token o null en caso de error
+   */
+  async generateAccessToken(payload: object): Promise<string | null> {
+    return this.generateToken(payload, "1h");
+  }
+
+  /**
+   * Genera un Refresh Token (larga duración: 7 días)
+   * @param payload - Datos a incluir en el token (ej: { id })
+   * @returns Promise que resuelve el token o null en caso de error
+   */
+  async generateRefreshToken(payload: object): Promise<string | null> {
+    return this.generateToken(payload, "7d");
+  }
+
+  /**
    * Verifica y decodifica un token JWT
    * @param token - Token JWT a verificar
    * @returns Payload del token o null si es inválido

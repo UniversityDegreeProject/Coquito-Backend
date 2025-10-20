@@ -15,7 +15,9 @@ import {
   ResetPasswordDto,
   ResetPasswordUseCaseImpl,
   GetUserEmailUseCaseImpl,
-  GetUserByEmailDto
+  GetUserByEmailDto,
+  RefreshTokenDto,
+  RefreshTokenUseCase
 } from "../../../domain";
 import { JwtAdapter } from "../../../config";
 import { EmailService } from "../../../domain/services/email.service";
@@ -59,15 +61,27 @@ export class AuthController {
 
     new LoginUseCaseImpl(this.authRepository).execute(loginUserDto).then( async (user) => {
 
-      //? Generar token
-      
-      const token = await this.jwtAdapter.generateToken({ id: user.id });
-      if( !token ) return res.status(500).json({ error: "Error con el token de autenticación" });
+      //? Generar Access Token (1 hora)
+      const accessToken = await this.jwtAdapter.generateAccessToken({ 
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        role: user.role
+      });
+      if( !accessToken ) return res.status(500).json({ error: "Error al generar access token" });
+
+      //? Generar Refresh Token (7 días)
+      const refreshToken = await this.jwtAdapter.generateRefreshToken({ id: user.id });
+      if( !refreshToken ) return res.status(500).json({ error: "Error al generar refresh token" });
+
+      //? Guardar Refresh Token en la base de datos
+      await this.userRepository.saveRefreshToken(user.id, refreshToken);
 
       const { password, ...rest } = user;
       return res.status(200).json({ 
         user: rest,
-        token: token
+        accessToken,
+        refreshToken
       });
     }).catch( error => {
       return this.handleHttpStatusError(error, res);
@@ -229,6 +243,24 @@ export class AuthController {
 
     new ResetPasswordUseCaseImpl(this.userRepository, this.jwtAdapter)
       .execute(resetPasswordDto)
+      .then((result) => {
+        return res.status(200).json(result);
+      })
+      .catch((error) => {
+        return this.handleHttpStatusError(error, res);
+      });
+  }
+
+  // *Refresh Token - Renovar access token usando refresh token
+  public refreshToken = async(req: Request, res: Response) => {
+    const body = req.body;
+    const [error, refreshTokenDto] = RefreshTokenDto.create(body);
+    
+    if (error) return res.status(400).json({ error: error });
+    if (!refreshTokenDto) return res.status(400).json({ error: "Datos incorrectos" });
+
+    new RefreshTokenUseCase(this.userRepository, this.jwtAdapter)
+      .execute(refreshTokenDto)
       .then((result) => {
         return res.status(200).json(result);
       })
