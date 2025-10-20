@@ -882,6 +882,755 @@ DELETE /api/users/550e8400-e29b-41d4-a716-446655440000
 
 ---
 
+### CATEGORIES ENDPOINTS
+
+Base path: `/api/categories`
+
+---
+
+#### 📂 **Contexto de Categorías**
+
+Las categorías agrupan los productos del catálogo de Embutidos Coquito en familias:
+
+- **Chorizos** (Clásico, Ahumado, Picante)
+- **Salchichas** (1/2 kg, 6 unidades)
+- **Hamburguesas** (1kg, 2 unidades)
+- **Milanesas** (Picada, 6 unidades, 1kg)
+- **Pollo Trozado** (Pechuga, Piernas, Muslos, Contrapiernas)
+- **Mortadelas** (Clásica, Primavera)
+- **Procesados y Otros** (Alitas, Nuggets)
+
+#### 📋 **Estructura de Datos: Category**
+
+```typescript
+{
+  id: string;           // UUID generado automáticamente
+  name: string;         // Nombre único de la categoría
+  description: string;  // Descripción opcional
+  status: "Activo" | "Inactivo";  // Estado de la categoría
+  createdAt: DateTime;  // Fecha de creación
+  updatedAt: DateTime;  // Fecha de última actualización
+}
+```
+
+---
+
+#### 1️⃣ **POST** `/api/categories`
+Crear una nueva categoría.
+
+**Request Body:**
+```json
+{
+  "name": "Chorizos",
+  "description": "Chorizos de pollo en diferentes sabores: clásico, ahumado y picante",
+  "status": "Activo"
+}
+```
+
+**Validaciones:**
+- `name`: Requerido, 1-100 caracteres, único
+- `description`: Opcional, máximo 500 caracteres
+- `status`: "Activo" | "Inactivo" (default: "Activo")
+
+**Response 201:**
+```json
+{
+  "message": "Categoría creada exitosamente",
+  "category": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "name": "Chorizos",
+    "description": "Chorizos de pollo en diferentes sabores: clásico, ahumado y picante",
+    "status": "Activo",
+    "createdAt": "2025-10-18T10:00:00.000Z",
+    "updatedAt": "2025-10-18T10:00:00.000Z"
+  }
+}
+```
+
+**⚠️ GUARDAR EL ID:** `550e8400-e29b-41d4-a716-446655440001` para crear productos
+
+**Response 400:**
+```json
+{
+  "error": "El nombre ya está en uso"
+}
+```
+
+**💡 Ejemplo Completo: Crear las 7 Categorías**
+
+```bash
+# 1. Chorizos
+POST /api/categories
+{
+  "name": "Chorizos",
+  "description": "Chorizos de pollo en diferentes sabores",
+  "status": "Activo"
+}
+→ ID: "cat-001"
+
+# 2. Salchichas
+POST /api/categories
+{
+  "name": "Salchichas",
+  "description": "Salchichas de pollo en diferentes presentaciones",
+  "status": "Activo"
+}
+→ ID: "cat-002"
+
+# 3. Hamburguesas
+POST /api/categories
+{
+  "name": "Hamburguesas",
+  "description": "Hamburguesas de pollo congeladas",
+  "status": "Activo"
+}
+→ ID: "cat-003"
+
+# ... y así sucesivamente
+```
+
+---
+
+#### 2️⃣ **GET** `/api/categories`
+Obtener todas las categorías.
+
+**Response 200:**
+```json
+{
+  "categories": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "name": "Chorizos",
+      "description": "Chorizos de pollo en diferentes sabores",
+      "status": "Activo",
+      "createdAt": "2025-10-18T10:00:00.000Z",
+      "updatedAt": "2025-10-18T10:00:00.000Z"
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440002",
+      "name": "Salchichas",
+      "description": "Salchichas de pollo en diferentes presentaciones",
+      "status": "Activo",
+      "createdAt": "2025-10-18T10:05:00.000Z",
+      "updatedAt": "2025-10-18T10:05:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+#### 3️⃣ **GET** `/api/categories/search`
+Buscar categorías con filtros.
+
+**Query Parameters:**
+- `search` (opcional): Busca en name y description
+- `status` (opcional): "Activo" | "Inactivo"
+- `page` (opcional): Número de página (default: 1)
+- `limit` (opcional): Items por página (default: 10)
+
+**Ejemplo:**
+```
+GET /api/categories/search?search=Pollo&status=Activo&page=1&limit=10
+```
+
+**Response 200:**
+```json
+{
+  "categories": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440005",
+      "name": "Pollo Trozado",
+      "description": "Piezas de pollo crudo",
+      "status": "Activo",
+      "createdAt": "2025-10-18T10:15:00.000Z",
+      "updatedAt": "2025-10-18T10:15:00.000Z"
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 10,
+  "totalPages": 1
+}
+```
+
+---
+
+#### 4️⃣ **GET** `/api/categories/:id`
+Obtener categoría por ID.
+
+**URL Parameters:**
+- `id`: UUID de la categoría
+
+**Ejemplo:**
+```
+GET /api/categories/550e8400-e29b-41d4-a716-446655440001
+```
+
+**Response 200:**
+```json
+{
+  "category": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "name": "Chorizos",
+    "description": "Chorizos de pollo en diferentes sabores",
+    "status": "Activo",
+    "createdAt": "2025-10-18T10:00:00.000Z",
+    "updatedAt": "2025-10-18T10:00:00.000Z"
+  }
+}
+```
+
+**Response 404:**
+```json
+{
+  "error": "Categoría no encontrada"
+}
+```
+
+---
+
+#### 5️⃣ **PATCH** `/api/categories/:id`
+Actualizar categoría.
+
+**URL Parameters:**
+- `id`: UUID de la categoría
+
+**Request Body (todos los campos son opcionales):**
+```json
+{
+  "name": "Chorizos Premium",
+  "description": "Chorizos de pollo de primera calidad",
+  "status": "Activo"
+}
+```
+
+**Response 200:**
+```json
+{
+  "message": "Categoría actualizada exitosamente",
+  "category": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "name": "Chorizos Premium",
+    "description": "Chorizos de pollo de primera calidad",
+    "status": "Activo",
+    "createdAt": "2025-10-18T10:00:00.000Z",
+    "updatedAt": "2025-10-18T14:30:00.000Z"
+  }
+}
+```
+
+---
+
+#### 6️⃣ **DELETE** `/api/categories/:id`
+Eliminar categoría.
+
+**⚠️ IMPORTANTE:** No se puede eliminar una categoría que tiene productos asociados.
+
+**URL Parameters:**
+- `id`: UUID de la categoría
+
+**Ejemplo:**
+```
+DELETE /api/categories/550e8400-e29b-41d4-a716-446655440001
+```
+
+**Response 200:**
+```json
+{
+  "message": "Categoría eliminada exitosamente",
+  "category": {
+    "id": "550e8400-e29b-41d4-a716-446655440001",
+    "name": "Chorizos",
+    "description": "Chorizos de pollo en diferentes sabores",
+    "status": "Activo",
+    "createdAt": "2025-10-18T10:00:00.000Z",
+    "updatedAt": "2025-10-18T10:00:00.000Z"
+  }
+}
+```
+
+**Response 400:**
+```json
+{
+  "error": "No se puede eliminar la categoría porque tiene 5 producto(s) asociado(s)"
+}
+```
+
+---
+
+### PRODUCTS ENDPOINTS
+
+Base path: `/api/products`
+
+---
+
+#### 🍗 **Contexto de Productos**
+
+Los productos son los ítems individuales del catálogo. Cada producto:
+- Pertenece a **UNA categoría** (relación obligatoria)
+- Tiene precio, stock, SKU único
+- Tiene ingredientes y descripción
+- Puede tener imagen
+
+**Ejemplos del catálogo real:**
+- Chorizo Clásico 1/2 kg → Categoría: Chorizos
+- Piernas de Pollo (6 unidades) → Categoría: Pollo Trozado
+- Hamburguesa 1kg (10 unidades) → Categoría: Hamburguesas
+
+#### 📋 **Estructura de Datos: Product**
+
+```typescript
+{
+  id: string;           // UUID generado automáticamente
+  name: string;         // Nombre del producto
+  description: string;  // Descripción detallada (presentación, conservación)
+  price: number;        // Precio en Bolivianos (Bs.)
+  sku: string;          // Código único del producto (ej: "CHO-CLA-500")
+  stock: number;        // Stock actual (se actualiza automáticamente con movimientos)
+  minStock: number;     // Stock mínimo para alertas (default: 5)
+  image: string;        // URL de la imagen del producto
+  ingredients: string;  // Ingredientes del producto (NUEVO)
+  status: "Disponible" | "SinStock" | "Descontinuado";
+  categoryId: string;   // ⚠️ ID de la categoría (RELACIÓN REQUERIDA)
+  category: {           // Categoría completa (incluida en responses)
+    id: string;
+    name: string;
+  };
+  createdAt: DateTime;
+  updatedAt: DateTime;
+}
+```
+
+---
+
+#### 1️⃣ **POST** `/api/products`
+Crear un nuevo producto.
+
+**⚠️ PREREQUISITO:** Primero debes crear la categoría y obtener su ID.
+
+**Request Body:**
+```json
+{
+  "name": "Chorizo Clásico de Pollo 1/2 kg",
+  "description": "Presentación: 1/2 kg, Envase: Plástico al vacío, Precocido, Conservar entre 0 y 5°C",
+  "price": 18.50,
+  "sku": "CHO-CLA-500",
+  "stock": 0,
+  "minStock": 10,
+  "image": "https://example.com/chorizo-clasico.jpg",
+  "ingredients": "Carne de pollo, tocino de cerdo, almidón de mandioca, sal y especias naturales",
+  "categoryId": "550e8400-e29b-41d4-a716-446655440001",
+  "status": "Disponible"
+}
+```
+
+**⚠️ categoryId:** Usa el ID que obtuviste al crear la categoría Chorizos
+
+**Validaciones:**
+- `name`: Requerido, 1-100 caracteres
+- `description`: Opcional, máximo 500 caracteres
+- `price`: Requerido, número positivo con máximo 2 decimales
+- `sku`: Opcional, máximo 50 caracteres, único
+- `stock`: Opcional, número entero ≥ 0 (default: 0)
+- `minStock`: Opcional, número entero ≥ 0 (default: 5)
+- `image`: Opcional, debe ser URL válida
+- `ingredients`: Opcional, máximo 1000 caracteres
+- `categoryId`: Requerido, UUID válido de categoría existente
+- `status`: "Disponible" | "SinStock" | "Descontinuado" (default: "Disponible")
+
+**Response 201:**
+```json
+{
+  "message": "Producto creado exitosamente",
+  "product": {
+    "id": "prod-550e8400-e29b-41d4-a716-446655440100",
+    "name": "Chorizo Clásico de Pollo 1/2 kg",
+    "description": "Presentación: 1/2 kg, Envase: Plástico al vacío, Precocido, Conservar entre 0 y 5°C",
+    "price": 18.50,
+    "sku": "CHO-CLA-500",
+    "stock": 0,
+    "minStock": 10,
+    "image": "https://example.com/chorizo-clasico.jpg",
+    "ingredients": "Carne de pollo, tocino de cerdo, almidón de mandioca, sal y especias naturales",
+    "status": "Disponible",
+    "categoryId": "550e8400-e29b-41d4-a716-446655440001",
+    "category": {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "name": "Chorizos",
+      "description": "Chorizos de pollo en diferentes sabores",
+      "status": "Activo"
+    },
+    "createdAt": "2025-10-18T11:00:00.000Z",
+    "updatedAt": "2025-10-18T11:00:00.000Z"
+  }
+}
+```
+
+**⚠️ GUARDAR EL ID:** `prod-550e8400-e29b-41d4-a716-446655440100` para movimientos de stock
+
+**Response 400:**
+```json
+{
+  "error": "El SKU ya está en uso"
+}
+```
+```json
+{
+  "error": "La categoría especificada no existe"
+}
+```
+
+**💡 Flujo Completo de Creación:**
+
+```bash
+# PASO 1: Crear Categoría
+POST /api/categories
+{
+  "name": "Chorizos",
+  "description": "Chorizos de pollo..."
+}
+→ Response: { "category": { "id": "cat-001", ... } }
+
+# PASO 2: COPIAR el ID de la categoría
+
+# PASO 3: Crear Producto usando ese ID
+POST /api/products
+{
+  "name": "Chorizo Clásico 1/2 kg",
+  "price": 18.50,
+  "categoryId": "cat-001",  ← ID DE LA CATEGORÍA
+  "ingredients": "Carne de pollo...",
+  ...
+}
+→ Response: { "product": { "id": "prod-001", "category": { "name": "Chorizos" } } }
+```
+
+**📋 Ejemplos Reales del Catálogo:**
+
+```json
+// Producto 1: Chorizo Clásico
+{
+  "name": "Chorizo Clásico de Pollo 1/2 kg",
+  "description": "Presentación: 1/2 kg, Envase: Plástico al vacío, Precocido",
+  "price": 18.50,
+  "sku": "CHO-CLA-500",
+  "ingredients": "Carne de pollo, tocino de cerdo, almidón, sal y especias",
+  "categoryId": "{{ID_CATEGORIA_CHORIZOS}}"
+}
+
+// Producto 2: Piernas de Pollo
+{
+  "name": "Piernas de Pollo (6 unidades)",
+  "description": "Contiene 6 piernas, Con piel y hueso, Mantener entre 0 y 5°C",
+  "price": 25.00,
+  "sku": "PTRO-PIE-6",
+  "ingredients": "Carne de pollo",
+  "categoryId": "{{ID_CATEGORIA_POLLO_TROZADO}}"
+}
+
+// Producto 3: Hamburguesa
+{
+  "name": "Hamburguesa de Pollo 1kg (10 unidades)",
+  "description": "10 hamburguesas con láminas separadoras, Congelado, -18°C",
+  "price": 35.00,
+  "sku": "HAM-1KG-10",
+  "ingredients": "Carne de pollo molida, pan rallado, especias",
+  "categoryId": "{{ID_CATEGORIA_HAMBURGUESAS}}"
+}
+```
+
+---
+
+#### 2️⃣ **GET** `/api/products`
+Obtener todos los productos.
+
+**Response 200:**
+```json
+{
+  "products": [
+    {
+      "id": "prod-550e8400-e29b-41d4-a716-446655440100",
+      "name": "Chorizo Clásico de Pollo 1/2 kg",
+      "description": "Presentación: 1/2 kg, Envase: Plástico al vacío",
+      "price": 18.50,
+      "sku": "CHO-CLA-500",
+      "stock": 50,
+      "minStock": 10,
+      "image": "https://example.com/chorizo-clasico.jpg",
+      "ingredients": "Carne de pollo, tocino de cerdo, almidón, sal y especias",
+      "status": "Disponible",
+      "categoryId": "550e8400-e29b-41d4-a716-446655440001",
+      "category": {
+        "id": "550e8400-e29b-41d4-a716-446655440001",
+        "name": "Chorizos",
+        "description": "Chorizos de pollo en diferentes sabores",
+        "status": "Activo"
+      },
+      "createdAt": "2025-10-18T11:00:00.000Z",
+      "updatedAt": "2025-10-18T11:00:00.000Z"
+    },
+    {
+      "id": "prod-550e8400-e29b-41d4-a716-446655440200",
+      "name": "Piernas de Pollo (6 unidades)",
+      "description": "Contiene 6 piernas, Con piel y hueso",
+      "price": 25.00,
+      "sku": "PTRO-PIE-6",
+      "stock": 30,
+      "minStock": 10,
+      "image": null,
+      "ingredients": "Carne de pollo",
+      "status": "Disponible",
+      "categoryId": "550e8400-e29b-41d4-a716-446655440005",
+      "category": {
+        "id": "550e8400-e29b-41d4-a716-446655440005",
+        "name": "Pollo Trozado",
+        "description": "Piezas de pollo crudo",
+        "status": "Activo"
+      },
+      "createdAt": "2025-10-18T11:30:00.000Z",
+      "updatedAt": "2025-10-18T11:30:00.000Z"
+    }
+  ]
+}
+```
+
+---
+
+#### 3️⃣ **GET** `/api/products/search`
+Buscar productos con filtros avanzados.
+
+**Query Parameters:**
+- `search` (opcional): Busca en name, description, sku
+- `categoryId` (opcional): UUID de la categoría
+- `status` (opcional): "Disponible" | "SinStock" | "Descontinuado"
+- `lowStock` (opcional): `true` para productos con stock ≤ minStock
+- `page` (opcional): Número de página (default: 1)
+- `limit` (opcional): Items por página (default: 10)
+
+**Ejemplos:**
+
+```bash
+# Buscar por texto
+GET /api/products/search?search=chorizo
+
+# Buscar por categoría
+GET /api/products/search?categoryId=550e8400-e29b-41d4-a716-446655440001
+
+# Buscar productos con stock bajo (ALERTA)
+GET /api/products/search?lowStock=true
+
+# Combinar filtros
+GET /api/products/search?categoryId=550e8400-e29b-41d4-a716-446655440005&lowStock=true&page=1&limit=20
+```
+
+**Response 200:**
+```json
+{
+  "products": [
+    {
+      "id": "prod-550e8400-e29b-41d4-a716-446655440100",
+      "name": "Chorizo Clásico de Pollo 1/2 kg",
+      "stock": 8,
+      "minStock": 10,
+      "category": {
+        "name": "Chorizos"
+      },
+      ...
+    }
+  ],
+  "total": 1,
+  "page": 1,
+  "limit": 10,
+  "totalPages": 1
+}
+```
+
+**📱 Ejemplo Frontend: Buscar productos con stock bajo**
+
+```typescript
+const getProductsWithLowStock = async () => {
+  const response = await fetch(
+    'http://localhost:3000/api/products/search?lowStock=true'
+  );
+  const data = await response.json();
+  
+  // data.products contiene solo productos donde stock <= minStock
+  const alerts = data.products.map(p => ({
+    name: p.name,
+    stock: p.stock,
+    minStock: p.minStock,
+    alert: `⚠️ Stock bajo: ${p.stock} unidades (mínimo: ${p.minStock})`
+  }));
+  
+  return alerts;
+};
+```
+
+---
+
+#### 4️⃣ **GET** `/api/products/:id`
+Obtener producto por ID.
+
+**URL Parameters:**
+- `id`: UUID del producto
+
+**Ejemplo:**
+```
+GET /api/products/prod-550e8400-e29b-41d4-a716-446655440100
+```
+
+**Response 200:**
+```json
+{
+  "product": {
+    "id": "prod-550e8400-e29b-41d4-a716-446655440100",
+    "name": "Chorizo Clásico de Pollo 1/2 kg",
+    "description": "Presentación: 1/2 kg, Envase: Plástico al vacío",
+    "price": 18.50,
+    "sku": "CHO-CLA-500",
+    "stock": 50,
+    "minStock": 10,
+    "image": "https://example.com/chorizo-clasico.jpg",
+    "ingredients": "Carne de pollo, tocino de cerdo, almidón, sal y especias",
+    "status": "Disponible",
+    "categoryId": "550e8400-e29b-41d4-a716-446655440001",
+    "category": {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "name": "Chorizos",
+      "description": "Chorizos de pollo en diferentes sabores",
+      "status": "Activo"
+    },
+    "createdAt": "2025-10-18T11:00:00.000Z",
+    "updatedAt": "2025-10-18T11:00:00.000Z"
+  }
+}
+```
+
+**Response 404:**
+```json
+{
+  "error": "Producto no encontrado"
+}
+```
+
+---
+
+#### 5️⃣ **PATCH** `/api/products/:id`
+Actualizar producto.
+
+**URL Parameters:**
+- `id`: UUID del producto
+
+**Request Body (todos los campos son opcionales):**
+```json
+{
+  "name": "Chorizo Clásico Premium 1/2 kg",
+  "description": "Versión premium con especias importadas",
+  "price": 20.00,
+  "minStock": 15,
+  "ingredients": "Carne de pollo premium, tocino de cerdo, almidón, sal y especias importadas",
+  "categoryId": "550e8400-e29b-41d4-a716-446655440001",
+  "status": "Disponible"
+}
+```
+
+**⚠️ NOTA:** El campo `stock` NO se actualiza aquí. Se actualiza automáticamente con Stock Movements.
+
+**Response 200:**
+```json
+{
+  "message": "Producto actualizado exitosamente",
+  "product": {
+    "id": "prod-550e8400-e29b-41d4-a716-446655440100",
+    "name": "Chorizo Clásico Premium 1/2 kg",
+    "description": "Versión premium con especias importadas",
+    "price": 20.00,
+    "sku": "CHO-CLA-500",
+    "stock": 50,
+    "minStock": 15,
+    "ingredients": "Carne de pollo premium, tocino de cerdo, almidón, sal y especias importadas",
+    "category": {
+      "name": "Chorizos"
+    },
+    "createdAt": "2025-10-18T11:00:00.000Z",
+    "updatedAt": "2025-10-18T15:30:00.000Z"
+  }
+}
+```
+
+---
+
+#### 6️⃣ **DELETE** `/api/products/:id`
+Eliminar producto.
+
+**⚠️ IMPORTANTE:** No se puede eliminar un producto que tiene órdenes asociadas.
+
+**URL Parameters:**
+- `id`: UUID del producto
+
+**Ejemplo:**
+```
+DELETE /api/products/prod-550e8400-e29b-41d4-a716-446655440100
+```
+
+**Response 200:**
+```json
+{
+  "message": "Producto eliminado exitosamente",
+  "product": {
+    "id": "prod-550e8400-e29b-41d4-a716-446655440100",
+    "name": "Chorizo Clásico de Pollo 1/2 kg",
+    ...
+  }
+}
+```
+
+**Response 400:**
+```json
+{
+  "error": "No se puede eliminar el producto porque tiene 3 orden(es) asociada(s)"
+}
+```
+
+---
+
+### 🔗 **RELACIÓN: Categories → Products**
+
+```
+CATEGORÍA (1)  ──────>  PRODUCTOS (N)
+
+Chorizos
+  ├─ Chorizo Clásico 1/2 kg
+  ├─ Chorizo Ahumado 1/2 kg
+  └─ Chorizo Picante 1/2 kg
+
+Pollo Trozado
+  ├─ Pechuga (1 unidad)
+  ├─ Piernas (6 unidades)
+  ├─ Muslos (6 unidades)
+  └─ Contrapierna (3 unidades)
+```
+
+**Consulta SQL equivalente:**
+```sql
+SELECT p.*, c.name as category_name 
+FROM products p
+INNER JOIN categories c ON p.category_id = c.id
+WHERE c.name = 'Chorizos';
+```
+
+**Consulta en la API:**
+```bash
+# 1. Obtener categoría y su ID
+GET /api/categories/search?search=Chorizos
+
+# 2. Usar el ID para buscar sus productos
+GET /api/products/search?categoryId={ID_OBTENIDO}
+```
+
+---
+
 ### STOCK MOVEMENTS ENDPOINTS
 
 Base path: `/api/stock-movements`
@@ -2676,18 +3425,32 @@ try {
 ---
 
 **Última actualización**: 18 de Octubre, 2025  
-**Versión**: 3.0.0
+**Versión**: 4.0.0
 
 **Cambios recientes:**
+- ✅ **Documentación completa en orden cronológico**
+  - 1. Auth → 2. Users → 3. Categories → 4. Products → 5. Stock Movements → 6. Customers
+- ✅ **Sección CATEGORIES completa agregada**
+  - 7 endpoints documentados (GET, POST, PATCH, DELETE, Search, por ID)
+  - Estructura de datos Category explicada
+  - Ejemplos del catálogo real de Embutidos Coquito
+- ✅ **Sección PRODUCTS completa agregada**
+  - 6 endpoints documentados con ejemplos reales
+  - Estructura de datos Product con campo `ingredients`
+  - Relación Category → Products explicada con diagramas
+  - Flujo completo: Crear categoría → Obtener ID → Crear producto
+  - Ejemplos JSON con `categoryId` y `productId`
 - ✅ **Sistema completo de Movimientos de Stock implementado**
-  - Endpoints para crear, buscar y consultar movimientos
-  - Soporte para 6 tipos de movimientos: Reabastecimiento, Compra, Venta, Ajuste, Devolución, Dañado
+  - 6 tipos de movimientos: Reabastecimiento, Compra, Venta, Ajuste, Devolución, Dañado
   - Actualización automática de stock en transacciones
   - Historial completo por producto
+- ✅ **Campo `ingredients` agregado al modelo Product**
+  - Máximo 1000 caracteres
+  - Opcional, para listar ingredientes del producto
 - ✅ **Contexto de negocio actualizado**
-  - Empresa de productos derivados de pollo (Coquito)
+  - Empresa de productos derivados de pollo (Embutidos Coquito)
   - Modelo de fábrica (Yacuiba) → tienda (Tarija)
-  - Diferenciación clara entre Reabastecimiento y Compra
+  - Ejemplos reales del catálogo: Chorizos, Salchichas, Hamburguesas, Pollo Trozado, etc.
 - ✅ Campo `lastConnection` agregado al modelo User
 - ✅ Contraseña autogenerada con política de la empresa
 - ✅ Documentación completa de integración frontend
