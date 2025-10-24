@@ -6,7 +6,8 @@ import {
   UpdateCustomerDto, 
   GetCustomerByIdDto, 
   DeleteCustomerByIdDto, 
-  SearchCustomersDto 
+  PaginateResponse,
+  CustomersOptionalFiltersDto,
 } from "../../domain";
 
 export class CustomerRepositoryImpl implements CustomerRepository {
@@ -14,8 +15,8 @@ export class CustomerRepositoryImpl implements CustomerRepository {
     private readonly customerDatasource: CustomerDatasource
   ) {}
 
-  getCustomers(): Promise<CustomerEntity[]> {
-    return this.customerDatasource.getCustomers();
+  getCustomers(customersOptionalFiltersDto: CustomersOptionalFiltersDto): Promise<PaginateResponse<CustomerEntity>> {
+    return this.customerDatasource.getCustomers(customersOptionalFiltersDto);
   }
 
   createCustomer(customer: CreateCustomerDto): Promise<CustomerEntity> {
@@ -34,14 +35,5 @@ export class CustomerRepositoryImpl implements CustomerRepository {
     return this.customerDatasource.getCustomerById(id);
   }
 
-  searchCustomers(searchCustomersDto: SearchCustomersDto): Promise<{
-    customers: CustomerEntity[];
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  }> {
-    return this.customerDatasource.searchCustomers(searchCustomersDto);
-  }
 }
 

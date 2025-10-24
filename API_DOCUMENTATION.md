@@ -14,7 +14,7 @@
   - [3. Categories](#categories-endpoints) - Gestión de Categorías
   - [4. Products](#products-endpoints) - Gestión de Productos
   - [5. Stock Movements](#stock-movements-endpoints) - Movimientos de Inventario
-  - [6. Customers](#customers-endpoints) - Gestión de Clientes
+  - [6. Customers](#customers-endpoints) - Gestión de Clientes ✅ COMPLETO
 - [Modelos de Datos](#modelos-de-datos)
 - [Códigos de Estado](#códigos-de-estado)
 - [Manejo de Errores](#manejo-de-errores)
@@ -119,14 +119,16 @@ El backend está construido siguiendo **Clean Architecture** con las siguientes 
 }
 ```
 
+#### 📦 Modelos Implementados
+- ✅ **Category**: Categorías de productos
+- ✅ **Product**: Catálogo de productos
+- ✅ **StockMovement**: Movimientos de inventario
+- ✅ **Customer**: Clientes
+
 #### 📦 Modelos Futuros (Schema ya definido)
-- **Category**: Categorías de productos
-- **Product**: Catálogo de productos
-- **Customer**: Clientes
 - **Order**: Órdenes de venta
 - **OrderItem**: Items de órdenes
 - **CashRegister**: Control de caja
-- **StockMovement**: Movimientos de inventario
 - **DailySalesReport**: Reportes diarios
 - **ActivityLog**: Registro de actividades
 
@@ -142,6 +144,8 @@ Category (1) ──> (N) Products
 
 Product (1) ──┬──> (N) OrderItems
               └──> (N) StockMovements
+
+Customer (1) ──> (N) Orders
 
 Order (1) ──> (N) OrderItems
 ```
@@ -1932,6 +1936,607 @@ GET /api/products/search?categoryId={ID_OBTENIDO}
 
 ---
 
+### CUSTOMERS ENDPOINTS
+
+Base path: `/api/customers`
+
+---
+
+#### 👥 **Contexto de Clientes**
+
+Los clientes son las personas o entidades que compran productos en la tienda. El sistema distingue entre:
+
+- **Regular**: Cliente común que compra ocasionalmente
+- **VIP**: Cliente frecuente con beneficios especiales
+- **Ocasional**: Cliente que compra muy de vez en cuando o una sola vez
+
+#### 📋 **Estructura de Datos: Customer**
+
+```typescript
+{
+  id: string;             // UUID generado automáticamente
+  firstName: string;      // Nombre (Primera letra mayúscula)
+  lastName: string;       // Apellido (Primera letra mayúscula)
+  email: string | null;   // Email único (opcional)
+  phone: string | null;   // Teléfono (8 dígitos local o +11 internacional)
+  address: string | null; // Dirección (opcional, máximo 255 caracteres)
+  password: string;       // Contraseña hasheada (NUNCA se devuelve en respuestas)
+  type: "Regular" | "VIP" | "Ocasional"; // Tipo de cliente
+  createdAt: DateTime;    // Fecha de registro
+  updatedAt: DateTime;    // Fecha de última actualización
+}
+```
+
+**🔐 Contraseña Autogenerada:**
+
+El sistema genera automáticamente una contraseña basada en el nombre del cliente:
+
+**Formato:** `Primera letra mayúscula + resto en minúsculas + @`
+
+**Ejemplos:**
+- Nombre: "Jesus" → Contraseña: `Jesus@`
+- Nombre: "MARIA" → Contraseña: `Maria@`
+- Nombre: "carlos" → Contraseña: `Carlos@`
+
+---
+
+#### 1️⃣ **POST** `/api/customers`
+Crear un nuevo cliente.
+
+**Request Body:**
+```json
+{
+  "firstName": "Jesus",
+  "lastName": "Perez",
+  "email": "jesus.perez@example.com",
+  "phone": "78945612",
+  "address": "Av. Las Américas #123, Tarija",
+  "type": "Regular"
+}
+```
+
+**Validaciones:**
+- `firstName`: Requerido, primera letra mayúscula, sin números
+- `lastName`: Requerido, primera letra mayúscula, sin números
+- `email`: Opcional, formato válido, único
+- `phone`: Opcional, 8 dígitos (local) o +11 dígitos (internacional)
+- `address`: Opcional, máximo 255 caracteres
+- `type`: "Regular" | "VIP" | "Ocasional" (default: "Regular")
+
+**⚡ Comportamiento Automático:**
+- Genera contraseña automática: `Jesus@` (basada en firstName)
+- Hashea la contraseña antes de guardar
+- Valida que el email sea único (si se proporciona)
+
+**Response 201:**
+```json
+{
+  "message": "Cliente creado exitosamente",
+  "customer": {
+    "id": "cust-550e8400-e29b-41d4-a716-446655440000",
+    "firstName": "Jesus",
+    "lastName": "Perez",
+    "email": "jesus.perez@example.com",
+    "phone": "78945612",
+    "address": "Av. Las Américas #123, Tarija",
+    "type": "Regular",
+    "createdAt": "2025-10-22T10:00:00.000Z",
+    "updatedAt": "2025-10-22T10:00:00.000Z"
+  }
+}
+```
+
+**⚠️ NOTA:** La contraseña NO se devuelve en la respuesta por seguridad.
+
+**Response 400:**
+```json
+{
+  "error": "El email ya está registrado"
+}
+```
+```json
+{
+  "error": "El nombre debe comenzar con letra mayúscula y no puede contener números"
+}
+```
+
+**💡 Ejemplos de Request Body:**
+
+**Ejemplo 1: Cliente Regular con todos los datos**
+```json
+{
+  "firstName": "Maria",
+  "lastName": "Gonzalez",
+  "email": "maria.gonzalez@example.com",
+  "phone": "78123456",
+  "address": "Calle España #456, Tarija",
+  "type": "Regular"
+}
+```
+→ Contraseña autogenerada: `Maria@`
+
+**Ejemplo 2: Cliente VIP sin dirección**
+```json
+{
+  "firstName": "Carlos",
+  "lastName": "Rodriguez",
+  "email": "carlos.vip@example.com",
+  "phone": "+59178945612",
+  "type": "VIP"
+}
+```
+→ Contraseña autogenerada: `Carlos@`
+
+**Ejemplo 3: Cliente Ocasional solo con nombre y apellido**
+```json
+{
+  "firstName": "Ana",
+  "lastName": "Martinez",
+  "type": "Ocasional"
+}
+```
+→ Contraseña autogenerada: `Ana@`
+
+---
+
+#### 2️⃣ **GET** `/api/customers`
+Obtener todos los clientes.
+
+**Response 200:**
+```json
+{
+  "customers": [
+    {
+      "id": "cust-550e8400-e29b-41d4-a716-446655440000",
+      "firstName": "Jesus",
+      "lastName": "Perez",
+      "email": "jesus.perez@example.com",
+      "phone": "78945612",
+      "address": "Av. Las Américas #123, Tarija",
+      "type": "Regular",
+      "createdAt": "2025-10-22T10:00:00.000Z",
+      "updatedAt": "2025-10-22T10:00:00.000Z"
+    },
+    {
+      "id": "cust-550e8400-e29b-41d4-a716-446655440001",
+      "firstName": "Maria",
+      "lastName": "Gonzalez",
+      "email": "maria.gonzalez@example.com",
+      "phone": "78123456",
+      "address": "Calle España #456, Tarija",
+      "type": "VIP",
+      "createdAt": "2025-10-22T11:00:00.000Z",
+      "updatedAt": "2025-10-22T11:00:00.000Z"
+    }
+  ]
+}
+```
+
+**⚠️ NOTA:** Las contraseñas NO se devuelven en la respuesta.
+
+---
+
+#### 3️⃣ **GET** `/api/customers/search`
+Buscar clientes con filtros avanzados.
+
+**Query Parameters:**
+- `search` (opcional): Busca en firstName, lastName, email, phone, address
+- `type` (opcional): "Regular" | "VIP" | "Ocasional"
+- `page` (opcional): Número de página (default: 1)
+- `limit` (opcional): Items por página (default: 10)
+
+**Ejemplos:**
+```bash
+# Buscar por texto (nombre, email, teléfono, etc.)
+GET /api/customers/search?search=Jesus
+
+# Buscar clientes VIP
+GET /api/customers/search?type=VIP
+
+# Buscar clientes con paginación
+GET /api/customers/search?page=2&limit=20
+
+# Combinar filtros
+GET /api/customers/search?search=Maria&type=VIP&page=1&limit=10
+```
+
+**Response 200:**
+```json
+{
+  "customers": [
+    {
+      "id": "cust-550e8400-e29b-41d4-a716-446655440000",
+      "firstName": "Jesus",
+      "lastName": "Perez",
+      "email": "jesus.perez@example.com",
+      "phone": "78945612",
+      "address": "Av. Las Américas #123, Tarija",
+      "type": "Regular",
+      "createdAt": "2025-10-22T10:00:00.000Z",
+      "updatedAt": "2025-10-22T10:00:00.000Z"
+    }
+  ],
+  "total": 156,
+  "page": 1,
+  "limit": 10,
+  "totalPages": 16
+}
+```
+
+**💡 Explicación de la Respuesta:**
+- `customers`: Array con los clientes de la página actual
+- `total`: Número total de clientes que coinciden con los filtros
+- `page`: Página actual
+- `limit`: Cantidad de clientes por página
+- `totalPages`: Total de páginas disponibles
+
+**📱 Ejemplo Frontend:**
+```typescript
+const searchCustomers = async (filters: {
+  search?: string;
+  type?: 'Regular' | 'VIP' | 'Ocasional';
+  page?: number;
+  limit?: number;
+}) => {
+  const params = new URLSearchParams();
+  if (filters.search) params.append('search', filters.search);
+  if (filters.type) params.append('type', filters.type);
+  if (filters.page) params.append('page', filters.page.toString());
+  if (filters.limit) params.append('limit', filters.limit.toString());
+  
+  const response = await fetch(
+    `http://localhost:3000/api/customers/search?${params.toString()}`
+  );
+  return await response.json();
+};
+
+// Uso: Buscar clientes VIP
+const result = await searchCustomers({ type: 'VIP', page: 1, limit: 20 });
+```
+
+---
+
+#### 4️⃣ **GET** `/api/customers/:id`
+Obtener cliente por ID.
+
+**URL Parameters:**
+- `id`: UUID del cliente
+
+**Ejemplo:**
+```
+GET /api/customers/cust-550e8400-e29b-41d4-a716-446655440000
+```
+
+**Response 200:**
+```json
+{
+  "customer": {
+    "id": "cust-550e8400-e29b-41d4-a716-446655440000",
+    "firstName": "Jesus",
+    "lastName": "Perez",
+    "email": "jesus.perez@example.com",
+    "phone": "78945612",
+    "address": "Av. Las Américas #123, Tarija",
+    "type": "Regular",
+    "createdAt": "2025-10-22T10:00:00.000Z",
+    "updatedAt": "2025-10-22T10:00:00.000Z"
+  }
+}
+```
+
+**Response 404:**
+```json
+{
+  "error": "Cliente no encontrado"
+}
+```
+
+**Response 400:**
+```json
+{
+  "error": "Id inválido"
+}
+```
+
+---
+
+#### 5️⃣ **PATCH** `/api/customers/:id`
+Actualizar cliente.
+
+**URL Parameters:**
+- `id`: UUID del cliente
+
+**Request Body (todos los campos son opcionales):**
+```json
+{
+  "firstName": "Jesus Carlos",
+  "lastName": "Perez Lopez",
+  "email": "jesus.new@example.com",
+  "phone": "+59178945612",
+  "address": "Nueva dirección #789",
+  "password": "NewPassword123!",
+  "type": "VIP"
+}
+```
+
+**Validaciones:**
+- `firstName`: Primera letra mayúscula, sin números (si se envía)
+- `lastName`: Primera letra mayúscula, sin números (si se envía)
+- `email`: Formato válido, único (si se envía)
+- `phone`: 8 dígitos local o +11 internacional (si se envía)
+- `address`: Máximo 255 caracteres (si se envía)
+- `password`: 6-16 caracteres (si se envía, será hasheada)
+- `type`: "Regular" | "VIP" | "Ocasional" (si se envía)
+
+**⚡ Comportamiento Automático:**
+- Si se actualiza la contraseña, se hashea automáticamente
+- Valida que el email no esté en uso por OTRO cliente
+
+**Response 200:**
+```json
+{
+  "message": "Cliente actualizado exitosamente",
+  "customer": {
+    "id": "cust-550e8400-e29b-41d4-a716-446655440000",
+    "firstName": "Jesus Carlos",
+    "lastName": "Perez Lopez",
+    "email": "jesus.new@example.com",
+    "phone": "+59178945612",
+    "address": "Nueva dirección #789",
+    "type": "VIP",
+    "createdAt": "2025-10-22T10:00:00.000Z",
+    "updatedAt": "2025-10-22T15:30:00.000Z"
+  }
+}
+```
+
+**Response 404:**
+```json
+{
+  "error": "Cliente no encontrado"
+}
+```
+
+**Response 400:**
+```json
+{
+  "error": "El email ya está en uso"
+}
+```
+
+**💡 Ejemplos de Actualización:**
+
+**Ejemplo 1: Actualizar solo el tipo de cliente**
+```json
+{
+  "type": "VIP"
+}
+```
+
+**Ejemplo 2: Actualizar contraseña**
+```json
+{
+  "password": "NewSecurePassword123!"
+}
+```
+
+**Ejemplo 3: Actualizar múltiples campos**
+```json
+{
+  "firstName": "Jesus Carlos",
+  "lastName": "Perez Lopez",
+  "phone": "+59178945612",
+  "type": "VIP"
+}
+```
+
+---
+
+#### 6️⃣ **DELETE** `/api/customers/:id`
+Eliminar cliente.
+
+**⚠️ IMPORTANTE:** No se puede eliminar un cliente que tiene órdenes asociadas.
+
+**URL Parameters:**
+- `id`: UUID del cliente
+
+**Ejemplo:**
+```
+DELETE /api/customers/cust-550e8400-e29b-41d4-a716-446655440000
+```
+
+**Response 200:**
+```json
+{
+  "message": "Cliente eliminado exitosamente",
+  "customer": {
+    "id": "cust-550e8400-e29b-41d4-a716-446655440000",
+    "firstName": "Jesus",
+    "lastName": "Perez",
+    "email": "jesus.perez@example.com",
+    "phone": "78945612",
+    "address": "Av. Las Américas #123, Tarija",
+    "type": "Regular",
+    "createdAt": "2025-10-22T10:00:00.000Z",
+    "updatedAt": "2025-10-22T10:00:00.000Z"
+  }
+}
+```
+
+**Response 400:**
+```json
+{
+  "error": "No se puede eliminar el cliente porque tiene 5 orden(es) asociada(s)"
+}
+```
+
+**Response 404:**
+```json
+{
+  "error": "Cliente no encontrado"
+}
+```
+
+**📱 Ejemplo con Confirmación:**
+```typescript
+const handleDeleteCustomer = async (customerId: string, customerName: string) => {
+  const confirmed = window.confirm(
+    `¿Estás seguro de eliminar al cliente "${customerName}"? Esta acción no se puede deshacer.`
+  );
+  
+  if (!confirmed) return;
+  
+  try {
+    const response = await fetch(
+      `http://localhost:3000/api/customers/${customerId}`,
+      { method: 'DELETE' }
+    );
+    
+    if (response.ok) {
+      const data = await response.json();
+      console.log('Cliente eliminado:', data.message);
+      // Recargar lista de clientes
+    } else {
+      const error = await response.json();
+      alert(`Error: ${error.error}`);
+    }
+  } catch (error) {
+    console.error('Error eliminando cliente:', error);
+  }
+};
+```
+
+---
+
+### 🔗 **RELACIÓN: Customers → Orders**
+
+```
+CLIENTE (1)  ──────>  ÓRDENES (N)
+
+Jesus Perez (Regular)
+  ├─ Orden #001 - 22/10/2025 - Bs. 150.00
+  ├─ Orden #005 - 23/10/2025 - Bs. 75.50
+  └─ Orden #012 - 24/10/2025 - Bs. 200.00
+
+Maria Gonzalez (VIP)
+  ├─ Orden #002 - 22/10/2025 - Bs. 300.00
+  ├─ Orden #007 - 23/10/2025 - Bs. 450.00
+  └─ Orden #015 - 24/10/2025 - Bs. 600.00
+```
+
+**💡 Implicaciones:**
+- Un cliente puede tener múltiples órdenes
+- No se puede eliminar un cliente con órdenes asociadas
+- Útil para historial de compras y análisis de clientes frecuentes
+
+---
+
+### 📊 **Modelo de Datos: CustomerEntity**
+
+```typescript
+interface CustomerEntity {
+  id: string;                    // UUID
+  firstName: string;             // Nombre (Primera letra mayúscula)
+  lastName: string;              // Apellido (Primera letra mayúscula)
+  email: string | null;          // Email único (opcional)
+  phone: string | null;          // Teléfono (opcional)
+  address: string | null;        // Dirección (opcional)
+  password: string;              // Contraseña hasheada (NO se devuelve)
+  type: "Regular" | "VIP" | "Ocasional"; // Tipo de cliente
+  createdAt: Date;               // Fecha de registro
+  updatedAt: Date;               // Fecha de última actualización
+  orders?: OrderEntity[];        // Órdenes del cliente (populate)
+}
+```
+
+---
+
+### 🎯 **Casos de Uso Comunes**
+
+**Caso 1: Registrar cliente nuevo (mínimo de datos)**
+```typescript
+const newCustomer = {
+  firstName: "Juan",
+  lastName: "Perez",
+  type: "Regular"
+};
+// Contraseña autogenerada: Juan@
+```
+
+**Caso 2: Registrar cliente VIP con todos los datos**
+```typescript
+const vipCustomer = {
+  firstName: "Maria",
+  lastName: "Gonzalez",
+  email: "maria.vip@example.com",
+  phone: "+59178945612",
+  address: "Av. Principal #123",
+  type: "VIP"
+};
+// Contraseña autogenerada: Maria@
+```
+
+**Caso 3: Buscar clientes para reporte**
+```typescript
+// Obtener todos los clientes VIP
+const vipCustomers = await searchCustomers({ type: 'VIP' });
+
+// Buscar cliente por nombre
+const result = await searchCustomers({ search: 'Maria' });
+```
+
+**Caso 4: Actualizar cliente a VIP**
+```typescript
+await updateCustomer('customer-id', {
+  type: 'VIP'
+});
+```
+
+---
+
+### 💡 **Validaciones de Nombre y Apellido**
+
+**✅ Válidos:**
+- `"Jesus"` - Primera letra mayúscula
+- `"Maria"` - Primera letra mayúscula
+- `"Carlos"` - Primera letra mayúscula
+
+**❌ Inválidos:**
+- `"jesus"` - No comienza con mayúscula
+- `"JESUS"` - Todo en mayúsculas
+- `"Jesus123"` - Contiene números
+- `"Je sus"` - Contiene espacios
+
+**📝 Regex usado:**
+```regex
+/^[A-Z][a-z]+$/
+```
+- Primera letra: `[A-Z]` (mayúscula)
+- Resto: `[a-z]+` (minúsculas, al menos una)
+
+---
+
+### 📞 **Validación de Teléfono**
+
+**Formato Local (Bolivia):**
+- 8 dígitos: `78945612`
+- Regex: `/^\d{8}$/`
+
+**Formato Internacional:**
+- +591 + 8 dígitos: `+59178945612`
+- Regex: `/^\+\d{11}$/`
+
+**Ejemplos válidos:**
+- `"78945612"` ✅
+- `"+59178945612"` ✅
+
+**Ejemplos inválidos:**
+- `"7894561"` ❌ (solo 7 dígitos)
+- `"789456123"` ❌ (9 dígitos sin +)
+- `"+591789456"` ❌ (faltan dígitos)
+
+---
+
 ### STOCK MOVEMENTS ENDPOINTS
 
 Base path: `/api/stock-movements`
@@ -2586,6 +3191,42 @@ interface UserEntity {
 - **Activo**: Usuario puede iniciar sesión y operar normalmente
 - **Inactivo**: Usuario temporalmente deshabilitado
 - **Suspendido**: Usuario bloqueado, no puede iniciar sesión
+
+---
+
+### CustomerEntity
+
+```typescript
+interface CustomerEntity {
+  id: string;                    // UUID
+  firstName: string;             // Nombre (Primera letra mayúscula)
+  lastName: string;              // Apellido (Primera letra mayúscula)
+  email: string | null;          // Email único (opcional)
+  phone: string | null;          // Teléfono (opcional)
+  address: string | null;        // Dirección (opcional)
+  password: string;              // Hash bcrypt (NO enviar al frontend)
+  type: "Regular" | "VIP" | "Ocasional"; // Tipo de cliente
+  createdAt: Date;               // Fecha de registro
+  updatedAt: Date;               // Fecha de última actualización
+  orders?: OrderEntity[];        // Órdenes del cliente (populate)
+}
+```
+
+**💡 Notas sobre Customers:**
+- La contraseña se genera automáticamente: `Primera letra mayúscula + resto minúsculas + @`
+  - Ejemplo: "Jesus" → "Jesus@"
+- El email es opcional pero único (si se proporciona)
+- Los nombres y apellidos deben comenzar con letra mayúscula y no pueden contener números
+- El teléfono puede ser local (8 dígitos) o internacional (+11 dígitos)
+- No se puede eliminar un cliente que tiene órdenes asociadas
+
+### Tipos de Cliente
+
+| Tipo | Descripción | Uso |
+|------|-------------|-----|
+| **Regular** | Cliente común que compra ocasionalmente | Clientes habituales sin beneficios especiales |
+| **VIP** | Cliente frecuente con beneficios especiales | Clientes con descuentos o prioridad |
+| **Ocasional** | Cliente que compra muy de vez en cuando | Clientes de una sola compra o muy esporádicos |
 
 ---
 
@@ -3459,12 +4100,20 @@ console.log(`Mostrando ${startIndex} a ${endIndex} de ${total} resultados`);
 
 ## 🚀 Próximas Implementaciones
 
+### ✅ Implementado
+- [x] Endpoints de Auth (Login, Register, Refresh Token, Reset Password)
+- [x] Endpoints de Users (CRUD completo con búsqueda y paginación)
+- [x] Endpoints de Categories (CRUD completo)
+- [x] Endpoints de Products (CRUD completo con relación a categorías)
+- [x] Endpoints de Stock Movements (6 tipos de movimientos)
+- [x] Endpoints de Customers (CRUD completo con contraseña autogenerada)
+
+### 🔜 Pendientes
 - [ ] Middleware de autenticación JWT
 - [ ] Control de acceso basado en roles (RBAC)
-- [ ] Endpoints de productos y categorías
-- [ ] Endpoints de órdenes y ventas
-- [ ] Endpoints de caja y cierres
-- [ ] Endpoints de reportes y métricas
+- [ ] Endpoints de órdenes y ventas (Orders y OrderItems)
+- [ ] Endpoints de caja y cierres (CashRegister)
+- [ ] Endpoints de reportes y métricas (DailySalesReport)
 - [ ] WebSockets para notificaciones en tiempo real
 - [ ] Rate limiting y throttling
 - [ ] Logs de auditoría completos (ActivityLog)
@@ -3725,11 +4374,21 @@ try {
 
 ---
 
-**Última actualización**: 20 de Octubre, 2025  
-**Versión**: 5.0.0
+**Última actualización**: 22 de Octubre, 2025  
+**Versión**: 6.0.0
 
 **Cambios recientes:**
-- ✅ **SISTEMA DE REFRESH TOKEN IMPLEMENTADO** ⭐ NUEVO
+- ✅ **SECCIÓN CUSTOMERS COMPLETA AGREGADA** ⭐ NUEVO
+  - 6 endpoints documentados (GET, POST, PATCH, DELETE, Search, por ID)
+  - Estructura de datos Customer explicada
+  - Sistema de contraseña autogenerada: `FirstName@` (ej: "Jesus" → "Jesus@")
+  - Validaciones de nombre/apellido (Primera letra mayúscula, sin números)
+  - Validación de teléfono: 8 dígitos local o +11 internacional
+  - Relación Customer → Orders documentada
+  - Ejemplos completos de CRUD con frontend
+  - No se puede eliminar cliente con órdenes asociadas
+  - Contraseñas NUNCA se devuelven en respuestas
+- ✅ **SISTEMA DE REFRESH TOKEN IMPLEMENTADO**
   - Access Token: 1 hora (peticiones normales)
   - Refresh Token: 7 días (renovar sesión)
   - Endpoint `/api/auth/refresh-token` para renovación automática

@@ -6,20 +6,16 @@ export const updateCustomerSchema = zod.object({
   firstName: zod
     .string({ error: "Nombre inválido" })
     .min(1, { error: "El nombre no puede estar vacío" })
-    .regex(/^[A-Z][a-z]+$/, { error: "El nombre debe comenzar con letra mayúscula y no puede contener números" })
-    .optional(),
+    .regex(/^[A-Z][a-z]+(\s[A-Z][a-z]+)*$/, { error: "El nombre debe comenzar con letra mayúscula y no puede contener números" }),
   
   lastName: zod
     .string({ error: "Apellido inválido" })
     .min(1, { error: "El apellido no puede estar vacío" })
-    .regex(/^[A-Z][a-z]+$/, { error: "El apellido debe comenzar con letra mayúscula y no puede contener números" })
-    .optional(),
+    .regex(/^[A-Z][a-z]+(\s[A-Z][a-z]+)*$/, { error: "El apellido debe comenzar con letra mayúscula y no puede contener números" }),
   
   email: zod
     .email({ error: "Formato de email inválido" })
-    .toLowerCase()
-    .nullable()
-    .optional(),
+    .toLowerCase(),
   
   phone: zod
     .string({ error: "Teléfono inválido" })
@@ -30,27 +26,27 @@ export const updateCustomerSchema = zod.object({
       {
         message: "Debe ingresar 8 números si es local o 11 números con el prefijo internacional"
       }
-    )
-    .nullable()
-    .optional(),
+    ),
   
   address: zod
     .string({ error: "Dirección inválida" })
     .max(255, { error: "La dirección debe tener máximo 255 caracteres" })
-    .nullable()
     .optional(),
   
   password: zod
     .string({ error: "Contraseña inválida" })
     .min(6, { error: "Contraseña debe tener al menos 6 caracteres" })
+    .regex(
+      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/,
+      { error: "Contraseña debe tener al menos una letra mayuscula, una letra minuscula, un numero y un caracter especial" }
+    )
     .max(16, { error: "Contraseña debe estar entre 6 y 16 caracteres" })
     .optional(),
   
   type: zod
     .enum(["Regular", "VIP", "Ocasional"], { 
       error: "Tipo debe ser Regular, VIP u Ocasional" 
-    })
-    .optional(),
+    }),
   
   updatedAt: zod
     .date({ error: "Fecha de actualización inválida" })

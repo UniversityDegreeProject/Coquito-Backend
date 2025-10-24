@@ -5,6 +5,10 @@ export * from "./dto/category";
 export * from "./dto/product";
 export * from "./dto/customer";
 export * from "./dto/stock-movement";
+export * from "./dto/shared";
+
+// *Interfaces
+export * from "./interfaces/shared";
 
 // *Entities
 export * from "./entities";

@@ -11,13 +11,12 @@ export class CustomerRoutes {
     const router = Router();
 
     const bcryptAdapter = new BcryptAdapter();
-    const customerDatasourceImpl = new CustomerDatasourceImpl(bcryptAdapter);
+    const customerDatasourceImpl = new CustomerDatasourceImpl();
     const customerRepositoryImpl = new CustomerRepositoryImpl(customerDatasourceImpl);
-    const customerController = new CustomerController(customerRepositoryImpl);
+    const customerController = new CustomerController(customerRepositoryImpl, bcryptAdapter);
 
     //* RESTful customers routes
-    router.get('/', customerController.getAllCustomers);
-    router.get('/search', customerController.searchCustomers);
+    router.get('/', customerController.getCustomers);
     router.get('/:id', customerController.getCustomerById);
     router.post('/', customerController.createCustomer);
     router.patch('/:id', customerController.updateCustomer);

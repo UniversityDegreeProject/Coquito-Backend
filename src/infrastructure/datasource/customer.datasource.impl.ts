@@ -1,4 +1,3 @@
-import { prismaClient } from "../../data/postgres";
 import { 
   CustomerDatasource, 
   CustomerEntity, 
@@ -6,35 +5,70 @@ import {
   UpdateCustomerDto, 
   GetCustomerByIdDto, 
   DeleteCustomerByIdDto, 
-  SearchCustomersDto,
-  HttpCustomErrors 
+  HttpCustomErrors, 
+  PaginateResponse,
+  CustomersOptionalFiltersDto
 } from "../../domain";
-import { BcryptAdapter } from "../../config";
+import { prismaClient } from "../../data/postgres";
 
 export class CustomerDatasourceImpl implements CustomerDatasource {
   
   constructor(
-    private readonly bcrypt: BcryptAdapter
   ) {}
 
-  /**
-   * Genera una contraseña automática en formato: PrimeraLetra + restoEnMinúsculas + @
-   * Ejemplo: firstName="Jesus" => "Jesus@"
-   */
-  private generateDefaultPassword(firstName: string): string {
-    // Primera letra en mayúscula + resto en minúsculas + @
-    const password = firstName.charAt(0).toUpperCase() + firstName.slice(1).toLowerCase() + "@";
-    return password;
+  private generateUrl( search : string, type : string, page : number, limit : number ) : string {
+    const params = new URLSearchParams();
+    if( search ) params.append('search', search);
+    if( type ) params.append('type', type);
+    params.append('page', page.toString());
+    params.append('limit', limit.toString());
+    return `/customers?${params.toString()}`;
   }
 
-  // * Obtener todos los clientes
-  async getCustomers(): Promise<CustomerEntity[]> {
-    const customers = await prismaClient.customer.findMany({
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
-    return customers.map(customer => CustomerEntity.mapFromPrisma(customer));
+    // * Obtener todos los clientes
+  async getCustomers( customersOptionalFiltersDto : CustomersOptionalFiltersDto): Promise<PaginateResponse<CustomerEntity>> {
+    const { page, limit, search, type } = customersOptionalFiltersDto;
+
+    // ? construimos el objeto para el where de la consulta a la base de datos
+    const where: any = {};
+
+    if ( search && search.trim() !== "") {
+      where.OR = [
+        { firstName : { contains: search, mode : 'insensitive'}},
+        { lastName : { contains: search, mode : 'insensitive'}},
+        { email : { contains: search, mode : 'insensitive'}},
+        { phone : { contains: search, mode : 'insensitive'}},
+        { address : { contains: search, mode : 'insensitive'}},
+      ]
+    }
+
+    if ( type ) {
+      where.type = type;
+    }
+
+
+    const [ customers, total ] = await Promise.all([
+      prismaClient.customer.findMany({
+        where: where,
+        skip: ( page - 1 ) * limit,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+      }),
+
+      prismaClient.customer.count({ where: where }),
+    ]);
+
+
+
+    return {
+      data: customers.map( customer => CustomerEntity.mapFromPrisma(customer)),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      nextPage: page < Math.ceil(total / limit) ? this.generateUrl(search ?? "", type ?? "", page + 1, limit) : null,
+      previousPage: page > 1 ? this.generateUrl(search ?? "", type ?? "", page - 1, limit) : null,
+    }
   }
 
   // * Obtener cliente por ID
@@ -50,8 +84,7 @@ export class CustomerDatasourceImpl implements CustomerDatasource {
 
   // * Crear cliente
   async createCustomer(customer: CreateCustomerDto): Promise<CustomerEntity> {
-    const { firstName, lastName, email, phone, address, type } = customer;
-
+    const { email, password, firstName, lastName, address,phone, type} = customer;
     //? Verificar que el email no esté en uso (si se proporciona)
     if (email) {
       const existingCustomer = await prismaClient.customer.findUnique({
@@ -63,23 +96,11 @@ export class CustomerDatasourceImpl implements CustomerDatasource {
       }
     }
 
-    //? Generar contraseña automática: "Jesus@"
-    const defaultPassword = this.generateDefaultPassword(firstName);
     
-    //? Hash de contraseña
-    const hashedPassword = await this.bcrypt.hash(defaultPassword);
 
     //? Crear cliente
     const newCustomer = await prismaClient.customer.create({
-      data: {
-        firstName,
-        lastName,
-        email: email ?? null,
-        phone: phone ?? null,
-        address: address ?? null,
-        password: hashedPassword,
-        type: type ?? "Regular",
-      },
+      data: { firstName, lastName, email, password: password!,address, phone, type},
     });
 
     return CustomerEntity.mapFromPrisma(newCustomer);
@@ -87,7 +108,7 @@ export class CustomerDatasourceImpl implements CustomerDatasource {
 
   // * Actualizar cliente
   async updateCustomer(customer: UpdateCustomerDto): Promise<CustomerEntity> {
-    const { id, email, password } = customer;
+    const { id, email } = customer;
 
     //? Verificar que el cliente existe
     const customerToUpdate = await prismaClient.customer.findUnique({
@@ -108,17 +129,13 @@ export class CustomerDatasourceImpl implements CustomerDatasource {
     }
 
     //? Preparar datos de actualización
-    const updateData = customer.values;
+    const updatedData = customer.values;
 
-    //? Si se actualiza la contraseña, hashearla
-    if (password) {
-      updateData.password = await this.bcrypt.hash(password);
-    }
-
+ 
     //? Actualizar cliente
     const updatedCustomer = await prismaClient.customer.update({
       where: { id },
-      data: updateData,
+      data: updatedData,
     });
 
     return CustomerEntity.mapFromPrisma(updatedCustomer);
@@ -149,60 +166,6 @@ export class CustomerDatasourceImpl implements CustomerDatasource {
     return CustomerEntity.mapFromPrisma(customer);
   }
 
-  // * Buscar clientes con filtros
-  async searchCustomers(searchCustomersDto: SearchCustomersDto): Promise<{
-    customers: CustomerEntity[];
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  }> {
-    const { search, type, page, limit } = searchCustomersDto;
-
-    //? Construir el objeto where para Prisma
-    const where: any = {};
-
-    //? Búsqueda general (firstName, lastName, email, phone, address)
-    if (search && search.trim() !== "") {
-      where.OR = [
-        { firstName: { contains: search, mode: 'insensitive' } },
-        { lastName: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { phone: { contains: search, mode: 'insensitive' } },
-        { address: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-
-    //? Filtro por tipo
-    if (type) {
-      where.type = type;
-    }
-
-    //? Paginación
-    const skip = (page - 1) * limit;
-
-    const [customers, total] = await Promise.all([
-      prismaClient.customer.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: {
-          createdAt: 'desc',
-        },
-      }),
-      prismaClient.customer.count({ where }),
-    ]);
-
-    //? Calcular total de páginas
-    const totalPages = Math.ceil(total / limit);
-
-    return {
-      customers: customers.map(customer => CustomerEntity.mapFromPrisma(customer)),
-      total,
-      page,
-      limit,
-      totalPages,
-    };
-  }
+  
 }
 

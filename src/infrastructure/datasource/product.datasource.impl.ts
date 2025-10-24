@@ -63,6 +63,15 @@ export class ProductDatasourceImpl implements ProductDatasource {
       }
     }
 
+    if(name){
+      const existingProductByName = await prismaClient.product.findFirst({
+        where: { name: { contains: name, mode: 'insensitive' } }
+      });
+      if(existingProductByName){
+        throw HttpCustomErrors.badRequest("El producto ya existe");
+      }
+    }
+
     //? Crear producto
     const newProduct = await prismaClient.product.create({
       data: {

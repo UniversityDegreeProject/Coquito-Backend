@@ -6,18 +6,19 @@ import {
   UpdateCustomerDto,
   GetCustomerByIdDto,
   DeleteCustomerByIdDto,
-  SearchCustomersDto,
   GetCustomersUseCaseImpl,
   CreateCustomerUseCaseImpl,
   UpdateCustomerUseCaseImpl,
   DeleteCustomerUseCaseImpl,
   GetCustomerByIdUseCaseImpl,
-  SearchCustomersUseCaseImpl
+  CustomersOptionalFiltersDto
 } from "../../../domain";
+import { BcryptAdapter } from "../../../config";
 
 export class CustomerController {
   constructor(
-    private readonly customerRepository: CustomerRepository
+    private readonly customerRepository: CustomerRepository,
+    private readonly bcryptAdapter: BcryptAdapter
   ) {}
 
   private handleHttpStatusError = (error: unknown, res: Response) => {
@@ -27,18 +28,32 @@ export class CustomerController {
     return res.status(500).json({ error: "Internal server error" });
   };
 
-  getAllCustomers = async (req: Request, res: Response) => {
+  getCustomers = async (req: Request, res: Response) => {
+
+    const [error, customersOptionalFiltersDto] = CustomersOptionalFiltersDto.create(req.query);
+    if (error) return res.status(400).json({ error: error });
+    if (!customersOptionalFiltersDto) return res.status(400).json({ error: "Parámetros de búsqueda inválidos" });
+
     new GetCustomersUseCaseImpl(this.customerRepository)
-      .execute()
-      .then(customers => {
-        //? Remover contraseñas de la respuesta
-        const customersWithoutPassword = customers.map(({ password, ...rest }) => rest);
-        return res.status(200).json({ customers: customersWithoutPassword });
+      .execute( customersOptionalFiltersDto )
+      .then( ({ data , ...restPagination}) => {
+        //? Removemos la contraseña para que no devuelva en el endpoint
+
+        const customerWithoutPassword = data.map( customer => {
+          const { password, ...rest } = customer;
+          return rest;
+        });
+
+        return res.status(200).json({
+          data: customerWithoutPassword,
+          ...restPagination,
+        });
       })
       .catch(error => {
         return this.handleHttpStatusError(error, res);
       });
   };
+
 
   getCustomerById = async (req: Request, res: Response) => {
     const { id } = req.params;
@@ -68,7 +83,7 @@ export class CustomerController {
     if (error) return res.status(400).json({ error: error });
     if (!createCustomerDto) return res.status(400).json({ error: "Datos incorrectos" });
 
-    new CreateCustomerUseCaseImpl(this.customerRepository)
+    new CreateCustomerUseCaseImpl(this.customerRepository, this.bcryptAdapter)
       .execute(createCustomerDto)
       .then(customer => {
         //? Remover contraseña de la respuesta
@@ -91,7 +106,7 @@ export class CustomerController {
     if (error) return res.status(400).json({ error: error });
     if (!updateCustomerDto) return res.status(400).json({ error: "Cliente no encontrado" });
 
-    new UpdateCustomerUseCaseImpl(this.customerRepository)
+    new UpdateCustomerUseCaseImpl(this.customerRepository, this.bcryptAdapter)
       .execute(updateCustomerDto)
       .then(customer => {
         if (!customer) return res.status(404).json({ error: "Cliente no encontrado" });
@@ -132,25 +147,8 @@ export class CustomerController {
       });
   };
 
-  searchCustomers = async (req: Request, res: Response) => {
-    const query = req.query;
-    const [error, searchCustomersDto] = SearchCustomersDto.create(query);
-    if (error) return res.status(400).json({ error: error });
-    if (!searchCustomersDto) return res.status(400).json({ error: "Parámetros de búsqueda inválidos" });
 
-    new SearchCustomersUseCaseImpl(this.customerRepository)
-      .execute(searchCustomersDto)
-      .then(result => {
-        //? Remover contraseñas de la respuesta
-        const customersWithoutPassword = result.customers.map(({ password, ...rest }) => rest);
-        return res.status(200).json({
-          ...result,
-          customers: customersWithoutPassword
-        });
-      })
-      .catch(error => {
-        return this.handleHttpStatusError(error, res);
-      });
-  };
+
+
 }
 
