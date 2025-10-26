@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
-import { DeleteUserByIdDto, DeleteUserUseCaseImpl, GetUserByEmailDto, GetUserByIdDto, GetUserByIdUseCaseImpl, GetUserEmailUseCaseImpl, GetUsersUseCaseImpl, HttpCustomErrors, UpdateUserDto, UpdateUserUseCaseImpl, UserRepository } from "../../../domain";
-import { SearchUsersDto } from "../../../domain/dto/user/search-users.dto";
-import { SearchUsersUseCaseImpl } from "../../../domain/use-cases/user/search-users.uc";
+import { CreateUserUseCaseImpl, DeleteUserByIdDto, DeleteUserUseCaseImpl, GetUserByEmailDto, GetUserByIdDto, GetUserByIdUseCaseImpl, GetUserEmailUseCaseImpl, GetUserOptionalFiltersDto, GetUserOptionalFiltersUseCaseImpl, HttpCustomErrors, RegisterUserDto, UpdateUserDto, UpdateUserUseCaseImpl, UserRepository } from "../../../domain";
+import { BcryptAdapter } from "../../../config";
 
 export class UserController {
   constructor(
-    private readonly userRepository: UserRepository
+    private readonly userRepository: UserRepository,
+    private readonly bcrypt: BcryptAdapter,
   ) {
     
   }
@@ -17,13 +17,28 @@ export class UserController {
     return res.status(500).json({ error: "Internal server error" });
   }
 
-  getAllUsers = async (req: Request, res: Response) => {
-    new GetUsersUseCaseImpl(this.userRepository).execute().then( users => {
-      return res.status(200).json({ users });
+  getUsers = async (req: Request, res: Response) => {
+
+    const query = req.query;
+    const [error, getUserOptionalFiltersDto] = GetUserOptionalFiltersDto.create(query);
+    if( error ) return res.status(400).json({ error: error });
+    if( !getUserOptionalFiltersDto ) return res.status(400).json({ error: "Parámetros de búsqueda inválidos" });
+
+    new GetUserOptionalFiltersUseCaseImpl(this.userRepository).execute(getUserOptionalFiltersDto).then( ({data, ...restPagination}) => {
+      const usersWithoutPassword = data.map(user => {
+        const { password, ...rest } = user;
+        return rest;
+      });
+      return res.status(200).json({
+        data: usersWithoutPassword,
+        ...restPagination,
+      });
     }).catch( error => {
       return this.handleHttpStatusError(error, res);
     });
   }
+
+
 
   getUserByEmail = async (req: Request, res: Response) => {
     const { email } = req.query;
@@ -63,9 +78,12 @@ export class UserController {
     if( error ) return res.status(400).json({ error: error });
     if( !updateUserDto ) return res.status(400).json({ error: "User not found" });
 
-    new UpdateUserUseCaseImpl(this.userRepository).execute(updateUserDto).then( user => {
+    new UpdateUserUseCaseImpl( this.userRepository, this.bcrypt ).execute(updateUserDto).then( user => {
       if( !user ) return res.status(404).json({ error: "User not found" });
-      return res.status(200).json({ user });
+      return res.status(200).json({
+        message: "Usuario actualizado exitosamente",
+        user
+      });
     }).catch( error => {
       return this.handleHttpStatusError(error, res);
     });
@@ -89,16 +107,5 @@ export class UserController {
     });
   }
 
-  searchUsers = async (req: Request, res: Response) => {
-    const query = req.query; 
-    const [ error, searchUsersDto ] = SearchUsersDto.create(query);
-    if( error ) return res.status(400).json({ error: error });
-    if( !searchUsersDto ) return res.status(400).json({ error: "Invalid search parameters" });
-
-    new SearchUsersUseCaseImpl(this.userRepository).execute(searchUsersDto).then( result => {
-      return res.status(200).json(result);
-    }).catch( error => {
-      return this.handleHttpStatusError(error, res);
-    });
-  }
+ 
 }

@@ -1,5 +1,4 @@
-import { UserEntity, RegisterUserDto, UpdateUserDto, UserDatasource, UserRepository, GetUserByIdDto, GetUserByEmailDto, DeleteUserByIdDto } from "../../domain";
-import { SearchUsersDto } from "../../domain/dto/user/search-users.dto";
+import { UserEntity, RegisterUserDto, UpdateUserDto, UserDatasource, UserRepository, GetUserByIdDto, GetUserByEmailDto, DeleteUserByIdDto, PaginateResponse, GetUserOptionalFiltersDto } from "../../domain";
 
 
 export class UserRepositoryImpl implements UserRepository {
@@ -11,8 +10,8 @@ export class UserRepositoryImpl implements UserRepository {
   }
 
 
-  getUsers(): Promise<UserEntity[]> {
-    return this.userDatasource.getUsers();
+  getUsers( getUserOptionalFiltersDto: GetUserOptionalFiltersDto ): Promise<PaginateResponse<UserEntity>> {
+    return this.userDatasource.getUsers(getUserOptionalFiltersDto);
   }
   createUser(user: RegisterUserDto): Promise<UserEntity> {
     return this.userDatasource.createUser(user);
@@ -28,18 +27,6 @@ export class UserRepositoryImpl implements UserRepository {
   }
   getUserByEmail(email: GetUserByEmailDto): Promise<UserEntity> {
     return this.userDatasource.getUserByEmail(email);
-  }
-  getUserByUsername(username: string): Promise<UserEntity> {
-    return this.userDatasource.getUserByUsername(username);
-  }
-  searchUsers(searchUsersDto: SearchUsersDto): Promise<{
-    users: UserEntity[];
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  }> {
-    return this.userDatasource.searchUsers(searchUsersDto);
   }
   
   // Métodos para Refresh Token

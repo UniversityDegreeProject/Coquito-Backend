@@ -10,14 +10,28 @@ export class AuthDatasourceImpl implements AuthDatasource {
     
   }
 
-  async loginUser(loginUserDto: LoginUserDto): Promise<UserEntity> {
+  async loginUser ( loginUserDto : LoginUserDto ): Promise<UserEntity> {
     const { username, password } = loginUserDto;
     
     const user = await prismaClient.user.findUnique({
       where: { username }
     });
     if (!user) throw HttpCustomErrors.notFound("Usuario no encontrado");
-    
+
+    const userStatus = await prismaClient.user.findUnique({
+      where : { id: user.id },
+      select: {
+        status: true,
+      },
+    });
+    if (userStatus?.status === "Suspendido") {
+      throw HttpCustomErrors.forbidden("Usuario suspendido. Por favor, contacta al administrador.");
+    }
+
+    if (userStatus?.status === "Inactivo") {
+      throw HttpCustomErrors.forbidden("Usuario inactivo. Por favor, contacta al administrador.");
+    }
+
     //? Validamos que el email este verificado
     if (!user.emailVerified) {
       throw HttpCustomErrors.forbidden("Debes verificar tu email antes de iniciar sesión. Revisa la bandeja de entrada o spam de tu email.");

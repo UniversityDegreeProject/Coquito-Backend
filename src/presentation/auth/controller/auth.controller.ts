@@ -2,10 +2,7 @@ import { Request, Response } from "express";
 // *Domain
 import { 
   HttpCustomErrors, 
-  RegisterUserDto, 
   UserRepository, 
-  CreateUserUseCaseImpl, 
-  GetUsersUseCaseImpl, 
   LoginUserDto, 
   LoginUseCaseImpl, 
   AuthRepository,
@@ -17,9 +14,11 @@ import {
   GetUserEmailUseCaseImpl,
   GetUserByEmailDto,
   RefreshTokenDto,
-  RefreshTokenUseCase
+  RefreshTokenUseCase,
+  CreateUserUseCaseImpl,
+  RegisterUserDto
 } from "../../../domain";
-import { JwtAdapter } from "../../../config";
+import { BcryptAdapter, JwtAdapter } from "../../../config";
 import { EmailService } from "../../../domain/services/email.service";
 
 
@@ -29,7 +28,7 @@ export class AuthController {
     private readonly authRepository : AuthRepository,
     private readonly jwtAdapter : JwtAdapter,
     private readonly emailService : EmailService,
-
+    private readonly bcrypt : BcryptAdapter
   ) {}
 
   private handleHttpStatusError = ( error: unknown, res : Response ) => {
@@ -88,14 +87,15 @@ export class AuthController {
     });
   }
 
+
   // *Register User
-  public registerUser = async(req: Request, res: Response) => {
+  public registerUser = async (req: Request, res: Response) => {
     const body = req.body;
     const [ error, registerUserDto ] = RegisterUserDto.create(body);
     if( error ) return res.status(400).json({ error: error });
     if( !registerUserDto ) return res.status(400).json({ error: "Datos incorrectos" });
 
-    new CreateUserUseCaseImpl(this.userRepository).execute(registerUserDto).then( async (user) => {
+    new CreateUserUseCaseImpl( this.userRepository, this.bcrypt ).execute(registerUserDto).then( async (user) => {
 
       const { password, ...userWithoutPassword } = user;
 
@@ -103,16 +103,17 @@ export class AuthController {
       //? Generar token de verificación de email (válido por 15m)
       const emailSent = await this.sendEmailValidationLink( user.id, user.email, user.username);
       if( !emailSent ) return res.status(500).json({ error: "Error al enviar el email de verificación" });
-     
+      
       
       return res.status(201).json({ 
         user: userWithoutPassword,
-        message: "Usuario creado exitosamente. Revisa el email para verificar tu cuenta."
+        message: "Usuario creado exitosamente. Revisa la bandeja de entrada de tu correo electrónico para verificar la cuenta."
       });
     }).catch( error => {
       return this.handleHttpStatusError(error, res);
     });
   }
+
   
   // *Retry Verify Email
   public retryVerifyEmail = async(req: Request, res: Response) => {
@@ -165,7 +166,7 @@ export class AuthController {
       });
   }
 
-  // *Reset Password Page (GET - Sirve HTML)
+  // *Reset Password Page (Muestra la pagina usando server side rendering)
   public resetPasswordPage = async(req: Request, res: Response) => {
     const { token } = req.params;
     
@@ -187,7 +188,7 @@ export class AuthController {
     }
   }
 
-  // *Reset Password Submit (POST - Procesa el formulario)
+  // *Reset Password Submit (Procesa el formulario usando server side rendering)
   public resetPasswordSubmit = async(req: Request, res: Response) => {
     const { token, newPassword } = req.body;
     const [error, resetPasswordDto] = ResetPasswordDto.create({ token, newPassword });
@@ -233,23 +234,7 @@ export class AuthController {
       });
   }
 
-  // *Reset Password (API JSON - mantiene compatibilidad con frontend)
-  public resetPassword = async(req: Request, res: Response) => {
-    const body = req.body;
-    const [error, resetPasswordDto] = ResetPasswordDto.create(body);
-    
-    if (error) return res.status(400).json({ error: error });
-    if (!resetPasswordDto) return res.status(400).json({ error: "Datos incorrectos" });
 
-    new ResetPasswordUseCaseImpl(this.userRepository, this.jwtAdapter)
-      .execute(resetPasswordDto)
-      .then((result) => {
-        return res.status(200).json(result);
-      })
-      .catch((error) => {
-        return this.handleHttpStatusError(error, res);
-      });
-  }
 
   // *Refresh Token - Renovar access token usando refresh token
   public refreshToken = async(req: Request, res: Response) => {

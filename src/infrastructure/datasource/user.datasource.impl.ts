@@ -1,34 +1,68 @@
 import { prismaClient } from "../../data/postgres";
-import { DeleteUserByIdDto, GetUserByEmailDto, GetUserByIdDto, RegisterUserDto, UpdateUserDto, UserDatasource, UserEntity } from "../../domain";
-import { SearchUsersDto } from "../../domain/dto/user/search-users.dto";
+import { DeleteUserByIdDto, GetUserByEmailDto, GetUserByIdDto, GetUserOptionalFiltersDto, PaginateResponse, RegisterUserDto, UpdateUserDto, UserDatasource, UserEntity } from "../../domain";
 import { HttpCustomErrors } from "../../domain/errors/http-custom-errors";
-import { BcryptAdapter } from "../../config";
 
 
 export class UserDatasourceImpl implements UserDatasource {
 
 
   constructor(
-    private readonly bcrypt: BcryptAdapter
   ) {
+  }
+
+  private generateUrl( search : string, role : string, status : string, page : number, limit : number ) : string {
+    const params = new URLSearchParams();
+    if( search ) params.append('search', search);
+    if( role ) params.append('role', role);
+    if( status ) params.append('status', status);
+    params.append('page', page.toString());
+    params.append('limit', limit.toString());
+    return `/users?${params.toString()}`;
   }
 
 
   // * Obtener usuarios
-  async getUsers(): Promise<UserEntity[]> {
-    const users = await prismaClient.user.findMany();
-    return users.map(user => UserEntity.mapFromPrisma(user));
-  }
+  async getUsers ( getUserOptionalFiltersDto: GetUserOptionalFiltersDto ): Promise<PaginateResponse<UserEntity>> {
 
-  // * Obtener usuario por username
-  async getUserByUsername(username: string): Promise<UserEntity> {
-    const user = await prismaClient.user.findUnique({
-      where: { username },
-    });
-    
-    if (!user) throw HttpCustomErrors.notFound("User not found");
-    
-    return UserEntity.mapFromPrisma(user);
+
+    const { page, limit, search, role, status } = getUserOptionalFiltersDto;
+
+    const where: any = {};
+
+    if ( search && search.trim() !== "" ) {
+      where.OR = [
+        { username: { contains: search, mode: 'insensitive' } },
+        { email: { contains: search, mode: 'insensitive' } },
+        { firstName: { contains: search, mode: 'insensitive' } },
+        { lastName: { contains: search, mode: 'insensitive' } },
+      ]
+    }
+
+    if ( role ) {
+      where.role = role;
+    }
+
+    if ( status ) {
+      where.status = status;
+    }
+
+    const [users, total] = await Promise.all([
+      prismaClient.user.findMany({
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prismaClient.user.count({ where }),
+    ]);
+    return {
+      data: users.map(user => UserEntity.mapFromPrisma(user)),
+      total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      nextPage: page < Math.ceil(total / limit) ? this.generateUrl(search ?? "", role ?? "", status ?? "", page + 1, limit) : null,
+      previousPage: page > 1 ? this.generateUrl(search ?? "", role ?? "", status ?? "", page - 1, limit) : null,
+    }
   }
 
   // * Obtener usuario por id
@@ -57,10 +91,10 @@ export class UserDatasourceImpl implements UserDatasource {
 
   // * Crear usuario
   async createUser(user: RegisterUserDto): Promise<UserEntity> {
-    const { password, ...rest } = user;
+    const { email, username, password, ...rest } = user;
     
     const existingUserByEmail = await prismaClient.user.findUnique({
-      where: { email: user.email }
+      where: { email }
     });
     
     if (existingUserByEmail) {
@@ -68,21 +102,21 @@ export class UserDatasourceImpl implements UserDatasource {
     }
     
     const existingUserByUsername = await prismaClient.user.findUnique({
-      where: { username: user.username }
+      where: { username }
     });
     
     if (existingUserByUsername) {
       throw HttpCustomErrors.badRequest("El username ya está en uso");
     }
 
-    //? Hash de contraseña
-    const hashedPassword = await this.bcrypt.hash(password!);
     
     //? Crear usuario
     const newUser = await prismaClient.user.create({
       data: {
         ...rest,
-        password: hashedPassword,
+        password : password!,
+        username,
+        email,
       },
     });
     
@@ -108,7 +142,7 @@ export class UserDatasourceImpl implements UserDatasource {
       
       //? Solo lanzar error si el email pertenece a OTRO usuario (no al usuario actual)
       if (existingUserByEmail && existingUserByEmail.id !== id) {
-        throw HttpCustomErrors.badRequest("El correo electrónico esta siendo usado por otro usuario");
+        throw HttpCustomErrors.badRequest("El correo electronico ya esta siendo usado por otra persona");
       }
     }
     
@@ -120,17 +154,13 @@ export class UserDatasourceImpl implements UserDatasource {
       
       //? Solo lanzar error si el username pertenece a OTRO usuario (no al usuario actual)
       if (existingUserByUsername && existingUserByUsername.id !== id) {
-        throw HttpCustomErrors.badRequest("El nombre de usuario ya esta siendo usado");
+        throw HttpCustomErrors.badRequest("El nombre de usuario ya esta siendo usado por otra persona");
       }
     }
     
     //? Preparar datos de actualización
     const updateData = user.values;
-    
-    //? Si se actualiza la contraseña, hashearla
-    if (updateData.password) {
-      updateData.password = await this.bcrypt.hash(updateData.password);
-    }
+
     
     //? Actualizar usuario
     const updatedUser = await prismaClient.user.update({
@@ -145,79 +175,40 @@ export class UserDatasourceImpl implements UserDatasource {
   // * Eliminar usuario
   async deleteUser(id: DeleteUserByIdDto): Promise<UserEntity> {
 
+    const { id: idToDelete } = id;
+
     const userToDelete = await prismaClient.user.findUnique({
-      where: { id: id.id },
+      where: { id: idToDelete },
+      include: {
+        orders: true,
+        cashRegisters: true,
+        stockMovements: true,
+        activityLogs: true,
+      },
     });
 
     if (!userToDelete) throw HttpCustomErrors.notFound("Usuario no encontrado");
 
+    if( userToDelete.orders.length > 0 ) {
+      throw HttpCustomErrors.badRequest("No se puede eliminar el usuario porque tiene ordenes asociadas");
+    }
+
+    if( userToDelete.cashRegisters.length > 0 ) {
+      throw HttpCustomErrors.badRequest("No se puede eliminar el usuario porque tiene control de caja asociadas");
+    }
+
+    if( userToDelete.stockMovements.length > 0 ) {
+      throw HttpCustomErrors.badRequest("No se puede eliminar el usuario porque tiene movimientos de inventario asociados");
+    }
+
     const user = await prismaClient.user.delete({
-      where: { id: id.id },
+      where: { id: idToDelete },
     });
 
     return UserEntity.mapFromPrisma(user);
   }
 
-
-  // * Buscar usuarios con filtros
-  async searchUsers(searchUsersDto: SearchUsersDto): Promise<{
-    users: UserEntity[];
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  }> {
-    const { search, role, status, page, limit } = searchUsersDto;
-
-    //? Construir el objeto where para Prisma
-    const where: any = {};
-
-    //? Búsqueda general (username, email, firstName, lastName)
-    if (search && search.trim() !== "") {
-      where.OR = [
-        { username: { contains: search, mode: 'insensitive' } },
-        { email: { contains: search, mode: 'insensitive' } },
-        { firstName: { contains: search, mode: 'insensitive' } },
-        { lastName: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-
-
-    if (role) {
-      where.role = role;
-    }
-
-    if (status) {
-      where.status = status;
-    }
-
-
-    const skip = (page - 1) * limit;
-
-    const [users, total] = await Promise.all([
-      prismaClient.user.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: {
-          createdAt: 'desc', 
-        },
-      }),
-      prismaClient.user.count({ where }), 
-    ]);
-
-    // Calcular total de páginas
-    const totalPages = Math.ceil(total / limit);
-
-    return {
-      users: users.map(user => UserEntity.mapFromPrisma(user)),
-      total,
-      page,
-      limit,
-      totalPages,
-    };
-  }
-
+  
   // * Guardar refresh token en la base de datos
   async saveRefreshToken(userId: string, refreshToken: string): Promise<void> {
     await prismaClient.user.update({

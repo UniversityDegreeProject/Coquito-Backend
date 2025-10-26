@@ -2,3 +2,4 @@ export * from './delete-user-by-id.dto';
 export * from './get-user-by-email.dto';
 export * from './get-user-by-id.dto';
 export * from './update-user.dto';
+export * from './get-user-optional-filters.dto';

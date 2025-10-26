@@ -26,7 +26,7 @@ export class CustomerDatasourceImpl implements CustomerDatasource {
   }
 
     // * Obtener todos los clientes
-  async getCustomers( customersOptionalFiltersDto : CustomersOptionalFiltersDto): Promise<PaginateResponse<CustomerEntity>> {
+  async getCustomers ( customersOptionalFiltersDto : CustomersOptionalFiltersDto): Promise<PaginateResponse<CustomerEntity>> {
     const { page, limit, search, type } = customersOptionalFiltersDto;
 
     // ? construimos el objeto para el where de la consulta a la base de datos
@@ -92,7 +92,7 @@ export class CustomerDatasourceImpl implements CustomerDatasource {
       });
 
       if (existingCustomer) {
-        throw HttpCustomErrors.badRequest("El email ya está registrado");
+        throw HttpCustomErrors.badRequest("El correo electronico ya esta siendo usado por otra persona");
       }
     }
 
@@ -124,7 +124,7 @@ export class CustomerDatasourceImpl implements CustomerDatasource {
 
       //? Solo lanzar error si el email pertenece a OTRO cliente (no al cliente actual)
       if (existingCustomer && existingCustomer.id !== id) {
-        throw HttpCustomErrors.badRequest("El email ya está en uso");
+        throw HttpCustomErrors.badRequest("El correo electronico ya esta siendo usado por otra persona");
       }
     }
 

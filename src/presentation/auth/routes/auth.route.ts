@@ -21,7 +21,7 @@ export class AuthRoutes {
     const bcryptAdapter = new BcryptAdapter();
 
     //* Instancias de user crud
-    const userDatasourceImpl = new UserDatasourceImpl(bcryptAdapter);
+    const userDatasourceImpl = new UserDatasourceImpl();
     const userRepositoryImpl = new UserRepositoryImpl(userDatasourceImpl);
     
     
@@ -47,6 +47,7 @@ export class AuthRoutes {
       authRepositoryImpl, 
       jwtAdapter,
       emailService,
+      bcryptAdapter
     );
     
     router.post('/login', authController.loginUser);
@@ -56,8 +57,6 @@ export class AuthRoutes {
     router.post('/forgot-password', authController.forgotPassword);
     router.get('/reset-password-page/:token', authController.resetPasswordPage);
     router.post('/reset-password-submit', authController.resetPasswordSubmit);
-    router.post('/reset-password', authController.resetPassword);
-    router.post('/refresh-token', authController.refreshToken);
     
     return router;
   }
