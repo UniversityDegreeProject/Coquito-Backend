@@ -49,7 +49,7 @@ export class AuthController {
   }
 
   // *Login User
-  public loginUser = async(req: Request, res: Response) => {
+  public loginUser = async (req: Request, res: Response) => {
     const body = req.body;
     const [ error, loginUserDto ] = LoginUserDto.create(body);
     if( error ) return res.status(400).json({ error: error });
@@ -136,7 +136,7 @@ export class AuthController {
       return res.status(400).json({ error: "Token no proporcionado" });
     }
     
-    new VerifyEmailUseCaseImpl(this.userRepository, this.jwtAdapter)
+    new VerifyEmailUseCaseImpl(this.userRepository, this.jwtAdapter, this.bcrypt)
       .execute(token)
       .then((result) => {
         return res.status(200).send(result.message);
@@ -147,7 +147,7 @@ export class AuthController {
   }
 
   // *Forgot Password
-  public forgotPassword = async(req: Request, res: Response) => {
+  public forgotPassword = async (req: Request, res: Response) => {
     const body = req.body;
     const [error, forgotPasswordDto] = ForgotPasswordDto.create(body);
     
@@ -189,7 +189,7 @@ export class AuthController {
   }
 
   // *Reset Password Submit (Procesa el formulario usando server side rendering)
-  public resetPasswordSubmit = async(req: Request, res: Response) => {
+  public resetPasswordSubmit = async (req: Request, res: Response) => {
     const { token, newPassword } = req.body;
     const [error, resetPasswordDto] = ResetPasswordDto.create({ token, newPassword });
     
@@ -206,7 +206,7 @@ export class AuthController {
     }
     if (!resetPasswordDto) return res.status(400).send('<h1>Datos incorrectos</h1>');
 
-    new ResetPasswordUseCaseImpl(this.userRepository, this.jwtAdapter)
+    new ResetPasswordUseCaseImpl(this.userRepository, this.jwtAdapter, this.bcrypt)
       .execute(resetPasswordDto)
       .then((result) => {
         //? Leer página de éxito

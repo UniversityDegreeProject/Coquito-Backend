@@ -2,8 +2,9 @@ import { ResetPasswordDto } from "../../dto/auth/reset-password.dto";
 import { GetUserByIdDto } from "../../dto/user";
 import { UpdateUserDto } from "../../dto/user/update-user.dto";
 import { UserRepository } from "../../repositories";
-import { JwtAdapter } from "../../../config";
+import { BcryptAdapter, JwtAdapter } from "../../../config";
 import { HttpCustomErrors } from "../../errors/http-custom-errors";
+import { UpdateUserUseCaseImpl } from "../user";
 
 export interface ResetPasswordUseCase {
   execute(resetPasswordDto: ResetPasswordDto): Promise<{ message: string }>;
@@ -12,7 +13,8 @@ export interface ResetPasswordUseCase {
 export class ResetPasswordUseCaseImpl implements ResetPasswordUseCase {
   constructor(
     private readonly userRepository: UserRepository,
-    private readonly jwtAdapter: JwtAdapter
+    private readonly jwtAdapter: JwtAdapter,
+    private readonly bcrypt: BcryptAdapter
   ) {}
 
   async execute(resetPasswordDto: ResetPasswordDto): Promise<{ message: string }> {
@@ -30,13 +32,12 @@ export class ResetPasswordUseCaseImpl implements ResetPasswordUseCase {
 
     const user = await this.userRepository.getUserById(getUserByIdDto);
 
-    const { password, ...userWithoutPassword } = user;
-    const [error, updateUserDto] = UpdateUserDto.create({ ...userWithoutPassword, password: newPassword});
+    const [error, updateUserDto] = UpdateUserDto.create({ ...user, password: newPassword});
 
     if (error) throw HttpCustomErrors.badRequest(error);
     if (!updateUserDto) throw HttpCustomErrors.badRequest("Error al crear DTO de actualización");
 
-    await this.userRepository.updateUser(updateUserDto);
+    await new UpdateUserUseCaseImpl(this.userRepository, this.bcrypt).execute(updateUserDto);
 
     return { message: "Contraseña actualizada exitosamente" };
   }

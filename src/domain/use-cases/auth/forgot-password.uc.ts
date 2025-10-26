@@ -16,7 +16,7 @@ export class ForgotPasswordUseCaseImpl implements ForgotPasswordUseCase {
     private readonly emailService: EmailService
   ) {}
 
-  async execute(forgotPasswordDto: ForgotPasswordDto): Promise<{ message: string }> {
+  async execute (forgotPasswordDto: ForgotPasswordDto): Promise<{ message: string }> {
     const { email } = forgotPasswordDto;
 
     const [error, getUserByEmailDto] = GetUserByEmailDto.create({ email: email });
