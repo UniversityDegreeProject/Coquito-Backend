@@ -6,14 +6,13 @@ import {
   UpdateCategoryDto,
   GetCategoryByIdDto,
   DeleteCategoryByIdDto,
-  SearchCategoriesDto,
-  GetCategoriesUseCaseImpl,
   CreateCategoryUseCaseImpl,
   UpdateCategoryUseCaseImpl,
   DeleteCategoryUseCaseImpl,
   GetCategoryByIdUseCaseImpl,
-  SearchCategoriesUseCaseImpl
+  GetCategoriesOptionalFiltersDto,
 } from "../../../domain";
+import { GetCategoriesOptionalFiltersUseCaseImpl } from "../../../domain/use-cases/category/get-categories-optional-filters.uc";
 
 export class CategoryController {
   constructor(
@@ -27,11 +26,19 @@ export class CategoryController {
     return res.status(500).json({ error: "Internal server error" });
   };
 
-  getAllCategories = async (req: Request, res: Response) => {
-    new GetCategoriesUseCaseImpl(this.categoryRepository)
-      .execute()
-      .then(categories => {
-        return res.status(200).json({ categories });
+  getCategories = async (req: Request, res: Response) => {
+
+    const [error, getCategoriesOptionalFiltersDto] = GetCategoriesOptionalFiltersDto.create(req.query);
+    if (error) return res.status(400).json({ error: error });
+    if (!getCategoriesOptionalFiltersDto) return res.status(400).json({ error: "Parámetros de búsqueda inválidos" });
+
+    new GetCategoriesOptionalFiltersUseCaseImpl(this.categoryRepository)
+      .execute(getCategoriesOptionalFiltersDto)
+      .then(( {data, ...rest } ) => {
+        return res.status(200).json({ 
+          data,
+          ...rest
+         });
       })
       .catch(error => {
         return this.handleHttpStatusError(error, res);
@@ -119,20 +126,6 @@ export class CategoryController {
       });
   };
 
-  searchCategories = async (req: Request, res: Response) => {
-    const query = req.query;
-    const [error, searchCategoriesDto] = SearchCategoriesDto.create(query);
-    if (error) return res.status(400).json({ error: error });
-    if (!searchCategoriesDto) return res.status(400).json({ error: "Parámetros de búsqueda inválidos" });
-
-    new SearchCategoriesUseCaseImpl(this.categoryRepository)
-      .execute(searchCategoriesDto)
-      .then(result => {
-        return res.status(200).json(result);
-      })
-      .catch(error => {
-        return this.handleHttpStatusError(error, res);
-      });
-  };
+ 
 }
 

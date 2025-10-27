@@ -16,7 +16,7 @@ export class CustomerDatasourceImpl implements CustomerDatasource {
   constructor(
   ) {}
 
-  private generateUrl( search : string, type : string, page : number, limit : number ) : string {
+  private generateUrl( search : string | undefined, type : string | undefined, page : number, limit : number ) : string {
     const params = new URLSearchParams();
     if( search ) params.append('search', search);
     if( type ) params.append('type', type);
@@ -66,8 +66,8 @@ export class CustomerDatasourceImpl implements CustomerDatasource {
       page,
       limit,
       totalPages: Math.ceil(total / limit),
-      nextPage: page < Math.ceil(total / limit) ? this.generateUrl(search ?? "", type ?? "", page + 1, limit) : null,
-      previousPage: page > 1 ? this.generateUrl(search ?? "", type ?? "", page - 1, limit) : null,
+      nextPage: page < Math.ceil(total / limit) ? this.generateUrl(search, type, page + 1, limit) : null,
+      previousPage: page > 1 ? this.generateUrl(search, type, page - 1, limit) : null,
     }
   }
 

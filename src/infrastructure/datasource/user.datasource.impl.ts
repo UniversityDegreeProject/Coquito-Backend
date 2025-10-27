@@ -10,7 +10,7 @@ export class UserDatasourceImpl implements UserDatasource {
   ) {
   }
 
-  private generateUrl( search : string, role : string, status : string, page : number, limit : number ) : string {
+  private generateUrl( search : string |undefined, role : string | undefined, status : string | undefined, page : number, limit : number ) : string {
     const params = new URLSearchParams();
     if( search ) params.append('search', search);
     if( role ) params.append('role', role);
@@ -60,8 +60,8 @@ export class UserDatasourceImpl implements UserDatasource {
       page,
       limit,
       totalPages: Math.ceil(total / limit),
-      nextPage: page < Math.ceil(total / limit) ? this.generateUrl(search ?? "", role ?? "", status ?? "", page + 1, limit) : null,
-      previousPage: page > 1 ? this.generateUrl(search ?? "", role ?? "", status ?? "", page - 1, limit) : null,
+      nextPage: page < Math.ceil(total / limit) ? this.generateUrl(search, role, status, page + 1, limit) : null,
+      previousPage: page > 1 ? this.generateUrl(search, role, status, page - 1, limit) : null,
     }
   }
 

@@ -6,32 +6,70 @@ import {
   UpdateCategoryDto, 
   GetCategoryByIdDto, 
   DeleteCategoryByIdDto, 
-  SearchCategoriesDto,
-  HttpCustomErrors 
-} from "../../domain";
+  HttpCustomErrors,
+  PaginateResponse, 
+} from "../../domain";  
+import { GetCategoriesOptionalFiltersDto } from "../../domain/dto/category/get-categories-optional-filters.dto";
 
 export class CategoryDatasourceImpl implements CategoryDatasource {
+
+  constructor() {
+    
+  }
+
+
+  private generateUrl(search: string | undefined, status: string | undefined, page: number, limit: number): string {
+    const params = new URLSearchParams();
+    if (search) params.append('search', search);
+    if (status) params.append('status', status);
+    params.append('page', page.toString());
+    params.append('limit', limit.toString());
+    return `/categories?${params.toString()}`;
+  }
   
   // * Obtener todas las categorías
-  async getCategories(): Promise<CategoryEntity[]> {
-    const categories = await prismaClient.category.findMany({
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
-    return categories.map(category => CategoryEntity.mapFromPrisma(category));
+  async getCategories(getCategoriesOptionalFiltersDto: GetCategoriesOptionalFiltersDto): Promise<PaginateResponse<CategoryEntity>> {
+
+    const { search, status, page, limit } = getCategoriesOptionalFiltersDto;
+
+    const where: any = {};
+
+    if (search && search.trim() !== "") {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+      ]
+    }
+
+    if (status) {
+      where.status = status;
+    }
+
+
+    const [categories, total] = await Promise.all([
+      prismaClient.category.findMany({
+        orderBy: {
+          createdAt: 'desc'
+        },
+        where,
+        skip: (page - 1) * limit,
+        take: limit,
+      }),
+      prismaClient.category.count({ where }),
+    ]);
+
+
+    return {
+      data: categories.map(category => CategoryEntity.mapFromPrisma(category)),
+      total : total,
+      page,
+      limit,
+      totalPages: Math.ceil(total / limit),
+      nextPage: page < Math.ceil(total / limit) ? this.generateUrl(search, status, page + 1, limit) : null,
+      previousPage: page > 1 ? this.generateUrl(search, status, page - 1, limit) : null,
+    }
   }
 
-  // * Obtener categoría por nombre
-  async getCategoryByName(name: string): Promise<CategoryEntity> {
-    const category = await prismaClient.category.findUnique({
-      where: { name },
-    });
-
-    if (!category) throw HttpCustomErrors.notFound("Categoría no encontrada");
-
-    return CategoryEntity.mapFromPrisma(category);
-  }
 
   // * Obtener categoría por ID
   async getCategoryById(id: GetCategoryByIdDto): Promise<CategoryEntity> {
@@ -128,57 +166,6 @@ export class CategoryDatasourceImpl implements CategoryDatasource {
     return CategoryEntity.mapFromPrisma(category);
   }
 
-  // * Buscar categorías con filtros
-  async searchCategories(searchCategoriesDto: SearchCategoriesDto): Promise<{
-    categories: CategoryEntity[];
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  }> {
-    const { search, status, page, limit } = searchCategoriesDto;
-
-    //? Construir el objeto where para Prisma
-    const where: any = {};
-
-    //? Búsqueda general (name, description)
-    if (search && search.trim() !== "") {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-
-    //? Filtro por estado
-    if (status) {
-      where.status = status;
-    }
-
-    //? Paginación
-    const skip = (page - 1) * limit;
-
-    const [categories, total] = await Promise.all([
-      prismaClient.category.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: {
-          createdAt: 'desc',
-        },
-      }),
-      prismaClient.category.count({ where }),
-    ]);
-
-    //? Calcular total de páginas
-    const totalPages = Math.ceil(total / limit);
-
-    return {
-      categories: categories.map(category => CategoryEntity.mapFromPrisma(category)),
-      total,
-      page,
-      limit,
-      totalPages,
-    };
-  }
+  
 }
 

@@ -5,8 +5,9 @@ import {
   CreateCategoryDto, 
   UpdateCategoryDto, 
   GetCategoryByIdDto, 
-  DeleteCategoryByIdDto, 
-  SearchCategoriesDto 
+  DeleteCategoryByIdDto,
+  GetCategoriesOptionalFiltersDto,
+  PaginateResponse, 
 } from "../../domain";
 
 export class CategoryRepositoryImpl implements CategoryRepository {
@@ -14,8 +15,8 @@ export class CategoryRepositoryImpl implements CategoryRepository {
     private readonly categoryDatasource: CategoryDatasource
   ) {}
 
-  getCategories(): Promise<CategoryEntity[]> {
-    return this.categoryDatasource.getCategories();
+  getCategories(getCategoriesOptionalFiltersDto: GetCategoriesOptionalFiltersDto): Promise<PaginateResponse<CategoryEntity>> {
+    return this.categoryDatasource.getCategories(getCategoriesOptionalFiltersDto);
   }
 
   createCategory(category: CreateCategoryDto): Promise<CategoryEntity> {
@@ -34,18 +35,7 @@ export class CategoryRepositoryImpl implements CategoryRepository {
     return this.categoryDatasource.getCategoryById(id);
   }
 
-  getCategoryByName(name: string): Promise<CategoryEntity> {
-    return this.categoryDatasource.getCategoryByName(name);
-  }
 
-  searchCategories(searchCategoriesDto: SearchCategoriesDto): Promise<{
-    categories: CategoryEntity[];
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  }> {
-    return this.categoryDatasource.searchCategories(searchCategoriesDto);
-  }
+
 }
 

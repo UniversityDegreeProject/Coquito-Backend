@@ -14,8 +14,7 @@ export class CategoryRoutes {
     const categoryController = new CategoryController(categoryRepositoryImpl);
 
     //* RESTful categories routes
-    router.get('/', categoryController.getAllCategories);
-    router.get('/search', categoryController.searchCategories);
+    router.get('/', categoryController.getCategories);
     router.get('/:id', categoryController.getCategoryById);
     router.post('/', categoryController.createCategory);
     router.patch('/:id', categoryController.updateCategory);
