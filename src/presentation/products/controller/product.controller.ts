@@ -6,13 +6,12 @@ import {
   UpdateProductDto,
   GetProductByIdDto,
   DeleteProductByIdDto,
-  SearchProductsDto,
-  GetProductsUseCaseImpl,
   CreateProductUseCaseImpl,
   UpdateProductUseCaseImpl,
   DeleteProductUseCaseImpl,
   GetProductByIdUseCaseImpl,
-  SearchProductsUseCaseImpl
+  GetProductOptionalFiltersDto,
+  GetProductOptionalFiltersUseCaseImpl
 } from "../../../domain";
 
 export class ProductController {
@@ -27,11 +26,19 @@ export class ProductController {
     return res.status(500).json({ error: "Internal server error" });
   };
 
-  getAllProducts = async (req: Request, res: Response) => {
-    new GetProductsUseCaseImpl(this.productRepository)
-      .execute()
-      .then(products => {
-        return res.status(200).json({ products });
+  getProducts = async (req: Request, res: Response) => {
+
+    const [ error, getProductOptionalFiltersDto ] = GetProductOptionalFiltersDto.create(req.query);
+    if (error) return res.status(400).json({ error: error });               
+    if (!getProductOptionalFiltersDto) return res.status(400).json({ error: "Parámetros de búsqueda inválidos" });
+
+    new GetProductOptionalFiltersUseCaseImpl(this.productRepository)
+      .execute( getProductOptionalFiltersDto )
+      .then( ({ data, ...rest }) => {
+        return res.status(200).json({ 
+          data,
+          ...rest
+         });
       })
       .catch(error => {
         return this.handleHttpStatusError(error, res);
@@ -119,20 +126,6 @@ export class ProductController {
       });
   };
 
-  searchProducts = async (req: Request, res: Response) => {
-    const query = req.query;
-    const [error, searchProductsDto] = SearchProductsDto.create(query);
-    if (error) return res.status(400).json({ error: error });
-    if (!searchProductsDto) return res.status(400).json({ error: "Parámetros de búsqueda inválidos" });
-
-    new SearchProductsUseCaseImpl(this.productRepository)
-      .execute(searchProductsDto)
-      .then(result => {
-        return res.status(200).json(result);
-      })
-      .catch(error => {
-        return this.handleHttpStatusError(error, res);
-      });
-  };
+  
 }
 

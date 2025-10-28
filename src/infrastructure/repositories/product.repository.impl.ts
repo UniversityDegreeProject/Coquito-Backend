@@ -5,17 +5,18 @@ import {
   CreateProductDto, 
   UpdateProductDto, 
   GetProductByIdDto, 
-  DeleteProductByIdDto, 
-  SearchProductsDto 
+  DeleteProductByIdDto,
+  PaginateResponse, 
 } from "../../domain";
+import { GetProductOptionalFiltersDto } from "../../domain/dto/product/get-product-optional-filters.dto";
 
 export class ProductRepositoryImpl implements ProductRepository {
   constructor(
     private readonly productDatasource: ProductDatasource
   ) {}
 
-  getProducts(): Promise<ProductEntity[]> {
-    return this.productDatasource.getProducts();
+  getProducts(getProductOptionalFiltersDto: GetProductOptionalFiltersDto): Promise<PaginateResponse<ProductEntity>> {
+    return this.productDatasource.getProducts(getProductOptionalFiltersDto);
   }
 
   createProduct(product: CreateProductDto): Promise<ProductEntity> {
@@ -34,14 +35,5 @@ export class ProductRepositoryImpl implements ProductRepository {
     return this.productDatasource.getProductById(id);
   }
 
-  searchProducts(searchProductsDto: SearchProductsDto): Promise<{
-    products: ProductEntity[];
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  }> {
-    return this.productDatasource.searchProducts(searchProductsDto);
-  }
 }
 

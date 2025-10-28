@@ -14,8 +14,7 @@ export class ProductRoutes {
     const productController = new ProductController(productRepositoryImpl);
 
     //* RESTful products routes
-    router.get('/', productController.getAllProducts);
-    router.get('/search', productController.searchProducts);
+    router.get('/', productController.getProducts);
     router.get('/:id', productController.getProductById);
     router.post('/', productController.createProduct);
     router.patch('/:id', productController.updateProduct);

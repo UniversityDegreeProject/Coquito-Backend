@@ -6,24 +6,86 @@ import {
   UpdateProductDto, 
   GetProductByIdDto, 
   DeleteProductByIdDto, 
-  SearchProductsDto,
-  HttpCustomErrors 
+  HttpCustomErrors,
+  PaginateResponse,
+  GetProductOptionalFiltersDto, 
 } from "../../domain";
 
 export class ProductDatasourceImpl implements ProductDatasource {
-  
-  // * Obtener todos los productos
-  async getProducts(): Promise<ProductEntity[]> {
-    const products = await prismaClient.product.findMany({
-      include: {
-        category: true
-      },
-      orderBy: {
-        createdAt: 'desc'
-      }
-    });
-    return products.map(product => ProductEntity.mapFromPrisma(product));
+
+
+  constructor() {
+    
   }
+
+  private generateUrl(search: string | undefined, categoryId: string | undefined, status: string | undefined, minStock: number | undefined, page: number, limit: number): string {
+
+    const params = new URLSearchParams();
+    if (search) params.append("search", search);
+    if (categoryId) params.append("categoryId", categoryId);
+    if (status) params.append("status", status);
+    if (minStock) params.append("minStock", minStock.toString());
+    params.append("page", page.toString());
+    params.append("limit", limit.toString());
+    return `/products?${params.toString()}`;
+  }  
+  // * Obtener todos los productos
+  async getProducts(getProductOptionalFiltersDto: GetProductOptionalFiltersDto): Promise<PaginateResponse<ProductEntity>> {
+
+
+    const { search, categoryId, status, minStock, page, limit } = getProductOptionalFiltersDto;
+
+    const where: any = {};
+
+    if (search && search.trim() !== "") {
+      where.OR = [
+        { name: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { sku: { contains: search, mode: 'insensitive' } },
+      ];
+    }
+
+    if (categoryId) {
+      where.categoryId = categoryId;
+    }
+
+    if (status) {
+      where.status = status;
+    }
+    
+    if (minStock) {
+      where.stock = {
+        lte: minStock
+      };
+    } // ? termina el filtro por stock bajo
+
+    const [ products, total] = await Promise.all([
+      prismaClient.product.findMany({
+        where,
+        include: {
+          category: true
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: {
+          createdAt: 'desc'
+        },
+      }),
+      prismaClient.product.count({ where }),
+    ]);
+
+    return {
+      data: products.map(product => ProductEntity.mapFromPrisma(product)),
+      total: total,
+      page: page,
+      limit: limit,
+      totalPages: Math.ceil(total / limit),
+      nextPage: page < Math.ceil(total / limit) ? this.generateUrl(search, categoryId, status, minStock, page + 1, limit) : null,
+      previousPage: page > 1 ? this.generateUrl(search, categoryId, status, minStock, page - 1, limit) : null,
+    };
+  }
+
+
 
   // * Obtener producto por ID
   async getProductById(id: GetProductByIdDto): Promise<ProductEntity> {
@@ -78,13 +140,13 @@ export class ProductDatasourceImpl implements ProductDatasource {
         name,
         description: description ?? null,
         price,
-        sku: sku ?? null,
-        stock: stock ?? 0,
-        minStock: minStock ?? 5,
-        image: image ?? null,
+        sku: sku,
+        stock: stock,
+        minStock: minStock,
+        image: image,
         ingredients: ingredients ?? null,
         categoryId,
-        status: status ?? "Disponible",
+        status: status,
       },
       include: {
         category: true
@@ -171,96 +233,6 @@ export class ProductDatasourceImpl implements ProductDatasource {
     return ProductEntity.mapFromPrisma(product);
   }
 
-  // * Buscar productos con filtros
-  async searchProducts(searchProductsDto: SearchProductsDto): Promise<{
-    products: ProductEntity[];
-    total: number;
-    page: number;
-    limit: number;
-    totalPages: number;
-  }> {
-    const { search, categoryId, status, lowStock, page, limit } = searchProductsDto;
-
-    //? Construir el objeto where para Prisma
-    const where: any = {};
-
-    //? Búsqueda general (name, description, sku)
-    if (search && search.trim() !== "") {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { sku: { contains: search, mode: 'insensitive' } },
-      ];
-    }
-
-    //? Filtro por categoría
-    if (categoryId) {
-      where.categoryId = categoryId;
-    }
-
-    //? Filtro por estado
-    if (status) {
-      where.status = status;
-    }
-
-    //? Paginación
-    const skip = (page - 1) * limit;
-
-    //? Si se filtra por stock bajo, obtener productos y filtrar manualmente
-    if (lowStock) {
-      const allProducts = await prismaClient.product.findMany({
-        where,
-        include: {
-          category: true
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      });
-
-      //? Filtrar productos con stock <= minStock
-      const lowStockProducts = allProducts.filter(p => p.stock <= p.minStock);
-      
-      //? Aplicar paginación manualmente
-      const total = lowStockProducts.length;
-      const totalPages = Math.ceil(total / limit);
-      const paginatedProducts = lowStockProducts.slice(skip, skip + limit);
-
-      return {
-        products: paginatedProducts.map(product => ProductEntity.mapFromPrisma(product)),
-        total,
-        page,
-        limit,
-        totalPages,
-      };
-    }
-
-    //? Búsqueda normal sin filtro de stock bajo
-    const [products, total] = await Promise.all([
-      prismaClient.product.findMany({
-        where,
-        skip,
-        take: limit,
-        include: {
-          category: true
-        },
-        orderBy: {
-          createdAt: 'desc',
-        },
-      }),
-      prismaClient.product.count({ where }),
-    ]);
-
-    //? Calcular total de páginas
-    const totalPages = Math.ceil(total / limit);
-
-    return {
-      products: products.map(product => ProductEntity.mapFromPrisma(product)),
-      total,
-      page,
-      limit,
-      totalPages,
-    };
-  }
+  
 }
 

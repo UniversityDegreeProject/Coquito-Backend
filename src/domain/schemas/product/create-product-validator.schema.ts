@@ -18,8 +18,7 @@ export const createProductSchema = zod.object({
   
   sku: zod
     .string({ error: "SKU inválido" })
-    .max(50, { error: "El SKU debe tener máximo 50 caracteres" })
-    .optional(),
+    .max(50, { error: "El SKU debe tener máximo 50 caracteres" }),
   
   stock: zod
     .number({ error: "Stock debe ser un número" })
@@ -34,9 +33,7 @@ export const createProductSchema = zod.object({
     .default(5),
   
   image: zod
-    .string({ error: "URL de imagen inválida" })
-    .url({ error: "Debe ser una URL válida" })
-    .optional(),
+    .url({ error: "URL de imagen inválida" }),
   
   ingredients: zod
     .string({ error: "Ingredientes inválidos" })

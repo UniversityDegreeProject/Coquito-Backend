@@ -8,13 +8,13 @@
 - [Arquitectura](#arquitectura)
 - [Base de Datos](#base-de-datos)
 - [Autenticación](#autenticación)
-- [Endpoints](#endpoints) **(Orden Cronológico)**
-  - [1. Auth](#auth-endpoints) - Autenticación y Registro
-  - [2. Users](#users-endpoints) - Gestión de Usuarios
-  - [3. Categories](#categories-endpoints) - Gestión de Categorías
-  - [4. Products](#products-endpoints) - Gestión de Productos
-  - [5. Stock Movements](#stock-movements-endpoints) - Movimientos de Inventario
-  - [6. Customers](#customers-endpoints) - Gestión de Clientes ✅ COMPLETO
+- [Endpoints](#endpoints)
+  - [Auth](#auth-endpoints) - Autenticación y Registro
+  - [Users](#users-endpoints) - Gestión de Usuarios
+  - [Categories](#categories-endpoints) - Gestión de Categorías
+  - [Products](#products-endpoints) - Gestión de Productos
+  - [Stock Movements](#stock-movements-endpoints) - Movimientos de Inventario
+  - [Customers](#customers-endpoints) - Gestión de Clientes
 - [Modelos de Datos](#modelos-de-datos)
 - [Códigos de Estado](#códigos-de-estado)
 - [Manejo de Errores](#manejo-de-errores)
@@ -45,7 +45,7 @@ Para todas las peticiones:
 Content-Type: application/json
 ```
 
-Para rutas protegidas (próximamente):
+Para rutas protegidas:
 ```http
 Authorization: Bearer <token>
 ```
@@ -75,3256 +75,439 @@ El backend está construido siguiendo **Clean Architecture** con las siguientes 
 ┌──────────────────▼──────────────────────────┐
 │      CAPA DE INFRAESTRUCTURA                │
 │   (Repositories, Datasources)               │
-│   - Acceso a datos (Prisma)                 │
+│   - Acceso a datos (Prisma)                │
 │   - Servicios externos                      │
 │   - Implementaciones concretas              │
 └─────────────────────────────────────────────┘
-```
-
-### Flujo de una Request
-
-```
-1. HTTP Request → Routes
-2. Routes → Controller
-3. Controller → DTO (Validación con Zod)
-4. Controller → Use Case (Lógica de negocio)
-5. Use Case → Repository (Abstracción)
-6. Repository → Datasource (Prisma/BD)
-7. Datasource → PostgreSQL
-8. Retorno: PostgreSQL → ... → HTTP Response
 ```
 
 ---
 
 ## 💾 Base de Datos
 
-### Modelos Implementados
+### Modelos Principales
 
-#### 👤 User (Usuario)
-```typescript
-{
-  id: string (UUID)
-  username: string (único)
-  email: string (único)
-  emailVerified: boolean
-  password: string (hasheada)
-  firstName: string
-  lastName: string
-  phone: string | null
-  role: "Administrador" | "Cajero"
-  status: "Activo" | "Inactivo" | "Suspendido"
-  createdAt: DateTime
-  updatedAt: DateTime
-  lastConnection: DateTime | null
-}
-```
-
-#### 📦 Modelos Implementados
-- ✅ **Category**: Categorías de productos
-- ✅ **Product**: Catálogo de productos
-- ✅ **StockMovement**: Movimientos de inventario
-- ✅ **Customer**: Clientes
-
-#### 📦 Modelos Futuros (Schema ya definido)
+- **User**: Usuarios del sistema (Admin, Cajero)
+- **Category**: Categorías de productos
+- **Product**: Productos con control de stock
+- **Customer**: Clientes del sistema
+- **StockMovement**: Movimientos de inventario
 - **Order**: Órdenes de venta
-- **OrderItem**: Items de órdenes
 - **CashRegister**: Control de caja
-- **DailySalesReport**: Reportes diarios
-- **ActivityLog**: Registro de actividades
 
-### Relaciones Principales
+### Tipos de Movimientos de Stock
 
-```
-User (1) ──┬──> (N) Orders
-           ├──> (N) CashRegisters
-           ├──> (N) StockMovements
-           └──> (N) ActivityLogs
-
-Category (1) ──> (N) Products
-
-Product (1) ──┬──> (N) OrderItems
-              └──> (N) StockMovements
-
-Customer (1) ──> (N) Orders
-
-Order (1) ──> (N) OrderItems
-```
+1. **Reabastecimiento**: Transferencia desde fábrica (Yacuiba) a tienda (Tarija)
+2. **Compra**: Compra a proveedores externos
+3. **Venta**: Venta a clientes
+4. **Ajuste**: Corrección de inventario físico
+5. **Devolucion**: Cliente devuelve producto
+6. **Dañado**: Producto dado de baja
 
 ---
 
 ## 🔐 Autenticación
 
-### Sistema de Autenticación JWT con Refresh Token
+### Flujo de Autenticación
 
-El sistema utiliza **JSON Web Tokens (JWT)** con un patrón de **Access Token** y **Refresh Token** para mayor seguridad.
+1. **Login**: Usuario + Contraseña → Access Token + Refresh Token
+2. **Access Token**: Válido por 1 hora
+3. **Refresh Token**: Válido por 7 días, almacenado en BD
+4. **Renovación**: Usar Refresh Token para obtener nuevo Access Token
 
-#### 🔑 Dos Tipos de Tokens
+### Endpoints de Autenticación
 
-| Token | Duración | Uso | Almacenamiento |
-|-------|----------|-----|----------------|
-| **Access Token** | 1 hora | Peticiones normales a la API | Memoria/Estado (React) |
-| **Refresh Token** | 7 días | Renovar el Access Token | localStorage (seguro) |
-
-#### Flujo de Autenticación Completo
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│ 1. LOGIN INICIAL                                             │
-└──────────────────────────────────────────────────────────────┘
-1. Usuario → POST /api/auth/login (username, password)
-2. Backend valida credenciales
-3. Backend genera:
-   ✅ Access Token (1 hora)
-   ✅ Refresh Token (7 días) → Se guarda en BD
-4. Cliente recibe ambos tokens
-5. Cliente guarda:
-   - Access Token → En estado de la app (React/Zustand)
-   - Refresh Token → En localStorage
-
-┌──────────────────────────────────────────────────────────────┐
-│ 2. USO NORMAL (Access Token válido)                         │
-└──────────────────────────────────────────────────────────────┘
-1. Cliente hace petición con Access Token:
-   Header: Authorization: Bearer <accessToken>
-2. Backend valida Access Token
-3. Si es válido → Petición exitosa ✅
-
-┌──────────────────────────────────────────────────────────────┐
-│ 3. RENOVACIÓN AUTOMÁTICA (Access Token expirado)            │
-└──────────────────────────────────────────────────────────────┘
-1. Cliente detecta Access Token expirado (401)
-2. Cliente → POST /api/auth/refresh-token
-   Body: { "refreshToken": "..." }
-3. Backend valida Refresh Token:
-   ✅ Verifica que existe en BD
-   ✅ Verifica que no haya expirado
-   ✅ Verifica que el usuario esté activo
-4. Backend genera nuevos tokens:
-   ✅ Nuevo Access Token (1 hora)
-   ✅ Nuevo Refresh Token (7 días) → Se actualiza en BD
-5. Cliente recibe nuevos tokens y actualiza el storage
-6. Cliente reintenta la petición original con nuevo Access Token
-
-┌──────────────────────────────────────────────────────────────┐
-│ 4. SESIÓN EXPIRADA (Refresh Token inválido/expirado)        │
-└──────────────────────────────────────────────────────────────┘
-1. Cliente intenta renovar con Refresh Token expirado
-2. Backend retorna 401 Unauthorized
-3. Cliente limpia storage y redirige a /login
-4. Usuario debe iniciar sesión nuevamente
-```
-
-#### Estructura de los Tokens
-
-**Access Token (1 hora):**
-```json
-{
-  "id": "uuid-del-usuario",
-  "username": "juan123",
-  "email": "juan@mail.com",
-  "role": "Administrador",
-  "iat": 1697123456,
-  "exp": 1697127056
-}
-```
-
-**Refresh Token (7 días):**
-```json
-{
-  "id": "uuid-del-usuario",
-  "iat": 1697123456,
-  "exp": 1697728256
-}
-```
-
-#### ⏱️ Tiempos de Expiración
-
-- **Access Token**: 1 hora (3600 segundos)
-- **Refresh Token**: 7 días (604800 segundos)
-- **Renovación recomendada**: 5 minutos antes de que expire el Access Token
-
-#### 🛡️ Seguridad
-
-- ✅ Access Token corto reduce el riesgo si es interceptado
-- ✅ Refresh Token se guarda en la BD (puede invalidarse remotamente)
-- ✅ Refresh Token se valida contra la BD en cada renovación
-- ✅ Si el usuario es suspendido, no puede renovar tokens
-- ✅ Al cambiar contraseña, se invalida el Refresh Token actual
+- `POST /api/auth/login` - Iniciar sesión
+- `POST /api/auth/register` - Registrar usuario
+- `POST /api/auth/refresh-token` - Renovar access token
+- `POST /api/auth/forgot-password` - Solicitar recuperación
+- `GET /api/auth/verify-email/:token` - Verificar email
+- `POST /api/auth/reset-password-page/:token` - Página de reset
+- `POST /api/auth/reset-password-submit` - Procesar reset
 
 ---
 
-## 🛣️ Endpoints
+## 🚀 Endpoints
 
-### AUTH ENDPOINTS
+### Auth Endpoints
 
-Base path: `/api/auth`
+#### Login
+```http
+POST /api/auth/login
+Content-Type: application/json
 
----
-
-#### 1️⃣ **POST** `/api/auth/register`
-Registrar un nuevo usuario (solo admins - próximamente protegido).
-
-**Request Body:**
-```json
 {
-  "username": "juan123",
-  "email": "juan@example.com",
-  "password": "Password123!",
-  "firstName": "Juan",
-  "lastName": "Pérez",
-  "phone": "3001234567",
-  "role": "Cajero",
-  "status": "Activo"
+  "username": "admin",
+  "password": "Admin123@"
 }
 ```
 
-**⚡ Contraseña Autogenerada (NUEVO):**
-
-Si no se envía el campo `password`, el sistema **generará automáticamente** una contraseña siguiendo la política de la empresa:
-
-**Política de generación:**
-- Primeras 2 iniciales del **nombre** en minúsculas
-- Primeras 2 iniciales del **apellido** en MAYÚSCULAS
-- Año actual
-- Carácter especial `@`
-
-**Ejemplo:** Juan Carlos Pérez Gómez → `juPE2025@`
-
-**Request Body sin contraseña (autogenerada):**
-```json
-{
-  "username": "juan123",
-  "email": "juan@example.com",
-  "firstName": "Juan",
-  "lastName": "Pérez",
-  "phone": "3001234567",
-  "role": "Cajero",
-  "status": "Activo"
-}
-```
-> ⚠️ **Nota:** En este caso, el sistema generará automáticamente la contraseña: `juPE2025@`
-
-**Validaciones:**
-- `username`: 3-20 caracteres, único
-- `email`: formato válido, único
-- `password` (OPCIONAL): 6-16 caracteres, debe incluir:
-  - Al menos 1 mayúscula
-  - Al menos 1 minúscula
-  - Al menos 1 número
-  - Al menos 1 caracter especial (@$!%*?&)
-- `firstName`: requerido, no vacío
-- `lastName`: requerido, no vacío
-- `phone`: requerido, no vacío
-- `role`: "Administrador" | "Cajero"
-- `status`: "Activo" | "Inactivo" | "Suspendido" (default: "Activo")
-
-**Response 201:**
+**Respuesta:**
 ```json
 {
   "user": {
     "id": "uuid",
-    "username": "juan123",
-    "email": "juan@example.com",
-    "emailVerified": false,
-    "firstName": "Juan",
-    "lastName": "Pérez",
-    "phone": "3001234567",
-    "role": "Cajero",
-    "status": "Activo",
-    "createdAt": "2024-10-12T10:30:00.000Z",
-    "updatedAt": "2024-10-12T10:30:00.000Z",
-    "lastConnection":"2024-10-12T10:30:00.000Z"
-  },
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
-**Response 400:**
-```json
-{
-  "error": "El email ya está registrado"
-}
-```
-```json
-{
-  "error": "El username ya está en uso"
-}
-```
-
----
-
-#### 2️⃣ **POST** `/api/auth/login`
-Iniciar sesión y actualizar la última conexión del usuario.
-
-**Request Body:**
-```json
-{
-  "username": "juan123",
-  "password": "Password123!"
-}
-```
-
-**Validaciones:**
-- `username`: requerido, no vacío
-- `password`: 6-16 caracteres con formato válido
-
-**🔄 Comportamiento Automático:**
-Al iniciar sesión exitosamente, el sistema:
-1. Actualiza el campo `lastConnection` con la fecha y hora actual
-2. Genera un **Access Token** (válido 1 hora)
-3. Genera un **Refresh Token** (válido 7 días)
-4. Guarda el Refresh Token en la base de datos
-
-**Response 200:**
-```json
-{
-  "user": {
-    "id": "uuid",
-    "username": "juan123",
-    "email": "juan@example.com",
-    "emailVerified": true,
-    "firstName": "Juan",
-    "lastName": "Pérez",
-    "phone": "3001234567",
-    "role": "Cajero",
-    "status": "Activo",
-    "createdAt": "2024-10-12T10:30:00.000Z",
-    "updatedAt": "2024-10-12T10:30:00.000Z",
-    "lastConnection": "2024-10-20T14:25:30.000Z"
-  },
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
-**⚠️ IMPORTANTE - Almacenamiento en el Frontend:**
-```typescript
-// ✅ Correcto
-localStorage.setItem('accessToken', data.accessToken);  // En estado de React
-localStorage.setItem('refreshToken', data.refreshToken); // En localStorage
-
-// ❌ Incorrecto
-localStorage.setItem('token', data.accessToken); // No usar 'token' genérico
-```
-
-**Response 400:**
-```json
-{
-  "error": "Usuario o contraseña incorrectos"
-}
-```
-
-**Response 403:**
-```json
-{
-  "error": "Usuario inactivo o suspendido"
-}
-```
-
----
-
-#### 3️⃣ **POST** `/api/auth/retry-verify-email`
-Reenviar email de verificación.
-
-**Request Body:**
-```json
-{
-  "email": "juan@example.com"
-}
-```
-
-**Response 200:**
-```json
-{
-  "message": "Email de verificación enviado"
-}
-```
-
----
-
-#### 4️⃣ **GET** `/api/auth/verify-email/:token`
-Verificar email con token.
-
-**URL Parameters:**
-- `token`: JWT token de verificación
-
-**Response 200:**
-```json
-{
-  "message": "Email verificado correctamente"
-}
-```
-
-**Response 400:**
-```json
-{
-  "error": "Token inválido o expirado"
-}
-```
-
----
-
-#### 5️⃣ **POST** `/api/auth/forgot-password`
-Solicitar restablecimiento de contraseña.
-
-**Request Body:**
-```json
-{
-  "email": "juan@example.com"
-}
-```
-
-**Response 200:**
-```json
-{
-  "message": "Email de restablecimiento enviado"
-}
-```
-
-**Response 404:**
-```json
-{
-  "error": "Usuario no encontrado"
-}
-```
-
----
-
-#### 6️⃣ **GET** `/api/auth/reset-password-page/:token`
-Página HTML para restablecer contraseña (para email).
-
-**URL Parameters:**
-- `token`: JWT token de restablecimiento
-
-**Response 200:** Página HTML con formulario
-
----
-
-#### 7️⃣ **POST** `/api/auth/reset-password-submit`
-Formulario HTML enviado desde el email.
-
-_(Uso interno del formulario HTML)_
-
----
-
-#### 8️⃣ **POST** `/api/auth/reset-password`
-Restablecer contraseña (para frontend SPA).
-
-**Request Body:**
-```json
-{
-  "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "newPassword": "NewPassword123!"
-}
-```
-
-**Validaciones:**
-- `token`: JWT válido
-- `newPassword`: 6-16 caracteres con formato válido
-
-**Response 200:**
-```json
-{
-  "message": "Contraseña restablecida correctamente"
-}
-```
-
-**Response 400:**
-```json
-{
-  "error": "Token inválido o expirado"
-}
-```
-
----
-
-#### 9️⃣ **POST** `/api/auth/refresh-token`
-Renovar el Access Token usando el Refresh Token.
-
-**⚡ Cuándo usar este endpoint:**
-- Cuando el Access Token haya expirado (401 Unauthorized)
-- Cuando el Access Token esté por expirar (recomendado: 5 minutos antes)
-- Para renovar la sesión sin pedir credenciales al usuario
-
-**Request Body:**
-```json
-{
-  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
-**Validaciones:**
-- `refreshToken`: Requerido, debe ser un JWT válido de 7 días
-
-**🔄 Proceso Interno:**
-1. Verifica que el Refresh Token sea válido (JWT)
-2. Busca el Refresh Token en la base de datos
-3. Verifica que el usuario asociado esté activo
-4. Genera nuevo Access Token (1 hora)
-5. Genera nuevo Refresh Token (7 días)
-6. Actualiza el Refresh Token en la base de datos
-7. Retorna ambos tokens nuevos
-
-**Response 200:**
-```json
-{
-  "user": {
-    "id": "uuid",
-    "username": "juan123",
-    "email": "juan@example.com",
-    "emailVerified": true,
-    "firstName": "Juan",
-    "lastName": "Pérez",
-    "phone": "3001234567",
-    "role": "Cajero",
-    "status": "Activo",
-    "createdAt": "2024-10-12T10:30:00.000Z",
-    "updatedAt": "2024-10-12T10:30:00.000Z",
-    "lastConnection": "2024-10-20T14:25:30.000Z"
-  },
-  "accessToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "refreshToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
-}
-```
-
-**Response 401:**
-```json
-{
-  "error": "Refresh token inválido o expirado"
-}
-```
-
-**Response 403:**
-```json
-{
-  "error": "Usuario inactivo o suspendido"
-}
-```
-
-**📱 Ejemplo de Uso en Frontend:**
-
-```typescript
-// services/authService.ts
-export const refreshAccessToken = async (refreshToken: string) => {
-  try {
-    const response = await axios.post('http://localhost:3000/api/auth/refresh-token', {
-      refreshToken
-    });
-    
-    // Actualizar tokens en el storage
-    localStorage.setItem('accessToken', response.data.accessToken);
-    localStorage.setItem('refreshToken', response.data.refreshToken);
-    
-    return {
-      success: true,
-      data: response.data
-    };
-  } catch (error) {
-    // Refresh Token inválido o expirado → Cerrar sesión
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-    window.location.href = '/login';
-    
-    return {
-      success: false,
-      error: 'Sesión expirada. Por favor, inicia sesión nuevamente.'
-    };
-  }
-};
-```
-
-**🔄 Interceptor de Axios para Renovación Automática:**
-
-```typescript
-// config/axios.interceptor.ts
-import axios from 'axios';
-
-const axiosInstance = axios.create({
-  baseURL: 'http://localhost:3000/api'
-});
-
-// Interceptor de request: agregar Access Token
-axiosInstance.interceptors.request.use(
-  (config) => {
-    const accessToken = localStorage.getItem('accessToken');
-    if (accessToken) {
-      config.headers.Authorization = `Bearer ${accessToken}`;
-    }
-    return config;
-  },
-  (error) => Promise.reject(error)
-);
-
-// Interceptor de response: renovar token si expiró
-axiosInstance.interceptors.response.use(
-  (response) => response,
-  async (error) => {
-    const originalRequest = error.config;
-    
-    // Si el error es 401 y no es una petición de refresh
-    if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-      
-      const refreshToken = localStorage.getItem('refreshToken');
-      
-      if (!refreshToken) {
-        // No hay refresh token, redirigir a login
-        window.location.href = '/login';
-        return Promise.reject(error);
-      }
-      
-      try {
-        // Intentar renovar el token
-        const response = await axios.post(
-          'http://localhost:3000/api/auth/refresh-token',
-          { refreshToken }
-        );
-        
-        // Guardar nuevos tokens
-        localStorage.setItem('accessToken', response.data.accessToken);
-        localStorage.setItem('refreshToken', response.data.refreshToken);
-        
-        // Reintentar la petición original con el nuevo token
-        originalRequest.headers.Authorization = `Bearer ${response.data.accessToken}`;
-        return axiosInstance(originalRequest);
-      } catch (refreshError) {
-        // Refresh token inválido, cerrar sesión
-        localStorage.removeItem('accessToken');
-        localStorage.removeItem('refreshToken');
-        window.location.href = '/login';
-        return Promise.reject(refreshError);
-      }
-    }
-    
-    return Promise.reject(error);
-  }
-);
-
-export default axiosInstance;
-```
-
-**⏱️ Renovación Programada (Recomendado):**
-
-```typescript
-// hooks/useTokenRefresh.ts
-import { useEffect } from 'react';
-import { jwtDecode } from 'jwt-decode';
-
-export const useTokenRefresh = () => {
-  useEffect(() => {
-    const checkTokenExpiration = async () => {
-      const accessToken = localStorage.getItem('accessToken');
-      const refreshToken = localStorage.getItem('refreshToken');
-      
-      if (!accessToken || !refreshToken) return;
-      
-      try {
-        const decoded = jwtDecode(accessToken);
-        const expiresAt = decoded.exp * 1000; // Convertir a milisegundos
-        const now = Date.now();
-        const timeUntilExpiry = expiresAt - now;
-        
-        // Si faltan menos de 5 minutos para expirar, renovar
-        if (timeUntilExpiry < 5 * 60 * 1000) {
-          await refreshAccessToken(refreshToken);
-        }
-      } catch (error) {
-        console.error('Error checking token expiration:', error);
-      }
-    };
-    
-    // Verificar cada 4 minutos
-    const interval = setInterval(checkTokenExpiration, 4 * 60 * 1000);
-    
-    // Verificar inmediatamente al montar
-    checkTokenExpiration();
-    
-    return () => clearInterval(interval);
-  }, []);
-};
-
-// Uso en App.tsx
-const App = () => {
-  useTokenRefresh(); // Renovación automática en segundo plano
-  
-  return <Router>...</Router>;
-};
-```
-
-**🔐 Cuándo se Invalida un Refresh Token:**
-
-1. **Al cambiar contraseña:** El Refresh Token actual se elimina de la BD
-2. **Al cerrar sesión:** Se elimina de la BD
-3. **Al suspender usuario:** El usuario no podrá renovar tokens
-4. **Al expirar (7 días):** El token expira naturalmente
-
----
-
-### USERS ENDPOINTS
-
-Base path: `/api/users`
-
----
-
-#### 1️⃣ **GET** `/api/users`
-Obtener todos los usuarios.
-
-**Response 200:**
-```json
-{
-  "users": [
-    {
-      "id": "uuid-1",
-      "username": "juan123",
-      "email": "juan@example.com",
-      "emailVerified": true,
-      "firstName": "Juan",
-      "lastName": "Pérez",
-      "phone": "3001234567",
-      "role": "Cajero",
-      "status": "Activo",
-      "createdAt": "2024-10-12T10:30:00.000Z",
-      "updatedAt": "2024-10-12T10:30:00.000Z",
-      "lastConnection":"2024-10-12T10:30:00.000Z"
-    },
-    {
-      "id": "uuid-2",
-      "username": "maria456",
-      "email": "maria@example.com",
-      "emailVerified": true,
-      "firstName": "María",
-      "lastName": "García",
-      "phone": "3007654321",
-      "role": "Administrador",
-      "status": "Activo",
-      "createdAt": "2024-10-10T08:15:00.000Z",
-      "updatedAt": "2024-10-11T14:20:00.000Z",
-      "lastConnection":"2024-10-12T10:30:00.000Z"
-    }
-  ]
-}
-```
-
-**Response 500:**
-```json
-{
-  "error": "Internal server error"
-}
-```
-
----
-
-#### 2️⃣ **GET** `/api/users/search`
-Buscar usuarios con filtros y paginación avanzada.
-
-**Query Parameters:**
-- `search` (opcional): Busca en username, email, firstName, lastName (case-insensitive, búsqueda parcial)
-- `role` (opcional): "Administrador" | "Cajero"
-- `status` (opcional): "Activo" | "Inactivo" | "Suspendido"
-- `page` (opcional): Número de página (default: 1, mínimo: 1)
-- `limit` (opcional): Items por página (default: 10, mínimo: 1, máximo recomendado: 100)
-
-**Ejemplos de URLs:**
-```
-GET /api/users/search?search=Juan
-GET /api/users/search?role=Administrador
-GET /api/users/search?status=Activo&page=2&limit=20
-GET /api/users/search?search=juan&role=Cajero&status=Activo&page=1&limit=10
-```
-
-**📱 Cómo Consumir desde el Frontend:**
-
-**Ejemplo 1: Búsqueda simple**
-```typescript
-// Buscar por texto
-const searchUsers = async (searchTerm: string) => {
-  const response = await fetch(
-    `http://localhost:3000/api/users/search?search=${encodeURIComponent(searchTerm)}`
-  );
-  return await response.json();
-};
-
-// Uso
-const result = await searchUsers('Juan');
-console.log(result.users); // Array de usuarios
-console.log(result.total); // Total de usuarios encontrados
-```
-
-**Ejemplo 2: Filtros combinados con paginación**
-```typescript
-interface SearchFilters {
-  search?: string;
-  role?: 'Administrador' | 'Cajero';
-  status?: 'Activo' | 'Inactivo' | 'Suspendido';
-  page?: number;
-  limit?: number;
-}
-
-const searchUsersWithFilters = async (filters: SearchFilters) => {
-  const params = new URLSearchParams();
-  
-  if (filters.search) params.append('search', filters.search);
-  if (filters.role) params.append('role', filters.role);
-  if (filters.status) params.append('status', filters.status);
-  if (filters.page) params.append('page', filters.page.toString());
-  if (filters.limit) params.append('limit', filters.limit.toString());
-  
-  const response = await fetch(
-    `http://localhost:3000/api/users/search?${params.toString()}`
-  );
-  return await response.json();
-};
-
-// Uso
-const result = await searchUsersWithFilters({
-  search: 'juan',
-  role: 'Cajero',
-  status: 'Activo',
-  page: 2,
-  limit: 20
-});
-```
-
-**Ejemplo 3: Componente React con paginación**
-```typescript
-const UsersList = () => {
-  const [users, setUsers] = useState([]);
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(0);
-  const [filters, setFilters] = useState({
-    search: '',
-    role: '',
-    status: '',
-    limit: 10
-  });
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      const result = await searchUsersWithFilters({ ...filters, page });
-      setUsers(result.users);
-      setTotalPages(result.totalPages);
-    };
-    fetchUsers();
-  }, [page, filters]);
-
-  return (
-    <div>
-      {/* Filtros */}
-      <input 
-        value={filters.search}
-        onChange={(e) => setFilters({...filters, search: e.target.value})}
-        placeholder="Buscar usuario..."
-      />
-      
-      {/* Lista de usuarios */}
-      {users.map(user => <UserCard key={user.id} user={user} />)}
-      
-      {/* Paginación */}
-      <button onClick={() => setPage(page - 1)} disabled={page === 1}>
-        Anterior
-      </button>
-      <span>Página {page} de {totalPages}</span>
-      <button onClick={() => setPage(page + 1)} disabled={page === totalPages}>
-        Siguiente
-      </button>
-    </div>
-  );
-};
-```
-
-**Response 200:**
-```json
-{
-  "users": [
-    {
-      "id": "uuid-1",
-      "username": "juan123",
-      "email": "juan@example.com",
-      "emailVerified": true,
-      "firstName": "Juan",
-      "lastName": "Pérez",
-      "phone": "3001234567",
-      "role": "Cajero",
-      "status": "Activo",
-      "createdAt": "2024-10-12T10:30:00.000Z",
-      "updatedAt": "2024-10-12T10:30:00.000Z",
-      "lastConnection": "2024-10-16T14:25:30.000Z"
-    }
-  ],
-  "total": 156,
-  "page": 2,
-  "limit": 20,
-  "totalPages": 8
-}
-```
-
-**💡 Explicación de la Respuesta:**
-- `users`: Array con los usuarios de la página actual
-- `total`: Número total de usuarios que coinciden con los filtros
-- `page`: Página actual
-- `limit`: Cantidad de usuarios por página
-- `totalPages`: Total de páginas disponibles (calculado: `Math.ceil(total / limit)`)
-
-**Response 400:**
-```json
-{
-  "error": "Rol inválido"
-}
-```
-
-**Validaciones:**
-- `search`: string opcional (insensitive, busca parcial)
-- `role`: debe ser "Administrador" o "Cajero"
-- `status`: debe ser "Activo", "Inactivo" o "Suspendido"
-- `page`: número entero positivo
-- `limit`: número entero positivo
-
----
-
-#### 3️⃣ **GET** `/api/users/search/by-email`
-Buscar usuario por email.
-
-**Query Parameters:**
-- `email` (requerido): Email del usuario
-
-**Ejemplo:**
-```
-GET /api/users/search/by-email?email=juan@example.com
-```
-
-**Response 200:**
-```json
-{
-  "user": {
-    "id": "uuid",
-    "username": "juan123",
-    "email": "juan@example.com",
-    "emailVerified": true,
-    "firstName": "Juan",
-    "lastName": "Pérez",
-    "phone": "3001234567",
-    "role": "Cajero",
-    "status": "Activo",
-    "createdAt": "2024-10-12T10:30:00.000Z",
-    "updatedAt": "2024-10-12T10:30:00.000Z"
-  }
-}
-```
-
-**Response 404:**
-```json
-{
-  "error": "User not found"
-}
-```
-
-**Response 400:**
-```json
-{
-  "error": "Email inválido"
-}
-```
-
----
-
-#### 4️⃣ **GET** `/api/users/:id`
-Obtener usuario por ID.
-
-**URL Parameters:**
-- `id`: UUID del usuario
-
-**Ejemplo:**
-```
-GET /api/users/550e8400-e29b-41d4-a716-446655440000
-```
-
-**Response 200:**
-```json
-{
-  "user": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "username": "juan123",
-    "email": "juan@example.com",
-    "emailVerified": true,
-    "firstName": "Juan",
-    "lastName": "Pérez",
-    "phone": "3001234567",
-    "role": "Cajero",
-    "status": "Activo",
-    "createdAt": "2024-10-12T10:30:00.000Z",
-    "updatedAt": "2024-10-12T10:30:00.000Z"
-  }
-}
-```
-
-**Response 404:**
-```json
-{
-  "error": "User not found"
-}
-```
-
-**Response 400:**
-```json
-{
-  "error": "Id inválido"
-}
-```
-
----
-
-#### 5️⃣ **PATCH** `/api/users/:id`
-Actualizar usuario.
-
-**URL Parameters:**
-- `id`: UUID del usuario
-
-**Request Body (todos los campos son opcionales):**
-```json
-{
-  "username": "juan123_updated",
-  "email": "juan_new@example.com",
-  "emailVerified": true,
-  "firstName": "Juan Carlos",
-  "lastName": "Pérez López",
-  "phone": "3009876543",
-  "role": "Administrador",
-  "status": "Suspendido",
-  "password": "NewPassword123!"
-}
-```
-
-**Validaciones:**
-- `username`: mínimo 1 carácter (si se envía)
-- `email`: formato válido (si se envía)
-- `emailVerified`: booleano (si se envía)
-- `firstName`: mínimo 1 carácter (si se envía)
-- `lastName`: mínimo 1 carácter (si se envía)
-- `phone`: mínimo 1 carácter (si se envía)
-- `role`: "Administrador" | "Cajero" (si se envía)
-- `status`: "Activo" | "Inactivo" | "Suspendido" (si se envía)
-- `password`: mínimo 1 carácter (si se envía, será hasheada)
-
-**Response 200:**
-```json
-{
-  "user": {
-    "id": "uuid",
-    "username": "juan123_updated",
-    "email": "juan_new@example.com",
-    "emailVerified": true,
-    "firstName": "Juan Carlos",
-    "lastName": "Pérez López",
-    "phone": "3009876543",
+    "username": "admin",
+    "email": "admin@coquito.com",
     "role": "Administrador",
-    "status": "Suspendido",
-    "createdAt": "2024-10-12T10:30:00.000Z",
-    "updatedAt": "2024-10-12T15:45:00.000Z"
-  }
+    "status": "Activo"
+  },
+  "accessToken": "jwt_token",
+  "refreshToken": "refresh_token"
 }
 ```
 
-**Response 404:**
-```json
+#### Register
+```http
+POST /api/auth/register
+Content-Type: application/json
+
 {
-  "error": "User not found"
+  "username": "cajero1",
+  "email": "cajero@coquito.com",
+  "password": "Cajero123@",
+  "firstName": "Juan",
+  "lastName": "Pérez",
+  "phone": "12345678",
+  "role": "Cajero"
 }
 ```
 
-**Response 400:**
-```json
+### Users Endpoints
+
+#### Obtener Usuarios
+```http
+GET /api/users?page=1&limit=10&search=admin&role=Administrador&status=Activo
+Authorization: Bearer <token>
+```
+
+#### Crear Usuario
+```http
+POST /api/users
+Authorization: Bearer <token>
+Content-Type: application/json
+
 {
-  "error": "Id inválido"
+  "username": "nuevo_usuario",
+  "email": "usuario@coquito.com",
+  "password": "Password123@",
+  "firstName": "Nombre",
+  "lastName": "Apellido",
+  "phone": "87654321",
+  "role": "Cajero"
 }
 ```
 
----
+#### Actualizar Usuario
+```http
+PUT /api/users/:id
+Authorization: Bearer <token>
+Content-Type: application/json
 
-#### 6️⃣ **DELETE** `/api/users/:id`
-Eliminar usuario.
-
-**URL Parameters:**
-- `id`: UUID del usuario
-
-**Ejemplo:**
-```
-DELETE /api/users/550e8400-e29b-41d4-a716-446655440000
-```
-
-**Response 200:**
-```json
 {
-  "message": "Usuario eliminado exitosamente",
-  "user": {
-    "id": "550e8400-e29b-41d4-a716-446655440000",
-    "username": "juan123",
-    "email": "juan@example.com",
-    "emailVerified": true,
-    "firstName": "Juan",
-    "lastName": "Pérez",
-    "phone": "3001234567",
-    "role": "Cajero",
-    "status": "Activo",
-    "createdAt": "2024-10-12T10:30:00.000Z",
-    "updatedAt": "2024-10-12T10:30:00.000Z"
-  }
+  "firstName": "Nombre Actualizado",
+  "email": "nuevo@email.com"
 }
 ```
 
-**Response 404:**
-```json
-{
-  "error": "User not found"
-}
+#### Eliminar Usuario
+```http
+DELETE /api/users/:id
+Authorization: Bearer <token>
 ```
 
-**Response 400:**
-```json
-{
-  "error": "Id user not found"
-}
+### Categories Endpoints
+
+#### Obtener Categorías
+```http
+GET /api/categories?page=1&limit=10&search=carnes
 ```
 
----
-
-### CATEGORIES ENDPOINTS
-
-Base path: `/api/categories`
-
----
-
-#### 📂 **Contexto de Categorías**
-
-Las categorías agrupan los productos del catálogo de Embutidos Coquito en familias:
-
-- **Chorizos** (Clásico, Ahumado, Picante)
-- **Salchichas** (1/2 kg, 6 unidades)
-- **Hamburguesas** (1kg, 2 unidades)
-- **Milanesas** (Picada, 6 unidades, 1kg)
-- **Pollo Trozado** (Pechuga, Piernas, Muslos, Contrapiernas)
-- **Mortadelas** (Clásica, Primavera)
-- **Procesados y Otros** (Alitas, Nuggets)
-
-#### 📋 **Estructura de Datos: Category**
-
-```typescript
-{
-  id: string;           // UUID generado automáticamente
-  name: string;         // Nombre único de la categoría
-  description: string;  // Descripción opcional
-  status: "Activo" | "Inactivo";  // Estado de la categoría
-  createdAt: DateTime;  // Fecha de creación
-  updatedAt: DateTime;  // Fecha de última actualización
-}
-```
-
----
-
-#### 1️⃣ **POST** `/api/categories`
-Crear una nueva categoría.
-
-**Request Body:**
-```json
-{
-  "name": "Chorizos",
-  "description": "Chorizos de pollo en diferentes sabores: clásico, ahumado y picante",
-  "status": "Activo"
-}
-```
-
-**Validaciones:**
-- `name`: Requerido, 1-100 caracteres, único
-- `description`: Opcional, máximo 500 caracteres
-- `status`: "Activo" | "Inactivo" (default: "Activo")
-
-**Response 201:**
-```json
-{
-  "message": "Categoría creada exitosamente",
-  "category": {
-    "id": "550e8400-e29b-41d4-a716-446655440001",
-    "name": "Chorizos",
-    "description": "Chorizos de pollo en diferentes sabores: clásico, ahumado y picante",
-    "status": "Activo",
-    "createdAt": "2025-10-18T10:00:00.000Z",
-    "updatedAt": "2025-10-18T10:00:00.000Z"
-  }
-}
-```
-
-**⚠️ GUARDAR EL ID:** `550e8400-e29b-41d4-a716-446655440001` para crear productos
-
-**Response 400:**
-```json
-{
-  "error": "El nombre ya está en uso"
-}
-```
-
-**💡 Ejemplo Completo: Crear las 7 Categorías**
-
-```bash
-# 1. Chorizos
+#### Crear Categoría
+```http
 POST /api/categories
+Authorization: Bearer <token>
+Content-Type: application/json
+
 {
-  "name": "Chorizos",
-  "description": "Chorizos de pollo en diferentes sabores",
-  "status": "Activo"
-}
-→ ID: "cat-001"
-
-# 2. Salchichas
-POST /api/categories
-{
-  "name": "Salchichas",
-  "description": "Salchichas de pollo en diferentes presentaciones",
-  "status": "Activo"
-}
-→ ID: "cat-002"
-
-# 3. Hamburguesas
-POST /api/categories
-{
-  "name": "Hamburguesas",
-  "description": "Hamburguesas de pollo congeladas",
-  "status": "Activo"
-}
-→ ID: "cat-003"
-
-# ... y así sucesivamente
-```
-
----
-
-#### 2️⃣ **GET** `/api/categories`
-Obtener todas las categorías.
-
-**Response 200:**
-```json
-{
-  "categories": [
-    {
-      "id": "550e8400-e29b-41d4-a716-446655440001",
-      "name": "Chorizos",
-      "description": "Chorizos de pollo en diferentes sabores",
-      "status": "Activo",
-      "createdAt": "2025-10-18T10:00:00.000Z",
-      "updatedAt": "2025-10-18T10:00:00.000Z"
-    },
-    {
-      "id": "550e8400-e29b-41d4-a716-446655440002",
-      "name": "Salchichas",
-      "description": "Salchichas de pollo en diferentes presentaciones",
-      "status": "Activo",
-      "createdAt": "2025-10-18T10:05:00.000Z",
-      "updatedAt": "2025-10-18T10:05:00.000Z"
-    }
-  ]
+  "name": "Carnes Rojas",
+  "description": "Productos de carne de res"
 }
 ```
 
----
+#### Actualizar Categoría
+```http
+PUT /api/categories/:id
+Authorization: Bearer <token>
+Content-Type: application/json
 
-#### 3️⃣ **GET** `/api/categories/search`
-Buscar categorías con filtros.
-
-**Query Parameters:**
-- `search` (opcional): Busca en name y description
-- `status` (opcional): "Activo" | "Inactivo"
-- `page` (opcional): Número de página (default: 1)
-- `limit` (opcional): Items por página (default: 10)
-
-**Ejemplo:**
-```
-GET /api/categories/search?search=Pollo&status=Activo&page=1&limit=10
-```
-
-**Response 200:**
-```json
 {
-  "categories": [
-    {
-      "id": "550e8400-e29b-41d4-a716-446655440005",
-      "name": "Pollo Trozado",
-      "description": "Piezas de pollo crudo",
-      "status": "Activo",
-      "createdAt": "2025-10-18T10:15:00.000Z",
-      "updatedAt": "2025-10-18T10:15:00.000Z"
-    }
-  ],
-  "total": 1,
-  "page": 1,
-  "limit": 10,
-  "totalPages": 1
+  "name": "Carnes Rojas Actualizada",
+  "description": "Descripción actualizada"
 }
 ```
 
----
-
-#### 4️⃣ **GET** `/api/categories/:id`
-Obtener categoría por ID.
-
-**URL Parameters:**
-- `id`: UUID de la categoría
-
-**Ejemplo:**
-```
-GET /api/categories/550e8400-e29b-41d4-a716-446655440001
+#### Eliminar Categoría
+```http
+DELETE /api/categories/:id
+Authorization: Bearer <token>
 ```
 
-**Response 200:**
-```json
-{
-  "category": {
-    "id": "550e8400-e29b-41d4-a716-446655440001",
-    "name": "Chorizos",
-    "description": "Chorizos de pollo en diferentes sabores",
-    "status": "Activo",
-    "createdAt": "2025-10-18T10:00:00.000Z",
-    "updatedAt": "2025-10-18T10:00:00.000Z"
-  }
-}
+### Products Endpoints
+
+#### Obtener Productos
+```http
+GET /api/products?page=1&limit=10&search=piernas&categoryId=uuid&status=Disponible&minStock=5
 ```
 
-**Response 404:**
-```json
-{
-  "error": "Categoría no encontrada"
-}
-```
+**Parámetros de consulta:**
+- `search`: Búsqueda por nombre, descripción o SKU
+- `categoryId`: Filtrar por categoría
+- `status`: Filtrar por estado (Disponible, SinStock, Descontinuado)
+- `minStock`: Filtrar productos con stock menor o igual al valor especificado
+- `page`: Página (default: 1)
+- `limit`: Límite por página (default: 5, max: 100)
 
----
-
-#### 5️⃣ **PATCH** `/api/categories/:id`
-Actualizar categoría.
-
-**URL Parameters:**
-- `id`: UUID de la categoría
-
-**Request Body (todos los campos son opcionales):**
-```json
-{
-  "name": "Chorizos Premium",
-  "description": "Chorizos de pollo de primera calidad",
-  "status": "Activo"
-}
-```
-
-**Response 200:**
-```json
-{
-  "message": "Categoría actualizada exitosamente",
-  "category": {
-    "id": "550e8400-e29b-41d4-a716-446655440001",
-    "name": "Chorizos Premium",
-    "description": "Chorizos de pollo de primera calidad",
-    "status": "Activo",
-    "createdAt": "2025-10-18T10:00:00.000Z",
-    "updatedAt": "2025-10-18T14:30:00.000Z"
-  }
-}
-```
-
----
-
-#### 6️⃣ **DELETE** `/api/categories/:id`
-Eliminar categoría.
-
-**⚠️ IMPORTANTE:** No se puede eliminar una categoría que tiene productos asociados.
-
-**URL Parameters:**
-- `id`: UUID de la categoría
-
-**Ejemplo:**
-```
-DELETE /api/categories/550e8400-e29b-41d4-a716-446655440001
-```
-
-**Response 200:**
-```json
-{
-  "message": "Categoría eliminada exitosamente",
-  "category": {
-    "id": "550e8400-e29b-41d4-a716-446655440001",
-    "name": "Chorizos",
-    "description": "Chorizos de pollo en diferentes sabores",
-    "status": "Activo",
-    "createdAt": "2025-10-18T10:00:00.000Z",
-    "updatedAt": "2025-10-18T10:00:00.000Z"
-  }
-}
-```
-
-**Response 400:**
-```json
-{
-  "error": "No se puede eliminar la categoría porque tiene 5 producto(s) asociado(s)"
-}
-```
-
----
-
-### PRODUCTS ENDPOINTS
-
-Base path: `/api/products`
-
----
-
-#### 🍗 **Contexto de Productos**
-
-Los productos son los ítems individuales del catálogo. Cada producto:
-- Pertenece a **UNA categoría** (relación obligatoria)
-- Tiene precio, stock, SKU único
-- Tiene ingredientes y descripción
-- Puede tener imagen
-
-**Ejemplos del catálogo real:**
-- Chorizo Clásico 1/2 kg → Categoría: Chorizos
-- Piernas de Pollo (6 unidades) → Categoría: Pollo Trozado
-- Hamburguesa 1kg (10 unidades) → Categoría: Hamburguesas
-
-#### 📋 **Estructura de Datos: Product**
-
-```typescript
-{
-  id: string;           // UUID generado automáticamente
-  name: string;         // Nombre del producto
-  description: string;  // Descripción detallada (presentación, conservación)
-  price: number;        // Precio en Bolivianos (Bs.)
-  sku: string;          // Código único del producto (ej: "CHO-CLA-500")
-  stock: number;        // Stock actual (se actualiza automáticamente con movimientos)
-  minStock: number;     // Stock mínimo para alertas (default: 5)
-  image: string;        // URL de la imagen del producto
-  ingredients: string;  // Ingredientes del producto (NUEVO)
-  status: "Disponible" | "SinStock" | "Descontinuado";
-  categoryId: string;   // ⚠️ ID de la categoría (RELACIÓN REQUERIDA)
-  category: {           // Categoría completa (incluida en responses)
-    id: string;
-    name: string;
-  };
-  createdAt: DateTime;
-  updatedAt: DateTime;
-}
-```
-
----
-
-#### 1️⃣ **POST** `/api/products`
-Crear un nuevo producto.
-
-**⚠️ PREREQUISITO:** Primero debes crear la categoría y obtener su ID.
-
-**Request Body:**
-```json
-{
-  "name": "Chorizo Clásico de Pollo 1/2 kg",
-  "description": "Presentación: 1/2 kg, Envase: Plástico al vacío, Precocido, Conservar entre 0 y 5°C",
-  "price": 18.50,
-  "sku": "CHO-CLA-500",
-  "stock": 0,
-  "minStock": 10,
-  "image": "https://example.com/chorizo-clasico.jpg",
-  "ingredients": "Carne de pollo, tocino de cerdo, almidón de mandioca, sal y especias naturales",
-  "categoryId": "550e8400-e29b-41d4-a716-446655440001",
-  "status": "Disponible"
-}
-```
-
-**⚠️ categoryId:** Usa el ID que obtuviste al crear la categoría Chorizos
-
-**Validaciones:**
-- `name`: Requerido, 1-100 caracteres
-- `description`: Opcional, máximo 500 caracteres
-- `price`: Requerido, número positivo con máximo 2 decimales
-- `sku`: Opcional, máximo 50 caracteres, único
-- `stock`: Opcional, número entero ≥ 0 (default: 0)
-- `minStock`: Opcional, número entero ≥ 0 (default: 5)
-- `image`: Opcional, debe ser URL válida
-- `ingredients`: Opcional, máximo 1000 caracteres
-- `categoryId`: Requerido, UUID válido de categoría existente
-- `status`: "Disponible" | "SinStock" | "Descontinuado" (default: "Disponible")
-
-**Response 201:**
-```json
-{
-  "message": "Producto creado exitosamente",
-  "product": {
-    "id": "prod-550e8400-e29b-41d4-a716-446655440100",
-    "name": "Chorizo Clásico de Pollo 1/2 kg",
-    "description": "Presentación: 1/2 kg, Envase: Plástico al vacío, Precocido, Conservar entre 0 y 5°C",
-    "price": 18.50,
-    "sku": "CHO-CLA-500",
-    "stock": 0,
-    "minStock": 10,
-    "image": "https://example.com/chorizo-clasico.jpg",
-    "ingredients": "Carne de pollo, tocino de cerdo, almidón de mandioca, sal y especias naturales",
-    "status": "Disponible",
-    "categoryId": "550e8400-e29b-41d4-a716-446655440001",
-    "category": {
-      "id": "550e8400-e29b-41d4-a716-446655440001",
-      "name": "Chorizos",
-      "description": "Chorizos de pollo en diferentes sabores",
-      "status": "Activo"
-    },
-    "createdAt": "2025-10-18T11:00:00.000Z",
-    "updatedAt": "2025-10-18T11:00:00.000Z"
-  }
-}
-```
-
-**⚠️ GUARDAR EL ID:** `prod-550e8400-e29b-41d4-a716-446655440100` para movimientos de stock
-
-**Response 400:**
-```json
-{
-  "error": "El SKU ya está en uso"
-}
-```
-```json
-{
-  "error": "La categoría especificada no existe"
-}
-```
-
-**💡 Flujo Completo de Creación:**
-
-```bash
-# PASO 1: Crear Categoría
-POST /api/categories
-{
-  "name": "Chorizos",
-  "description": "Chorizos de pollo..."
-}
-→ Response: { "category": { "id": "cat-001", ... } }
-
-# PASO 2: COPIAR el ID de la categoría
-
-# PASO 3: Crear Producto usando ese ID
+#### Crear Producto
+```http
 POST /api/products
+Authorization: Bearer <token>
+Content-Type: application/json
+
 {
-  "name": "Chorizo Clásico 1/2 kg",
-  "price": 18.50,
-  "categoryId": "cat-001",  ← ID DE LA CATEGORÍA
-  "ingredients": "Carne de pollo...",
-  ...
-}
-→ Response: { "product": { "id": "prod-001", "category": { "name": "Chorizos" } } }
-```
-
-**📋 Ejemplos Reales del Catálogo:**
-
-```json
-// Producto 1: Chorizo Clásico
-{
-  "name": "Chorizo Clásico de Pollo 1/2 kg",
-  "description": "Presentación: 1/2 kg, Envase: Plástico al vacío, Precocido",
-  "price": 18.50,
-  "sku": "CHO-CLA-500",
-  "ingredients": "Carne de pollo, tocino de cerdo, almidón, sal y especias",
-  "categoryId": "{{ID_CATEGORIA_CHORIZOS}}"
-}
-
-// Producto 2: Piernas de Pollo
-{
-  "name": "Piernas de Pollo (6 unidades)",
-  "description": "Contiene 6 piernas, Con piel y hueso, Mantener entre 0 y 5°C",
-  "price": 25.00,
-  "sku": "PTRO-PIE-6",
-  "ingredients": "Carne de pollo",
-  "categoryId": "{{ID_CATEGORIA_POLLO_TROZADO}}"
-}
-
-// Producto 3: Hamburguesa
-{
-  "name": "Hamburguesa de Pollo 1kg (10 unidades)",
-  "description": "10 hamburguesas con láminas separadoras, Congelado, -18°C",
-  "price": 35.00,
-  "sku": "HAM-1KG-10",
-  "ingredients": "Carne de pollo molida, pan rallado, especias",
-  "categoryId": "{{ID_CATEGORIA_HAMBURGUESAS}}"
-}
-```
-
----
-
-#### 2️⃣ **GET** `/api/products`
-Obtener todos los productos.
-
-**Response 200:**
-```json
-{
-  "products": [
-    {
-      "id": "prod-550e8400-e29b-41d4-a716-446655440100",
-      "name": "Chorizo Clásico de Pollo 1/2 kg",
-      "description": "Presentación: 1/2 kg, Envase: Plástico al vacío",
-      "price": 18.50,
-      "sku": "CHO-CLA-500",
-      "stock": 50,
-      "minStock": 10,
-      "image": "https://example.com/chorizo-clasico.jpg",
-      "ingredients": "Carne de pollo, tocino de cerdo, almidón, sal y especias",
-      "status": "Disponible",
-      "categoryId": "550e8400-e29b-41d4-a716-446655440001",
-      "category": {
-        "id": "550e8400-e29b-41d4-a716-446655440001",
-        "name": "Chorizos",
-        "description": "Chorizos de pollo en diferentes sabores",
-        "status": "Activo"
-      },
-      "createdAt": "2025-10-18T11:00:00.000Z",
-      "updatedAt": "2025-10-18T11:00:00.000Z"
-    },
-    {
-      "id": "prod-550e8400-e29b-41d4-a716-446655440200",
-      "name": "Piernas de Pollo (6 unidades)",
-      "description": "Contiene 6 piernas, Con piel y hueso",
-      "price": 25.00,
-      "sku": "PTRO-PIE-6",
-      "stock": 30,
-      "minStock": 10,
-      "image": null,
-      "ingredients": "Carne de pollo",
-      "status": "Disponible",
-      "categoryId": "550e8400-e29b-41d4-a716-446655440005",
-      "category": {
-        "id": "550e8400-e29b-41d4-a716-446655440005",
-        "name": "Pollo Trozado",
-        "description": "Piezas de pollo crudo",
-        "status": "Activo"
-      },
-      "createdAt": "2025-10-18T11:30:00.000Z",
-      "updatedAt": "2025-10-18T11:30:00.000Z"
-    }
-  ]
-}
-```
-
----
-
-#### 3️⃣ **GET** `/api/products/search`
-Buscar productos con filtros avanzados.
-
-**Query Parameters:**
-- `search` (opcional): Busca en name, description, sku
-- `categoryId` (opcional): UUID de la categoría
-- `status` (opcional): "Disponible" | "SinStock" | "Descontinuado"
-- `lowStock` (opcional): `true` para productos con stock ≤ minStock
-- `page` (opcional): Número de página (default: 1)
-- `limit` (opcional): Items por página (default: 10)
-
-**Ejemplos:**
-
-```bash
-# Buscar por texto
-GET /api/products/search?search=chorizo
-
-# Buscar por categoría
-GET /api/products/search?categoryId=550e8400-e29b-41d4-a716-446655440001
-
-# Buscar productos con stock bajo (ALERTA)
-GET /api/products/search?lowStock=true
-
-# Combinar filtros
-GET /api/products/search?categoryId=550e8400-e29b-41d4-a716-446655440005&lowStock=true&page=1&limit=20
-```
-
-**Response 200:**
-```json
-{
-  "products": [
-    {
-      "id": "prod-550e8400-e29b-41d4-a716-446655440100",
-      "name": "Chorizo Clásico de Pollo 1/2 kg",
-      "stock": 8,
-      "minStock": 10,
-      "category": {
-        "name": "Chorizos"
-      },
-      ...
-    }
-  ],
-  "total": 1,
-  "page": 1,
-  "limit": 10,
-  "totalPages": 1
-}
-```
-
-**📱 Ejemplo Frontend: Buscar productos con stock bajo**
-
-```typescript
-const getProductsWithLowStock = async () => {
-  const response = await fetch(
-    'http://localhost:3000/api/products/search?lowStock=true'
-  );
-  const data = await response.json();
-  
-  // data.products contiene solo productos donde stock <= minStock
-  const alerts = data.products.map(p => ({
-    name: p.name,
-    stock: p.stock,
-    minStock: p.minStock,
-    alert: `⚠️ Stock bajo: ${p.stock} unidades (mínimo: ${p.minStock})`
-  }));
-  
-  return alerts;
-};
-```
-
----
-
-#### 4️⃣ **GET** `/api/products/:id`
-Obtener producto por ID.
-
-**URL Parameters:**
-- `id`: UUID del producto
-
-**Ejemplo:**
-```
-GET /api/products/prod-550e8400-e29b-41d4-a716-446655440100
-```
-
-**Response 200:**
-```json
-{
-  "product": {
-    "id": "prod-550e8400-e29b-41d4-a716-446655440100",
-    "name": "Chorizo Clásico de Pollo 1/2 kg",
-    "description": "Presentación: 1/2 kg, Envase: Plástico al vacío",
-    "price": 18.50,
-    "sku": "CHO-CLA-500",
-    "stock": 50,
-    "minStock": 10,
-    "image": "https://example.com/chorizo-clasico.jpg",
-    "ingredients": "Carne de pollo, tocino de cerdo, almidón, sal y especias",
-    "status": "Disponible",
-    "categoryId": "550e8400-e29b-41d4-a716-446655440001",
-    "category": {
-      "id": "550e8400-e29b-41d4-a716-446655440001",
-      "name": "Chorizos",
-      "description": "Chorizos de pollo en diferentes sabores",
-      "status": "Activo"
-    },
-    "createdAt": "2025-10-18T11:00:00.000Z",
-    "updatedAt": "2025-10-18T11:00:00.000Z"
-  }
-}
-```
-
-**Response 404:**
-```json
-{
-  "error": "Producto no encontrado"
-}
-```
-
----
-
-#### 5️⃣ **PATCH** `/api/products/:id`
-Actualizar producto.
-
-**URL Parameters:**
-- `id`: UUID del producto
-
-**Request Body (todos los campos son opcionales):**
-```json
-{
-  "name": "Chorizo Clásico Premium 1/2 kg",
-  "description": "Versión premium con especias importadas",
-  "price": 20.00,
-  "minStock": 15,
-  "ingredients": "Carne de pollo premium, tocino de cerdo, almidón, sal y especias importadas",
-  "categoryId": "550e8400-e29b-41d4-a716-446655440001",
+  "name": "Piernas de Pollo",
+  "description": "Piernas de pollo frescas por kg",
+  "price": 15.50,
+  "sku": "PIE-001",
+  "stock": 100,
+  "minStock": 10,
+  "image": "https://example.com/piernas.jpg",
+  "ingredients": "Carne de pollo, sal, especias",
+  "categoryId": "uuid",
   "status": "Disponible"
 }
 ```
 
-**⚠️ NOTA:** El campo `stock` NO se actualiza aquí. Se actualiza automáticamente con Stock Movements.
+#### Actualizar Producto
+```http
+PUT /api/products/:id
+Authorization: Bearer <token>
+Content-Type: application/json
 
-**Response 200:**
-```json
 {
-  "message": "Producto actualizado exitosamente",
-  "product": {
-    "id": "prod-550e8400-e29b-41d4-a716-446655440100",
-    "name": "Chorizo Clásico Premium 1/2 kg",
-    "description": "Versión premium con especias importadas",
-    "price": 20.00,
-    "sku": "CHO-CLA-500",
-    "stock": 50,
-    "minStock": 15,
-    "ingredients": "Carne de pollo premium, tocino de cerdo, almidón, sal y especias importadas",
-    "category": {
-      "name": "Chorizos"
-    },
-    "createdAt": "2025-10-18T11:00:00.000Z",
-    "updatedAt": "2025-10-18T15:30:00.000Z"
-  }
+  "name": "Piernas de Pollo Actualizadas",
+  "price": 16.00,
+  "stock": 150
 }
 ```
 
----
-
-#### 6️⃣ **DELETE** `/api/products/:id`
-Eliminar producto.
-
-**⚠️ IMPORTANTE:** No se puede eliminar un producto que tiene órdenes asociadas.
-
-**URL Parameters:**
-- `id`: UUID del producto
-
-**Ejemplo:**
-```
-DELETE /api/products/prod-550e8400-e29b-41d4-a716-446655440100
+#### Eliminar Producto
+```http
+DELETE /api/products/:id
+Authorization: Bearer <token>
 ```
 
-**Response 200:**
-```json
+### Stock Movements Endpoints
+
+#### Obtener Movimientos
+```http
+GET /api/stock-movements?page=1&limit=10&productId=uuid&type=Venta&userId=uuid
+```
+
+#### Crear Movimiento
+```http
+POST /api/stock-movements
+Authorization: Bearer <token>
+Content-Type: application/json
+
 {
-  "message": "Producto eliminado exitosamente",
-  "product": {
-    "id": "prod-550e8400-e29b-41d4-a716-446655440100",
-    "name": "Chorizo Clásico de Pollo 1/2 kg",
-    ...
-  }
-}
-```
-
-**Response 400:**
-```json
-{
-  "error": "No se puede eliminar el producto porque tiene 3 orden(es) asociada(s)"
-}
-```
-
----
-
-### 🔗 **RELACIÓN: Categories → Products**
-
-```
-CATEGORÍA (1)  ──────>  PRODUCTOS (N)
-
-Chorizos
-  ├─ Chorizo Clásico 1/2 kg
-  ├─ Chorizo Ahumado 1/2 kg
-  └─ Chorizo Picante 1/2 kg
-
-Pollo Trozado
-  ├─ Pechuga (1 unidad)
-  ├─ Piernas (6 unidades)
-  ├─ Muslos (6 unidades)
-  └─ Contrapierna (3 unidades)
-```
-
-**Consulta SQL equivalente:**
-```sql
-SELECT p.*, c.name as category_name 
-FROM products p
-INNER JOIN categories c ON p.category_id = c.id
-WHERE c.name = 'Chorizos';
-```
-
-**Consulta en la API:**
-```bash
-# 1. Obtener categoría y su ID
-GET /api/categories/search?search=Chorizos
-
-# 2. Usar el ID para buscar sus productos
-GET /api/products/search?categoryId={ID_OBTENIDO}
-```
-
----
-
-### CUSTOMERS ENDPOINTS
-
-Base path: `/api/customers`
-
----
-
-#### 👥 **Contexto de Clientes**
-
-Los clientes son las personas o entidades que compran productos en la tienda. El sistema distingue entre:
-
-- **Regular**: Cliente común que compra ocasionalmente
-- **VIP**: Cliente frecuente con beneficios especiales
-- **Ocasional**: Cliente que compra muy de vez en cuando o una sola vez
-
-#### 📋 **Estructura de Datos: Customer**
-
-```typescript
-{
-  id: string;             // UUID generado automáticamente
-  firstName: string;      // Nombre (Primera letra mayúscula)
-  lastName: string;       // Apellido (Primera letra mayúscula)
-  email: string | null;   // Email único (opcional)
-  phone: string | null;   // Teléfono (8 dígitos local o +11 internacional)
-  address: string | null; // Dirección (opcional, máximo 255 caracteres)
-  password: string;       // Contraseña hasheada (NUNCA se devuelve en respuestas)
-  type: "Regular" | "VIP" | "Ocasional"; // Tipo de cliente
-  createdAt: DateTime;    // Fecha de registro
-  updatedAt: DateTime;    // Fecha de última actualización
-}
-```
-
-**🔐 Contraseña Autogenerada:**
-
-El sistema genera automáticamente una contraseña basada en el nombre del cliente:
-
-**Formato:** `Primera letra mayúscula + resto en minúsculas + @`
-
-**Ejemplos:**
-- Nombre: "Jesus" → Contraseña: `Jesus@`
-- Nombre: "MARIA" → Contraseña: `Maria@`
-- Nombre: "carlos" → Contraseña: `Carlos@`
-
----
-
-#### 1️⃣ **POST** `/api/customers`
-Crear un nuevo cliente.
-
-**Request Body:**
-```json
-{
-  "firstName": "Jesus",
-  "lastName": "Perez",
-  "email": "jesus.perez@example.com",
-  "phone": "78945612",
-  "address": "Av. Las Américas #123, Tarija",
-  "type": "Regular"
-}
-```
-
-**Validaciones:**
-- `firstName`: Requerido, primera letra mayúscula, sin números
-- `lastName`: Requerido, primera letra mayúscula, sin números
-- `email`: Opcional, formato válido, único
-- `phone`: Opcional, 8 dígitos (local) o +11 dígitos (internacional)
-- `address`: Opcional, máximo 255 caracteres
-- `type`: "Regular" | "VIP" | "Ocasional" (default: "Regular")
-
-**⚡ Comportamiento Automático:**
-- Genera contraseña automática: `Jesus@` (basada en firstName)
-- Hashea la contraseña antes de guardar
-- Valida que el email sea único (si se proporciona)
-
-**Response 201:**
-```json
-{
-  "message": "Cliente creado exitosamente",
-  "customer": {
-    "id": "cust-550e8400-e29b-41d4-a716-446655440000",
-    "firstName": "Jesus",
-    "lastName": "Perez",
-    "email": "jesus.perez@example.com",
-    "phone": "78945612",
-    "address": "Av. Las Américas #123, Tarija",
-    "type": "Regular",
-    "createdAt": "2025-10-22T10:00:00.000Z",
-    "updatedAt": "2025-10-22T10:00:00.000Z"
-  }
-}
-```
-
-**⚠️ NOTA:** La contraseña NO se devuelve en la respuesta por seguridad.
-
-**Response 400:**
-```json
-{
-  "error": "El email ya está registrado"
-}
-```
-```json
-{
-  "error": "El nombre debe comenzar con letra mayúscula y no puede contener números"
-}
-```
-
-**💡 Ejemplos de Request Body:**
-
-**Ejemplo 1: Cliente Regular con todos los datos**
-```json
-{
-  "firstName": "Maria",
-  "lastName": "Gonzalez",
-  "email": "maria.gonzalez@example.com",
-  "phone": "78123456",
-  "address": "Calle España #456, Tarija",
-  "type": "Regular"
-}
-```
-→ Contraseña autogenerada: `Maria@`
-
-**Ejemplo 2: Cliente VIP sin dirección**
-```json
-{
-  "firstName": "Carlos",
-  "lastName": "Rodriguez",
-  "email": "carlos.vip@example.com",
-  "phone": "+59178945612",
-  "type": "VIP"
-}
-```
-→ Contraseña autogenerada: `Carlos@`
-
-**Ejemplo 3: Cliente Ocasional solo con nombre y apellido**
-```json
-{
-  "firstName": "Ana",
-  "lastName": "Martinez",
-  "type": "Ocasional"
-}
-```
-→ Contraseña autogenerada: `Ana@`
-
----
-
-#### 2️⃣ **GET** `/api/customers`
-Obtener todos los clientes.
-
-**Response 200:**
-```json
-{
-  "customers": [
-    {
-      "id": "cust-550e8400-e29b-41d4-a716-446655440000",
-      "firstName": "Jesus",
-      "lastName": "Perez",
-      "email": "jesus.perez@example.com",
-      "phone": "78945612",
-      "address": "Av. Las Américas #123, Tarija",
-      "type": "Regular",
-      "createdAt": "2025-10-22T10:00:00.000Z",
-      "updatedAt": "2025-10-22T10:00:00.000Z"
-    },
-    {
-      "id": "cust-550e8400-e29b-41d4-a716-446655440001",
-      "firstName": "Maria",
-      "lastName": "Gonzalez",
-      "email": "maria.gonzalez@example.com",
-      "phone": "78123456",
-      "address": "Calle España #456, Tarija",
-      "type": "VIP",
-      "createdAt": "2025-10-22T11:00:00.000Z",
-      "updatedAt": "2025-10-22T11:00:00.000Z"
-    }
-  ]
-}
-```
-
-**⚠️ NOTA:** Las contraseñas NO se devuelven en la respuesta.
-
----
-
-#### 3️⃣ **GET** `/api/customers/search`
-Buscar clientes con filtros avanzados.
-
-**Query Parameters:**
-- `search` (opcional): Busca en firstName, lastName, email, phone, address
-- `type` (opcional): "Regular" | "VIP" | "Ocasional"
-- `page` (opcional): Número de página (default: 1)
-- `limit` (opcional): Items por página (default: 10)
-
-**Ejemplos:**
-```bash
-# Buscar por texto (nombre, email, teléfono, etc.)
-GET /api/customers/search?search=Jesus
-
-# Buscar clientes VIP
-GET /api/customers/search?type=VIP
-
-# Buscar clientes con paginación
-GET /api/customers/search?page=2&limit=20
-
-# Combinar filtros
-GET /api/customers/search?search=Maria&type=VIP&page=1&limit=10
-```
-
-**Response 200:**
-```json
-{
-  "customers": [
-    {
-      "id": "cust-550e8400-e29b-41d4-a716-446655440000",
-      "firstName": "Jesus",
-      "lastName": "Perez",
-      "email": "jesus.perez@example.com",
-      "phone": "78945612",
-      "address": "Av. Las Américas #123, Tarija",
-      "type": "Regular",
-      "createdAt": "2025-10-22T10:00:00.000Z",
-      "updatedAt": "2025-10-22T10:00:00.000Z"
-    }
-  ],
-  "total": 156,
-  "page": 1,
-  "limit": 10,
-  "totalPages": 16
-}
-```
-
-**💡 Explicación de la Respuesta:**
-- `customers`: Array con los clientes de la página actual
-- `total`: Número total de clientes que coinciden con los filtros
-- `page`: Página actual
-- `limit`: Cantidad de clientes por página
-- `totalPages`: Total de páginas disponibles
-
-**📱 Ejemplo Frontend:**
-```typescript
-const searchCustomers = async (filters: {
-  search?: string;
-  type?: 'Regular' | 'VIP' | 'Ocasional';
-  page?: number;
-  limit?: number;
-}) => {
-  const params = new URLSearchParams();
-  if (filters.search) params.append('search', filters.search);
-  if (filters.type) params.append('type', filters.type);
-  if (filters.page) params.append('page', filters.page.toString());
-  if (filters.limit) params.append('limit', filters.limit.toString());
-  
-  const response = await fetch(
-    `http://localhost:3000/api/customers/search?${params.toString()}`
-  );
-  return await response.json();
-};
-
-// Uso: Buscar clientes VIP
-const result = await searchCustomers({ type: 'VIP', page: 1, limit: 20 });
-```
-
----
-
-#### 4️⃣ **GET** `/api/customers/:id`
-Obtener cliente por ID.
-
-**URL Parameters:**
-- `id`: UUID del cliente
-
-**Ejemplo:**
-```
-GET /api/customers/cust-550e8400-e29b-41d4-a716-446655440000
-```
-
-**Response 200:**
-```json
-{
-  "customer": {
-    "id": "cust-550e8400-e29b-41d4-a716-446655440000",
-    "firstName": "Jesus",
-    "lastName": "Perez",
-    "email": "jesus.perez@example.com",
-    "phone": "78945612",
-    "address": "Av. Las Américas #123, Tarija",
-    "type": "Regular",
-    "createdAt": "2025-10-22T10:00:00.000Z",
-    "updatedAt": "2025-10-22T10:00:00.000Z"
-  }
-}
-```
-
-**Response 404:**
-```json
-{
-  "error": "Cliente no encontrado"
-}
-```
-
-**Response 400:**
-```json
-{
-  "error": "Id inválido"
-}
-```
-
----
-
-#### 5️⃣ **PATCH** `/api/customers/:id`
-Actualizar cliente.
-
-**URL Parameters:**
-- `id`: UUID del cliente
-
-**Request Body (todos los campos son opcionales):**
-```json
-{
-  "firstName": "Jesus Carlos",
-  "lastName": "Perez Lopez",
-  "email": "jesus.new@example.com",
-  "phone": "+59178945612",
-  "address": "Nueva dirección #789",
-  "password": "NewPassword123!",
-  "type": "VIP"
-}
-```
-
-**Validaciones:**
-- `firstName`: Primera letra mayúscula, sin números (si se envía)
-- `lastName`: Primera letra mayúscula, sin números (si se envía)
-- `email`: Formato válido, único (si se envía)
-- `phone`: 8 dígitos local o +11 internacional (si se envía)
-- `address`: Máximo 255 caracteres (si se envía)
-- `password`: 6-16 caracteres (si se envía, será hasheada)
-- `type`: "Regular" | "VIP" | "Ocasional" (si se envía)
-
-**⚡ Comportamiento Automático:**
-- Si se actualiza la contraseña, se hashea automáticamente
-- Valida que el email no esté en uso por OTRO cliente
-
-**Response 200:**
-```json
-{
-  "message": "Cliente actualizado exitosamente",
-  "customer": {
-    "id": "cust-550e8400-e29b-41d4-a716-446655440000",
-    "firstName": "Jesus Carlos",
-    "lastName": "Perez Lopez",
-    "email": "jesus.new@example.com",
-    "phone": "+59178945612",
-    "address": "Nueva dirección #789",
-    "type": "VIP",
-    "createdAt": "2025-10-22T10:00:00.000Z",
-    "updatedAt": "2025-10-22T15:30:00.000Z"
-  }
-}
-```
-
-**Response 404:**
-```json
-{
-  "error": "Cliente no encontrado"
-}
-```
-
-**Response 400:**
-```json
-{
-  "error": "El email ya está en uso"
-}
-```
-
-**💡 Ejemplos de Actualización:**
-
-**Ejemplo 1: Actualizar solo el tipo de cliente**
-```json
-{
-  "type": "VIP"
-}
-```
-
-**Ejemplo 2: Actualizar contraseña**
-```json
-{
-  "password": "NewSecurePassword123!"
-}
-```
-
-**Ejemplo 3: Actualizar múltiples campos**
-```json
-{
-  "firstName": "Jesus Carlos",
-  "lastName": "Perez Lopez",
-  "phone": "+59178945612",
-  "type": "VIP"
-}
-```
-
----
-
-#### 6️⃣ **DELETE** `/api/customers/:id`
-Eliminar cliente.
-
-**⚠️ IMPORTANTE:** No se puede eliminar un cliente que tiene órdenes asociadas.
-
-**URL Parameters:**
-- `id`: UUID del cliente
-
-**Ejemplo:**
-```
-DELETE /api/customers/cust-550e8400-e29b-41d4-a716-446655440000
-```
-
-**Response 200:**
-```json
-{
-  "message": "Cliente eliminado exitosamente",
-  "customer": {
-    "id": "cust-550e8400-e29b-41d4-a716-446655440000",
-    "firstName": "Jesus",
-    "lastName": "Perez",
-    "email": "jesus.perez@example.com",
-    "phone": "78945612",
-    "address": "Av. Las Américas #123, Tarija",
-    "type": "Regular",
-    "createdAt": "2025-10-22T10:00:00.000Z",
-    "updatedAt": "2025-10-22T10:00:00.000Z"
-  }
-}
-```
-
-**Response 400:**
-```json
-{
-  "error": "No se puede eliminar el cliente porque tiene 5 orden(es) asociada(s)"
-}
-```
-
-**Response 404:**
-```json
-{
-  "error": "Cliente no encontrado"
-}
-```
-
-**📱 Ejemplo con Confirmación:**
-```typescript
-const handleDeleteCustomer = async (customerId: string, customerName: string) => {
-  const confirmed = window.confirm(
-    `¿Estás seguro de eliminar al cliente "${customerName}"? Esta acción no se puede deshacer.`
-  );
-  
-  if (!confirmed) return;
-  
-  try {
-    const response = await fetch(
-      `http://localhost:3000/api/customers/${customerId}`,
-      { method: 'DELETE' }
-    );
-    
-    if (response.ok) {
-      const data = await response.json();
-      console.log('Cliente eliminado:', data.message);
-      // Recargar lista de clientes
-    } else {
-      const error = await response.json();
-      alert(`Error: ${error.error}`);
-    }
-  } catch (error) {
-    console.error('Error eliminando cliente:', error);
-  }
-};
-```
-
----
-
-### 🔗 **RELACIÓN: Customers → Orders**
-
-```
-CLIENTE (1)  ──────>  ÓRDENES (N)
-
-Jesus Perez (Regular)
-  ├─ Orden #001 - 22/10/2025 - Bs. 150.00
-  ├─ Orden #005 - 23/10/2025 - Bs. 75.50
-  └─ Orden #012 - 24/10/2025 - Bs. 200.00
-
-Maria Gonzalez (VIP)
-  ├─ Orden #002 - 22/10/2025 - Bs. 300.00
-  ├─ Orden #007 - 23/10/2025 - Bs. 450.00
-  └─ Orden #015 - 24/10/2025 - Bs. 600.00
-```
-
-**💡 Implicaciones:**
-- Un cliente puede tener múltiples órdenes
-- No se puede eliminar un cliente con órdenes asociadas
-- Útil para historial de compras y análisis de clientes frecuentes
-
----
-
-### 📊 **Modelo de Datos: CustomerEntity**
-
-```typescript
-interface CustomerEntity {
-  id: string;                    // UUID
-  firstName: string;             // Nombre (Primera letra mayúscula)
-  lastName: string;              // Apellido (Primera letra mayúscula)
-  email: string | null;          // Email único (opcional)
-  phone: string | null;          // Teléfono (opcional)
-  address: string | null;        // Dirección (opcional)
-  password: string;              // Contraseña hasheada (NO se devuelve)
-  type: "Regular" | "VIP" | "Ocasional"; // Tipo de cliente
-  createdAt: Date;               // Fecha de registro
-  updatedAt: Date;               // Fecha de última actualización
-  orders?: OrderEntity[];        // Órdenes del cliente (populate)
-}
-```
-
----
-
-### 🎯 **Casos de Uso Comunes**
-
-**Caso 1: Registrar cliente nuevo (mínimo de datos)**
-```typescript
-const newCustomer = {
-  firstName: "Juan",
-  lastName: "Perez",
-  type: "Regular"
-};
-// Contraseña autogenerada: Juan@
-```
-
-**Caso 2: Registrar cliente VIP con todos los datos**
-```typescript
-const vipCustomer = {
-  firstName: "Maria",
-  lastName: "Gonzalez",
-  email: "maria.vip@example.com",
-  phone: "+59178945612",
-  address: "Av. Principal #123",
-  type: "VIP"
-};
-// Contraseña autogenerada: Maria@
-```
-
-**Caso 3: Buscar clientes para reporte**
-```typescript
-// Obtener todos los clientes VIP
-const vipCustomers = await searchCustomers({ type: 'VIP' });
-
-// Buscar cliente por nombre
-const result = await searchCustomers({ search: 'Maria' });
-```
-
-**Caso 4: Actualizar cliente a VIP**
-```typescript
-await updateCustomer('customer-id', {
-  type: 'VIP'
-});
-```
-
----
-
-### 💡 **Validaciones de Nombre y Apellido**
-
-**✅ Válidos:**
-- `"Jesus"` - Primera letra mayúscula
-- `"Maria"` - Primera letra mayúscula
-- `"Carlos"` - Primera letra mayúscula
-
-**❌ Inválidos:**
-- `"jesus"` - No comienza con mayúscula
-- `"JESUS"` - Todo en mayúsculas
-- `"Jesus123"` - Contiene números
-- `"Je sus"` - Contiene espacios
-
-**📝 Regex usado:**
-```regex
-/^[A-Z][a-z]+$/
-```
-- Primera letra: `[A-Z]` (mayúscula)
-- Resto: `[a-z]+` (minúsculas, al menos una)
-
----
-
-### 📞 **Validación de Teléfono**
-
-**Formato Local (Bolivia):**
-- 8 dígitos: `78945612`
-- Regex: `/^\d{8}$/`
-
-**Formato Internacional:**
-- +591 + 8 dígitos: `+59178945612`
-- Regex: `/^\+\d{11}$/`
-
-**Ejemplos válidos:**
-- `"78945612"` ✅
-- `"+59178945612"` ✅
-
-**Ejemplos inválidos:**
-- `"7894561"` ❌ (solo 7 dígitos)
-- `"789456123"` ❌ (9 dígitos sin +)
-- `"+591789456"` ❌ (faltan dígitos)
-
----
-
-### STOCK MOVEMENTS ENDPOINTS
-
-Base path: `/api/stock-movements`
-
----
-
-#### 📦 **Contexto del Negocio**
-
-Este sistema está diseñado para una **empresa boliviana de productos derivados de pollo** (Coquito):
-
-- 🏭 **Fábrica:** Yacuiba, Bolivia (producción)
-- 🏪 **Tienda:** Tarija, Bolivia (punto de venta)
-- 🔗 **Modelo:** La fábrica reabastece continuamente la tienda (misma empresa)
-- 🍗 **Productos:** Piernas, pechuga, alas, hígados, menudencias, costillas, pollo entero, etc.
-- 💰 **Moneda:** Bolivianos (Bs.)
-
-#### 🔄 **Tipos de Movimientos de Stock**
-
-El sistema maneja 6 tipos de movimientos:
-
-| Tipo | Efecto | Descripción | Ejemplo |
-|------|--------|-------------|---------|
-| **Reabastecimiento** | ➕ Aumenta | Transferencia desde fábrica (Yacuiba) a tienda (Tarija) | +50 kg de piernas desde fábrica |
-| **Compra** | ➕ Aumenta | Compra a proveedores EXTERNOS (insumos) | +100 bolsas de empaque |
-| **Venta** | ➖ Disminuye | Venta a clientes finales o mayoristas | -15 kg vendidos a restaurante |
-| **Ajuste** | ➕➖ Ambos | Corrección de inventario físico | +3 kg encontrados / -2 kg faltantes |
-| **Devolución** | ➕ Aumenta | Cliente devuelve producto | +2 kg devueltos por mal estado |
-| **Dañado** | ➖ Disminuye | Producto dado de baja (vencido, dañado) | -1 kg descartado por vencimiento |
-
-#### 📋 **Campos del Movimiento**
-
-```typescript
-{
-  id: string;              // UUID único del movimiento
-  productId: string;       // ID del producto afectado
-  userId: string;          // ID del usuario que registró el movimiento
-  type: StockMovementType; // Tipo de movimiento
-  quantity: number;        // Cantidad del movimiento (+ o -)
-  previousStock: number;   // Stock antes del movimiento
-  newStock: number;        // Stock después del movimiento
-  reason?: string;         // Razón legible del movimiento
-  reference?: string;      // Referencia externa (factura, orden, etc.)
-  notes?: string;          // Notas adicionales
-  createdAt: DateTime;     // Fecha y hora del movimiento
-}
-```
-
----
-
-#### 1️⃣ **POST** `/api/stock-movements`
-Crear un nuevo movimiento de stock.
-
-**📝 Comportamiento Automático:**
-- Calcula automáticamente `previousStock` y `newStock` basándose en el stock actual del producto
-- Actualiza el stock del producto automáticamente
-- Valida que el nuevo stock no sea negativo
-- Todo se ejecuta en una transacción (rollback si falla)
-
-**Request Body:**
-```json
-{
-  "productId": "uuid-del-producto",
-  "userId": "uuid-del-usuario",
-  "type": "Reabastecimiento",
-  "quantity": 50,
-  "reason": "Reabastecimiento desde fábrica Yacuiba",
-  "reference": "TRANSF-2025-045",
-  "notes": "Llegó en refrigerado. Temperatura OK: 2°C"
-}
-```
-
-**Validaciones:**
-- `productId`: UUID válido (el producto debe existir)
-- `userId`: UUID válido (el usuario debe existir)
-- `type`: Debe ser uno de: "Reabastecimiento", "Compra", "Venta", "Ajuste", "Devolucion", "Dañado"
-- `quantity`: Número entero diferente de 0 (puede ser positivo o negativo)
-- `reason`: Opcional, máximo 500 caracteres
-- `reference`: Opcional, máximo 100 caracteres
-- `notes`: Opcional, máximo 1000 caracteres
-
-**⚠️ Importante sobre `quantity`:**
-- Para aumentar stock: usar número positivo (ej: `50`)
-- Para disminuir stock: usar número negativo (ej: `-15`)
-- El sistema valida que el stock no quede negativo
-
-**Ejemplos de Request Body:**
-
-**Ejemplo 1: Reabastecimiento desde fábrica**
-```json
-{
-  "productId": "550e8400-e29b-41d4-a716-446655440000",
-  "userId": "admin-uuid",
-  "type": "Reabastecimiento",
-  "quantity": 100,
-  "reason": "Reabastecimiento desde fábrica Yacuiba",
-  "reference": "TRANSF-2025-045",
-  "notes": "Camión salió 6:00 AM, llegó 2:00 PM. Temperatura: 1°C"
-}
-```
-
-**Ejemplo 2: Venta a cliente**
-```json
-{
-  "productId": "550e8400-e29b-41d4-a716-446655440000",
-  "userId": "cajero-uuid",
+  "productId": "uuid",
   "type": "Venta",
-  "quantity": -15,
-  "reason": "Venta a restaurante El Sabor",
-  "reference": "ORD-2025-200"
+  "quantity": 5,
+  "reason": "Venta orden #123",
+  "reference": "ORD-123",
+  "notes": "Venta al cliente Juan Pérez"
 }
 ```
 
-**Ejemplo 3: Producto vencido**
-```json
+### Customers Endpoints
+
+#### Obtener Clientes
+```http
+GET /api/customers?page=1&limit=10&search=juan&type=VIP
+```
+
+#### Crear Cliente
+```http
+POST /api/customers
+Authorization: Bearer <token>
+Content-Type: application/json
+
 {
-  "productId": "550e8400-e29b-41d4-a716-446655440000",
-  "userId": "admin-uuid",
-  "type": "Dañado",
-  "quantity": -3,
-  "reason": "Producto vencido - Descarte",
-  "reference": "INC-2025-010",
-  "notes": "Fecha vencimiento: 20/10/2025. Se descartó según protocolo."
+  "firstName": "Juan",
+  "lastName": "Pérez",
+  "email": "juan@email.com",
+  "phone": "12345678",
+  "address": "Calle Principal #123",
+  "type": "VIP"
 }
 ```
 
-**Response 201:**
-```json
+#### Actualizar Cliente
+```http
+PUT /api/customers/:id
+Authorization: Bearer <token>
+Content-Type: application/json
+
 {
-  "message": "Movimiento de stock registrado exitosamente",
-  "movement": {
-    "id": "mov-uuid",
-    "productId": "550e8400-e29b-41d4-a716-446655440000",
-    "userId": "admin-uuid",
-    "type": "Reabastecimiento",
-    "quantity": 100,
-    "previousStock": 7,
-    "newStock": 107,
-    "reason": "Reabastecimiento desde fábrica Yacuiba",
-    "reference": "TRANSF-2025-045",
-    "notes": "Camión salió 6:00 AM, llegó 2:00 PM. Temperatura: 1°C",
-    "createdAt": "2025-10-18T14:30:00.000Z",
-    "user": {
-      "id": "admin-uuid",
-      "username": "admin",
-      "firstName": "Juan",
-      "lastName": "Pérez"
-    },
-    "product": {
-      "id": "550e8400-e29b-41d4-a716-446655440000",
-      "name": "Piernas de Pollo (1kg)",
-      "stock": 107,
-      "category": {
-        "name": "Trozos de Pollo"
-      }
-    }
-  }
+  "firstName": "Juan Carlos",
+  "type": "Regular"
 }
 ```
 
-**Response 400:**
-```json
-{
-  "error": "No se puede realizar el movimiento. Stock insuficiente. Stock actual: 5, Cantidad solicitada: 10"
-}
-```
-
-**Response 404:**
-```json
-{
-  "error": "Producto no encontrado"
-}
-```
-```json
-{
-  "error": "Usuario no encontrado"
-}
-```
-
----
-
-#### 2️⃣ **GET** `/api/stock-movements/:id`
-Obtener un movimiento de stock por ID.
-
-**URL Parameters:**
-- `id`: UUID del movimiento
-
-**Ejemplo:**
-```
-GET /api/stock-movements/mov-550e8400-e29b-41d4-a716-446655440000
-```
-
-**Response 200:**
-```json
-{
-  "movement": {
-    "id": "mov-550e8400-e29b-41d4-a716-446655440000",
-    "productId": "prod-uuid",
-    "userId": "user-uuid",
-    "type": "Reabastecimiento",
-    "quantity": 100,
-    "previousStock": 7,
-    "newStock": 107,
-    "reason": "Reabastecimiento desde fábrica Yacuiba",
-    "reference": "TRANSF-2025-045",
-    "notes": "Temperatura OK",
-    "createdAt": "2025-10-18T14:30:00.000Z",
-    "user": {
-      "id": "user-uuid",
-      "username": "admin",
-      "firstName": "Juan",
-      "lastName": "Pérez"
-    },
-    "product": {
-      "id": "prod-uuid",
-      "name": "Piernas de Pollo (1kg)",
-      "stock": 107,
-      "price": 25.50
-    }
-  }
-}
-```
-
-**Response 404:**
-```json
-{
-  "error": "Movimiento de stock no encontrado"
-}
-```
-
----
-
-#### 3️⃣ **GET** `/api/stock-movements/search`
-Buscar movimientos de stock con filtros avanzados.
-
-**Query Parameters:**
-- `productId` (opcional): UUID del producto
-- `userId` (opcional): UUID del usuario
-- `type` (opcional): Tipo de movimiento
-- `startDate` (opcional): Fecha inicio (ISO 8601)
-- `endDate` (opcional): Fecha fin (ISO 8601)
-- `page` (opcional): Número de página (default: 1)
-- `limit` (opcional): Items por página (default: 10, máx: 100)
-
-**Ejemplos de URLs:**
-```
-GET /api/stock-movements/search?type=Reabastecimiento
-GET /api/stock-movements/search?productId=prod-uuid&page=1&limit=20
-GET /api/stock-movements/search?userId=user-uuid&type=Venta
-GET /api/stock-movements/search?startDate=2025-10-01T00:00:00Z&endDate=2025-10-31T23:59:59Z
-GET /api/stock-movements/search?type=Dañado&page=1&limit=50
-```
-
-**📱 Ejemplo Frontend:**
-```typescript
-const searchMovements = async (filters: {
-  productId?: string;
-  userId?: string;
-  type?: string;
-  startDate?: string;
-  endDate?: string;
-  page?: number;
-  limit?: number;
-}) => {
-  const params = new URLSearchParams();
-  if (filters.productId) params.append('productId', filters.productId);
-  if (filters.userId) params.append('userId', filters.userId);
-  if (filters.type) params.append('type', filters.type);
-  if (filters.startDate) params.append('startDate', filters.startDate);
-  if (filters.endDate) params.append('endDate', filters.endDate);
-  if (filters.page) params.append('page', filters.page.toString());
-  if (filters.limit) params.append('limit', filters.limit.toString());
-  
-  const response = await fetch(
-    `http://localhost:3000/api/stock-movements/search?${params.toString()}`
-  );
-  return await response.json();
-};
-
-// Uso: Buscar reabastecimientos del último mes
-const result = await searchMovements({
-  type: 'Reabastecimiento',
-  startDate: '2025-10-01T00:00:00Z',
-  endDate: '2025-10-31T23:59:59Z',
-  page: 1,
-  limit: 20
-});
-```
-
-**Response 200:**
-```json
-{
-  "movements": [
-    {
-      "id": "mov-1",
-      "type": "Reabastecimiento",
-      "quantity": 100,
-      "previousStock": 7,
-      "newStock": 107,
-      "reason": "Reabastecimiento desde fábrica Yacuiba",
-      "reference": "TRANSF-2025-045",
-      "createdAt": "2025-10-18T14:30:00.000Z",
-      "user": {
-        "username": "admin",
-        "firstName": "Juan"
-      },
-      "product": {
-        "name": "Piernas de Pollo (1kg)",
-        "stock": 107
-      }
-    },
-    {
-      "id": "mov-2",
-      "type": "Venta",
-      "quantity": -15,
-      "previousStock": 107,
-      "newStock": 92,
-      "reason": "Venta a restaurante",
-      "reference": "ORD-2025-200",
-      "createdAt": "2025-10-18T16:00:00.000Z",
-      "user": {
-        "username": "cajero1"
-      },
-      "product": {
-        "name": "Piernas de Pollo (1kg)"
-      }
-    }
-  ],
-  "total": 156,
-  "page": 1,
-  "limit": 20,
-  "totalPages": 8
-}
-```
-
----
-
-#### 4️⃣ **GET** `/api/stock-movements/product/:productId`
-Obtener historial completo de movimientos de un producto específico.
-
-**URL Parameters:**
-- `productId`: UUID del producto
-
-**Query Parameters:**
-- `page` (opcional): Número de página (default: 1)
-- `limit` (opcional): Items por página (default: 20, máx: 100)
-
-**Ejemplo:**
-```
-GET /api/stock-movements/product/550e8400-e29b-41d4-a716-446655440000?page=1&limit=20
-```
-
-**📱 Ejemplo Frontend:**
-```typescript
-const getProductHistory = async (productId: string, page = 1, limit = 20) => {
-  const response = await fetch(
-    `http://localhost:3000/api/stock-movements/product/${productId}?page=${page}&limit=${limit}`
-  );
-  return await response.json();
-};
-
-// Uso: Ver historial de un producto
-const history = await getProductHistory('550e8400-e29b-41d4-a716-446655440000');
-console.log(history.movements); // Array de movimientos
-console.log(history.total);     // Total de movimientos del producto
-```
-
-**Response 200:**
-```json
-{
-  "movements": [
-    {
-      "id": "mov-6",
-      "type": "Reabastecimiento",
-      "quantity": 100,
-      "previousStock": 5,
-      "newStock": 105,
-      "reason": "Reabastecimiento urgente desde fábrica",
-      "reference": "TRANSF-2025-048",
-      "createdAt": "2025-10-18T08:00:00.000Z",
-      "user": {
-        "username": "admin",
-        "firstName": "Juan"
-      }
-    },
-    {
-      "id": "mov-5",
-      "type": "Venta",
-      "quantity": -8,
-      "previousStock": 13,
-      "newStock": 5,
-      "reason": "Venta a cliente final",
-      "reference": "ORD-2025-175",
-      "createdAt": "2025-10-17T15:30:00.000Z",
-      "user": {
-        "username": "cajero1"
-      }
-    },
-    {
-      "id": "mov-4",
-      "type": "Dañado",
-      "quantity": -2,
-      "previousStock": 15,
-      "newStock": 13,
-      "reason": "Producto vencido",
-      "reference": "INC-2025-008",
-      "notes": "Fecha vencimiento: 17/10/2025",
-      "createdAt": "2025-10-17T10:00:00.000Z",
-      "user": {
-        "username": "admin"
-      }
-    }
-  ],
-  "total": 45,
-  "page": 1,
-  "limit": 20,
-  "totalPages": 3
-}
-```
-
-**Response 404:**
-```json
-{
-  "error": "Producto no encontrado"
-}
-```
-
----
-
-### 🔄 **Flujo Completo: Ejemplo Real**
-
-#### **Escenario:** Producto "Piernas de Pollo (1kg)" - Stock bajo → Reabastecimiento
-
-**1. Estado inicial del producto:**
-```json
-{
-  "id": "prod-123",
-  "name": "Piernas de Pollo (1kg)",
-  "stock": 7,
-  "minStock": 10,
-  "price": 25.50
-}
-```
-⚠️ **ALERTA:** `stock (7) <= minStock (10)` → Stock bajo detectado
-
-**2. Frontend detecta stock bajo:**
-```typescript
-// Buscar productos con stock bajo
-const lowStockProducts = products.filter(p => p.stock <= p.minStock);
-```
-
-**3. Llega reabastecimiento desde fábrica Yacuiba:**
-```typescript
-const response = await fetch('http://localhost:3000/api/stock-movements', {
-  method: 'POST',
-  headers: { 'Content-Type': 'application/json' },
-  body: JSON.stringify({
-    productId: 'prod-123',
-    userId: 'admin-uuid',
-    type: 'Reabastecimiento',
-    quantity: 100,
-    reason: 'Reabastecimiento desde fábrica Yacuiba',
-    reference: 'TRANSF-2025-045',
-    notes: 'Llegó en refrigerado. Temp: 1°C OK'
-  })
-});
-```
-
-**4. Backend procesa (automáticamente):**
-```javascript
-// El backend hace esto automáticamente:
-- Obtiene stock actual: 7 kg
-- Calcula previousStock: 7
-- Calcula newStock: 7 + 100 = 107
-- Actualiza producto.stock = 107
-- Registra el movimiento
-- Todo en transacción (rollback si falla)
-```
-
-**5. Respuesta exitosa:**
-```json
-{
-  "message": "Movimiento de stock registrado exitosamente",
-  "movement": {
-    "id": "mov-new",
-    "quantity": 100,
-    "previousStock": 7,
-    "newStock": 107,
-    "createdAt": "2025-10-18T14:30:00.000Z"
-  }
-}
-```
-
-**6. Ver historial del producto:**
-```typescript
-const history = await fetch(
-  'http://localhost:3000/api/stock-movements/product/prod-123'
-);
-// Retorna todos los movimientos del producto ordenados por fecha
-```
-
----
-
-### 📊 **Modelo de Datos: StockMovementEntity**
-
-```typescript
-interface StockMovementEntity {
-  id: string;                    // UUID
-  productId: string;             // UUID del producto
-  userId: string;                // UUID del usuario
-  type: StockMovementType;       // Tipo de movimiento
-  quantity: number;              // Cantidad (+ o -)
-  previousStock: number;         // Stock antes
-  newStock: number;              // Stock después
-  reason: string | null;         // Razón legible
-  reference: string | null;      // Referencia externa
-  notes: string | null;          // Notas adicionales
-  createdAt: Date;               // Fecha y hora
-  user?: UserEntity;             // Usuario (populate)
-  product?: ProductEntity;       // Producto (populate)
-}
-```
-
-### 🎯 **Casos de Uso Comunes**
-
-**Caso 1: Reabastecimiento programado desde fábrica**
-```typescript
-{
-  type: "Reabastecimiento",
-  quantity: 150,
-  reason: "Reabastecimiento semanal desde fábrica Yacuiba",
-  reference: "TRANSF-2025-W42"
-}
-```
-
-**Caso 2: Venta mayorista a restaurante**
-```typescript
-{
-  type: "Venta",
-  quantity: -50,
-  reason: "Venta mayorista a Restaurante Los Hermanos",
-  reference: "ORD-2025-300"
-}
-```
-
-**Caso 3: Ajuste por inventario físico**
-```typescript
-{
-  type: "Ajuste",
-  quantity: -5,
-  reason: "Ajuste por inventario físico - Faltante detectado",
-  reference: "INV-2025-OCT",
-  notes: "Realizado conteo manual. Faltan 5 kg."
-}
-```
-
-**Caso 4: Producto vencido**
-```typescript
-{
-  type: "Dañado",
-  quantity: -3,
-  reason: "Producto vencido - Descarte según protocolo",
-  reference: "INC-2025-020",
-  notes: "Fecha vencimiento: 18/10/2025. Descartado en presencia de supervisor."
-}
-```
-
-**Caso 5: Devolución de cliente**
-```typescript
-{
-  type: "Devolucion",
-  quantity: 2,
-  reason: "Devolución cliente - Producto con olor extraño",
-  reference: "ORD-2025-285",
-  notes: "Se procesó reembolso. Producto va a análisis de calidad."
-}
-```
-
----
-
-### 💡 **Diferencia Clave: Reabastecimiento vs Compra**
-
-| Aspecto | Reabastecimiento | Compra |
-|---------|------------------|--------|
-| **Origen** | Fábrica propia (Yacuiba) | Proveedor externo |
-| **Empresa** | Misma empresa | Empresa diferente |
-| **Factura** | Guía de remisión interna | Factura de proveedor |
-| **Reference** | `TRANSF-2025-045` | `FAC-PROVEEDOR-2025-100` |
-| **Ejemplo** | 100 kg de piernas desde tu fábrica | Comprar 500 bolsas de empaque a proveedor externo |
-
-**❌ Incorrecto:**
-```json
-{
-  "type": "Compra",  // ❌ Error
-  "reason": "Llegaron piernas desde nuestra fábrica Yacuiba"
-}
-```
-
-**✅ Correcto:**
-```json
-{
-  "type": "Reabastecimiento",  // ✅ Correcto
-  "reason": "Reabastecimiento desde fábrica Yacuiba"
-}
+#### Eliminar Cliente
+```http
+DELETE /api/customers/:id
+Authorization: Bearer <token>
 ```
 
 ---
 
 ## 📊 Modelos de Datos
 
-### UserEntity
-
+### User
 ```typescript
-interface UserEntity {
-  id: string;                    // UUID
-  username: string;              // Único
-  email: string;                 // Único
-  emailVerified: boolean;        // Estado de verificación
-  password: string;              // Hash bcrypt (NO enviar al frontend)
-  firstName: string;             // Nombre
-  lastName: string;              // Apellido
-  phone: string | null;          // Teléfono opcional
+{
+  id: string;
+  username: string;
+  email: string;
+  emailVerified: boolean;
+  firstName: string;
+  lastName: string;
+  phone?: string;
   role: "Administrador" | "Cajero";
   status: "Activo" | "Inactivo" | "Suspendido";
-  createdAt: Date;               // Fecha de creación
-  updatedAt: Date | null;        // Fecha de última actualización
-  lastConnection: Date | null;   // Última conexión del usuario (NUEVO)
+  createdAt: Date;
+  updatedAt?: Date;
+  lastConnection?: Date;
 }
 ```
 
-**💡 Notas sobre `lastConnection`:**
-- Se actualiza automáticamente cada vez que el usuario inicia sesión
-- Es `null` si el usuario nunca ha iniciado sesión
-- Útil para reportes de actividad y auditoría
-
-### Roles y Permisos
-
-| Rol            | Permisos                                                      |
-|----------------|---------------------------------------------------------------|
-| **Administrador** | - Gestionar usuarios (CRUD completo)                       |
-|                | - Gestionar productos y categorías                           |
-|                | - Ver todos los reportes                                      |
-|                | - Gestionar órdenes                                           |
-|                | - Realizar cierre de caja                                     |
-| **Cajero**     | - Crear y ver órdenes                                         |
-|                | - Ver catálogo de productos                                   |
-|                | - Cerrar su propia caja                                       |
-|                | - NO puede gestionar usuarios                                 |
-|                | - NO puede gestionar categorías                               |
-
-### Status de Usuario
-
-- **Activo**: Usuario puede iniciar sesión y operar normalmente
-- **Inactivo**: Usuario temporalmente deshabilitado
-- **Suspendido**: Usuario bloqueado, no puede iniciar sesión
-
----
-
-### CustomerEntity
-
+### Product
 ```typescript
-interface CustomerEntity {
-  id: string;                    // UUID
-  firstName: string;             // Nombre (Primera letra mayúscula)
-  lastName: string;              // Apellido (Primera letra mayúscula)
-  email: string | null;          // Email único (opcional)
-  phone: string | null;          // Teléfono (opcional)
-  address: string | null;        // Dirección (opcional)
-  password: string;              // Hash bcrypt (NO enviar al frontend)
-  type: "Regular" | "VIP" | "Ocasional"; // Tipo de cliente
-  createdAt: Date;               // Fecha de registro
-  updatedAt: Date;               // Fecha de última actualización
-  orders?: OrderEntity[];        // Órdenes del cliente (populate)
+{
+  id: string;
+  name: string;
+  description?: string;
+  price: number;
+  sku?: string;
+  stock: number;
+  minStock: number;
+  image?: string;
+  status: "Disponible" | "SinStock" | "Descontinuado";
+  ingredients?: string;
+  categoryId: string;
+  category?: Category;
+  createdAt: Date;
+  updatedAt?: Date;
 }
 ```
 
-**💡 Notas sobre Customers:**
-- La contraseña se genera automáticamente: `Primera letra mayúscula + resto minúsculas + @`
-  - Ejemplo: "Jesus" → "Jesus@"
-- El email es opcional pero único (si se proporciona)
-- Los nombres y apellidos deben comenzar con letra mayúscula y no pueden contener números
-- El teléfono puede ser local (8 dígitos) o internacional (+11 dígitos)
-- No se puede eliminar un cliente que tiene órdenes asociadas
+### Category
+```typescript
+{
+  id: string;
+  name: string;
+  description?: string;
+  status: "Activo" | "Inactivo";
+  createdAt: Date;
+  updatedAt?: Date;
+}
+```
 
-### Tipos de Cliente
+### Customer
+```typescript
+{
+  id: string;
+  firstName: string;
+  lastName: string;
+  email?: string;
+  phone?: string;
+  address?: string;
+  type: "Regular" | "VIP" | "Ocasional";
+  createdAt: Date;
+  updatedAt?: Date;
+}
+```
 
-| Tipo | Descripción | Uso |
-|------|-------------|-----|
-| **Regular** | Cliente común que compra ocasionalmente | Clientes habituales sin beneficios especiales |
-| **VIP** | Cliente frecuente con beneficios especiales | Clientes con descuentos o prioridad |
-| **Ocasional** | Cliente que compra muy de vez en cuando | Clientes de una sola compra o muy esporádicos |
+### StockMovement
+```typescript
+{
+  id: string;
+  productId: string;
+  userId: string;
+  type: "Reabastecimiento" | "Compra" | "Venta" | "Ajuste" | "Devolucion" | "Dañado";
+  quantity: number;
+  previousStock: number;
+  newStock: number;
+  reason?: string;
+  reference?: string;
+  notes?: string;
+  createdAt: Date;
+  user?: User;
+  product?: Product;
+}
+```
 
 ---
 
-## 📡 Códigos de Estado HTTP
+## 📋 Códigos de Estado
 
-| Código | Significado | Uso |
-|--------|-------------|-----|
-| **200** | OK | Operación exitosa |
-| **201** | Created | Recurso creado exitosamente (registro) |
-| **400** | Bad Request | Error de validación o datos inválidos |
-| **401** | Unauthorized | No autenticado (token inválido/faltante) |
-| **403** | Forbidden | No autorizado (sin permisos) |
-| **404** | Not Found | Recurso no encontrado |
-| **409** | Conflict | Conflicto (email/username duplicado) |
-| **500** | Internal Server Error | Error del servidor |
+| Código | Descripción |
+|--------|-------------|
+| 200 | OK - Petición exitosa |
+| 201 | Created - Recurso creado exitosamente |
+| 400 | Bad Request - Datos inválidos |
+| 401 | Unauthorized - Token inválido o expirado |
+| 403 | Forbidden - Sin permisos |
+| 404 | Not Found - Recurso no encontrado |
+| 500 | Internal Server Error - Error del servidor |
 
 ---
 
 ## ⚠️ Manejo de Errores
 
-### Formato de Errores
-
-Todos los errores siguen este formato:
-
+### Formato de Error
 ```json
 {
-  "error": "Mensaje descriptivo del error"
+  "error": "Mensaje de error descriptivo"
 }
 ```
 
-### Tipos de Errores Comunes
+### Ejemplos de Errores
 
-#### Errores de Validación (400)
+#### Validación
 ```json
 {
-  "error": "Email inválido"
-}
-```
-```json
-{
-  "error": "Contraseña debe tener al menos 6 caracteres"
-}
-```
-```json
-{
-  "error": "Rol inválido"
+  "error": "El nombre es requerido"
 }
 ```
 
-#### Errores de Conflicto (400/409)
+#### Recurso no encontrado
+```json
+{
+  "error": "Producto no encontrado"
+}
+```
+
+#### Conflicto
 ```json
 {
   "error": "El email ya está registrado"
 }
 ```
-```json
-{
-  "error": "El username ya está en uso"
-}
-```
 
-#### Errores de Autenticación (400/401)
-```json
-{
-  "error": "Usuario o contraseña incorrectos"
-}
-```
-```json
-{
-  "error": "Token inválido o expirado"
-}
-```
-
-#### Errores de Autorización (403)
-```json
-{
-  "error": "Usuario inactivo o suspendido"
-}
-```
-```json
-{
-  "error": "No tienes permisos para realizar esta acción"
-}
-```
-
-#### Errores de Recurso No Encontrado (404)
-```json
-{
-  "error": "User not found"
-}
-```
-```json
-{
-  "error": "Usuario no encontrado"
-}
-```
-
-#### Errores del Servidor (500)
+#### Error interno
 ```json
 {
   "error": "Internal server error"
@@ -3333,1098 +516,125 @@ Todos los errores siguen este formato:
 
 ---
 
-## 🔄 Ejemplos de Integración Frontend
+## 🔧 Configuración del Entorno
 
-### 1. Registro de Usuario
+### Variables de Entorno Requeridas
 
-**Opción A: Con contraseña personalizada**
-```typescript
-// services/authService.ts
-import axios from 'axios';
+```env
+# Base de datos
+POSTGRES_URL="postgresql://user:password@localhost:5432/coquito_db"
 
-const API_URL = 'http://localhost:3000/api';
+# JWT
+JWT_SEED="tu_secret_key_muy_segura"
 
-export const registerUser = async (userData: {
-  username: string;
-  email: string;
-  password?: string; // AHORA ES OPCIONAL
-  firstName: string;
-  lastName: string;
-  phone: string;
-  role: 'Administrador' | 'Cajero';
-  status?: 'Activo' | 'Inactivo' | 'Suspendido';
-}) => {
-  try {
-    const response = await axios.post(`${API_URL}/auth/register`, userData);
-    
-    // Guardar token
-    localStorage.setItem('token', response.data.token);
-    
-    return {
-      success: true,
-      user: response.data.user,
-      token: response.data.token
-    };
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      return {
-        success: false,
-        error: error.response?.data?.error || 'Error al registrar usuario'
-      };
-    }
-    return {
-      success: false,
-      error: 'Error desconocido'
-    };
-  }
-};
+# Email
+MAILER_SERVICE="gmail"
+MAILER_EMAIL="tu_email@gmail.com"
+MAILER_SECRET_KEY="tu_app_password"
+
+# URLs
+WEBSERVICE_URL="http://localhost:3000/api"
+FRONTEND_URL="http://localhost:5173"
+
+# Servidor
+PORT=3000
+PUBLIC_PATH="./public"
 ```
 
-**Opción B: Con contraseña autogenerada (NUEVO)**
-```typescript
-// Ejemplo de uso con contraseña autogenerada
-const createUser = async () => {
-  const result = await registerUser({
-    username: 'juan123',
-    email: 'juan@example.com',
-    firstName: 'Juan',
-    lastName: 'Pérez',
-    phone: '3001234567',
-    role: 'Cajero'
-    // ⚡ NO se envía password, el backend generará: juPE2025@
-  });
+### Docker Compose
+
+```yaml
+services:
+  postgres-db:
+    image: postgres:latest
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    ports:
+      - "5432:5432"
   
-  if (result.success) {
-    console.log('Usuario creado con contraseña autogenerada');
-    console.log('Contraseña generada: juPE2025@');
-  }
-};
-```
-
-**Opción C: Con contraseña personalizada**
-```typescript
-// Ejemplo de uso con contraseña personalizada
-const createUserWithPassword = async () => {
-  const result = await registerUser({
-    username: 'maria456',
-    email: 'maria@example.com',
-    password: 'MiPassword123!', // ✅ Contraseña personalizada
-    firstName: 'María',
-    lastName: 'García',
-    phone: '3007654321',
-    role: 'Administrador'
-  });
-  
-  if (result.success) {
-    console.log('Usuario creado con contraseña personalizada');
-  }
-};
-```
-
-### 2. Login
-
-```typescript
-// services/authService.ts
-export const login = async (username: string, password: string) => {
-  try {
-    const response = await axios.post(`${API_URL}/auth/login`, {
-      username,
-      password
-    });
-    
-    // Guardar token y usuario
-    localStorage.setItem('token', response.data.token);
-    localStorage.setItem('user', JSON.stringify(response.data.user));
-    
-    // 🆕 El campo lastConnection se actualiza automáticamente en el backend
-    console.log('Última conexión:', response.data.user.lastConnection);
-    
-    return {
-      success: true,
-      user: response.data.user,
-      token: response.data.token
-    };
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      return {
-        success: false,
-        error: error.response?.data?.error || 'Error al iniciar sesión'
-      };
-    }
-    return {
-      success: false,
-      error: 'Error desconocido'
-    };
-  }
-};
-```
-
-**💡 Ejemplo de uso en componente React:**
-```typescript
-const LoginForm = () => {
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const result = await login(username, password);
-    
-    if (result.success) {
-      // Mostrar última conexión
-      if (result.user.lastConnection) {
-        const lastLogin = new Date(result.user.lastConnection);
-        console.log(`Última conexión: ${lastLogin.toLocaleString()}`);
-      } else {
-        console.log('Primera vez que inicia sesión');
-      }
-      
-      // Redirigir al dashboard
-      window.location.href = '/dashboard';
-    } else {
-      setError(result.error);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <input 
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        placeholder="Usuario"
-      />
-      <input 
-        type="password"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        placeholder="Contraseña"
-      />
-      {error && <p className="error">{error}</p>}
-      <button type="submit">Iniciar Sesión</button>
-    </form>
-  );
-};
-```
-
-### 3. Buscar Usuarios con Filtros y Paginación
-
-
-  default : 
-  public readonly search?: SearchUsersSchema["search"],
-  public readonly role?: SearchUsersSchema["role"],
-  public readonly status?: SearchUsersSchema["status"],
-  public readonly page: SearchUsersSchema["page"] = 1,
-  public readonly limit: SearchUsersSchema["limit"] = 10
-
-```typescript
-// services/userService.ts
-export const searchUsers = async (params: {
-  search?: string;
-  role?: 'Administrador' | 'Cajero';
-  status?: 'Activo' | 'Inactivo' | 'Suspendido';
-  page?: number;
-  limit?: number;
-}) => {
-  try {
-    // Construir query params
-    const queryParams = new URLSearchParams();
-    if (params.search) queryParams.append('search', params.search);
-    if (params.role) queryParams.append('role', params.role);
-    if (params.status) queryParams.append('status', params.status);
-    if (params.page) queryParams.append('page', params.page.toString());
-    if (params.limit) queryParams.append('limit', params.limit.toString());
-    
-    const response = await axios.get(
-      `${API_URL}/users/search?${queryParams.toString()}`
-    );
-    
-    return {
-      success: true,
-      data: response.data // { users, total, page, limit, totalPages }
-    };
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      return {
-        success: false,
-        error: error.response?.data?.error || 'Error al buscar usuarios'
-      };
-    }
-    return {
-      success: false,
-      error: 'Error desconocido'
-    };
-  }
-};
-```
-
-**📋 Ejemplo Completo: Tabla de Usuarios con Búsqueda y Paginación**
-
-```typescript
-// components/UsersTable.tsx
-import { useState, useEffect } from 'react';
-import { searchUsers } from '../services/userService';
-
-interface User {
-  id: string;
-  username: string;
-  email: string;
-  firstName: string;
-  lastName: string;
-  role: string;
-  status: string;
-  lastConnection: string | null;
-}
-
-const UsersTable = () => {
-  const [users, setUsers] = useState<User[]>([]);
-  const [loading, setLoading] = useState(false);
-  
-  // Estados de filtros
-  const [searchTerm, setSearchTerm] = useState('');
-  const [roleFilter, setRoleFilter] = useState<string>('');
-  const [statusFilter, setStatusFilter] = useState<string>('');
-  
-  // Estados de paginación
-  const [page, setPage] = useState(1);
-  const [limit, setLimit] = useState(10);
-  const [totalPages, setTotalPages] = useState(0);
-  const [total, setTotal] = useState(0);
-
-  // Función para cargar usuarios
-  const loadUsers = async () => {
-    setLoading(true);
-    
-    const result = await searchUsers({
-      search: searchTerm || undefined,
-      role: roleFilter as any || undefined,
-      status: statusFilter as any || undefined,
-      page,
-      limit
-    });
-
-    if (result.success && result.data) {
-      setUsers(result.data.users);
-      setTotal(result.data.total);
-      setTotalPages(result.data.totalPages);
-    }
-    
-    setLoading(false);
-  };
-
-  // Cargar usuarios cuando cambien los filtros o la página
-  useEffect(() => {
-    loadUsers();
-  }, [page, limit, searchTerm, roleFilter, statusFilter]);
-
-  // Reiniciar a la página 1 cuando cambien los filtros
-  useEffect(() => {
-    setPage(1);
-  }, [searchTerm, roleFilter, statusFilter]);
-
-  return (
-    <div className="users-table-container">
-      {/* Filtros */}
-      <div className="filters">
-        <input
-          type="text"
-          placeholder="Buscar por nombre, usuario o email..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        
-        <select value={roleFilter} onChange={(e) => setRoleFilter(e.target.value)}>
-          <option value="">Todos los roles</option>
-          <option value="Administrador">Administrador</option>
-          <option value="Cajero">Cajero</option>
-        </select>
-        
-        <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value)}>
-          <option value="">Todos los estados</option>
-          <option value="Activo">Activo</option>
-          <option value="Inactivo">Inactivo</option>
-          <option value="Suspendido">Suspendido</option>
-        </select>
-      </div>
-
-      {/* Información de resultados */}
-      <div className="results-info">
-        <p>Mostrando {users.length} de {total} usuarios</p>
-        <select value={limit} onChange={(e) => setLimit(Number(e.target.value))}>
-          <option value="10">10 por página</option>
-          <option value="20">20 por página</option>
-          <option value="50">50 por página</option>
-        </select>
-      </div>
-
-      {/* Tabla */}
-      {loading ? (
-        <p>Cargando...</p>
-      ) : (
-        <table>
-          <thead>
-            <tr>
-              <th>Usuario</th>
-              <th>Nombre</th>
-              <th>Email</th>
-              <th>Rol</th>
-              <th>Estado</th>
-              <th>Última Conexión</th>
-            </tr>
-          </thead>
-          <tbody>
-            {users.map((user) => (
-              <tr key={user.id}>
-                <td>{user.username}</td>
-                <td>{`${user.firstName} ${user.lastName}`}</td>
-                <td>{user.email}</td>
-                <td>{user.role}</td>
-                <td>{user.status}</td>
-                <td>
-                  {user.lastConnection 
-                    ? new Date(user.lastConnection).toLocaleString()
-                    : 'Nunca'
-                  }
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      )}
-
-      {/* Paginación */}
-      <div className="pagination">
-        <button 
-          onClick={() => setPage(1)} 
-          disabled={page === 1}
-        >
-          ⏮ Primera
-        </button>
-        
-        <button 
-          onClick={() => setPage(page - 1)} 
-          disabled={page === 1}
-        >
-          ← Anterior
-        </button>
-        
-        <span>
-          Página {page} de {totalPages}
-        </span>
-        
-        <button 
-          onClick={() => setPage(page + 1)} 
-          disabled={page === totalPages}
-        >
-          Siguiente →
-        </button>
-        
-        <button 
-          onClick={() => setPage(totalPages)} 
-          disabled={page === totalPages}
-        >
-          Última ⏭
-        </button>
-      </div>
-    </div>
-  );
-};
-
-export default UsersTable;
-```
-
-### 4. Actualizar Usuario
-
-```typescript
-// services/userService.ts
-export const updateUser = async (
-  userId: string, 
-  updates: Partial<{
-    username: string;
-    email: string;
-    firstName: string;
-    lastName: string;
-    phone: string;
-    role: 'Administrador' | 'Cajero';
-    status: 'Activo' | 'Inactivo' | 'Suspendido';
-    password: string;
-  }>
-) => {
-  try {
-    const response = await axios.patch(
-      `${API_URL}/users/${userId}`,
-      updates
-    );
-    
-    return {
-      success: true,
-      user: response.data.user
-    };
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      return {
-        success: false,
-        error: error.response?.data?.error || 'Error al actualizar usuario'
-      };
-    }
-    return {
-      success: false,
-      error: 'Error desconocido'
-    };
-  }
-};
-```
-
-**💡 Ejemplos de Uso:**
-
-**A. Actualizar solo el estado del usuario**
-```typescript
-const suspendUser = async (userId: string) => {
-  const result = await updateUser(userId, {
-    status: 'Suspendido'
-  });
-  
-  if (result.success) {
-    console.log('Usuario suspendido correctamente');
-  }
-};
-```
-
-**B. Actualizar múltiples campos**
-```typescript
-const updateUserProfile = async (userId: string) => {
-  const result = await updateUser(userId, {
-    firstName: 'Juan Carlos',
-    lastName: 'Pérez López',
-    phone: '3009876543',
-    role: 'Administrador'
-  });
-  
-  if (result.success) {
-    console.log('Perfil actualizado:', result.user);
-  }
-};
-```
-
-**C. Cambiar contraseña**
-```typescript
-const changePassword = async (userId: string, newPassword: string) => {
-  const result = await updateUser(userId, {
-    password: newPassword
-  });
-  
-  if (result.success) {
-    console.log('Contraseña actualizada');
-  }
-};
-```
-
-**📋 Ejemplo de Formulario de Edición:**
-```typescript
-const EditUserForm = ({ user }: { user: User }) => {
-  const [formData, setFormData] = useState({
-    firstName: user.firstName,
-    lastName: user.lastName,
-    phone: user.phone,
-    role: user.role,
-    status: user.status
-  });
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    const result = await updateUser(user.id, formData);
-    
-    if (result.success) {
-      alert('Usuario actualizado correctamente');
-    } else {
-      alert(`Error: ${result.error}`);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit}>
-      <input
-        value={formData.firstName}
-        onChange={(e) => setFormData({...formData, firstName: e.target.value})}
-        placeholder="Nombre"
-      />
-      <input
-        value={formData.lastName}
-        onChange={(e) => setFormData({...formData, lastName: e.target.value})}
-        placeholder="Apellido"
-      />
-      <input
-        value={formData.phone}
-        onChange={(e) => setFormData({...formData, phone: e.target.value})}
-        placeholder="Teléfono"
-      />
-      <select
-        value={formData.role}
-        onChange={(e) => setFormData({...formData, role: e.target.value as any})}
-      >
-        <option value="Administrador">Administrador</option>
-        <option value="Cajero">Cajero</option>
-      </select>
-      <select
-        value={formData.status}
-        onChange={(e) => setFormData({...formData, status: e.target.value as any})}
-      >
-        <option value="Activo">Activo</option>
-        <option value="Inactivo">Inactivo</option>
-        <option value="Suspendido">Suspendido</option>
-      </select>
-      <button type="submit">Guardar Cambios</button>
-    </form>
-  );
-};
-```
-
-### 5. Eliminar Usuario
-
-```typescript
-// services/userService.ts
-export const deleteUser = async (userId: string) => {
-  try {
-    const response = await axios.delete(`${API_URL}/users/${userId}`);
-    
-    return {
-      success: true,
-      message: response.data.message,
-      user: response.data.user
-    };
-  } catch (error) {
-    if (axios.isAxiosError(error)) {
-      return {
-        success: false,
-        error: error.response?.data?.error || 'Error al eliminar usuario'
-      };
-    }
-    return {
-      success: false,
-      error: 'Error desconocido'
-    };
-  }
-};
-```
-
-**⚠️ Ejemplo con Confirmación:**
-```typescript
-const handleDeleteUser = async (userId: string, username: string) => {
-  // Confirmar antes de eliminar
-  const confirmed = window.confirm(
-    `¿Estás seguro de eliminar al usuario "${username}"? Esta acción no se puede deshacer.`
-  );
-  
-  if (!confirmed) return;
-  
-  const result = await deleteUser(userId);
-  
-  if (result.success) {
-    alert(`Usuario "${result.user.username}" eliminado correctamente`);
-    // Recargar la lista de usuarios
-    loadUsers();
-  } else {
-    alert(`Error: ${result.error}`);
-  }
-};
-```
-
-**📋 Ejemplo en Componente:**
-```typescript
-const UserActions = ({ user }: { user: User }) => {
-  const handleDelete = async () => {
-    const confirmed = window.confirm(
-      `¿Eliminar usuario ${user.username}?`
-    );
-    
-    if (confirmed) {
-      const result = await deleteUser(user.id);
-      if (result.success) {
-        // Notificar éxito y actualizar lista
-        console.log('Usuario eliminado');
-      }
-    }
-  };
-
-  return (
-    <div className="user-actions">
-      <button onClick={() => editUser(user)}>✏️ Editar</button>
-      <button onClick={handleDelete} className="danger">🗑️ Eliminar</button>
-    </div>
-  );
-};
-```
-
-### 6. Configuración de Axios con Interceptors (Recomendado)
-
-```typescript
-// config/axios.config.ts
-import axios from 'axios';
-
-const axiosInstance = axios.create({
-  baseURL: 'http://localhost:3000/api',
-  timeout: 10000,
-  headers: {
-    'Content-Type': 'application/json'
-  }
-});
-
-// Interceptor para agregar token automáticamente
-axiosInstance.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
-    }
-    return config;
-  },
-  (error) => {
-    return Promise.reject(error);
-  }
-);
-
-// Interceptor para manejo de errores global
-axiosInstance.interceptors.response.use(
-  (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      // Token inválido o expirado
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.href = '/login';
-    }
-    return Promise.reject(error);
-  }
-);
-
-export default axiosInstance;
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    environment:
+      PGADMIN_DEFAULT_EMAIL: ${PGADMIN_DEFAULT_EMAIL}
+      PGADMIN_DEFAULT_PASSWORD: ${PGADMIN_DEFAULT_PASSWORD}
+    ports:
+      - "5050:80"
 ```
 
 ---
 
-## 🧪 Testing con Postman/Thunder Client
+## 🚀 Instalación y Uso
 
-### Colección de Pruebas
-
-#### 1. Registro
-```http
-POST http://localhost:3000/api/auth/register
-Content-Type: application/json
-
-{
-  "username": "testuser",
-  "email": "test@example.com",
-  "password": "Test123!",
-  "firstName": "Test",
-  "lastName": "User",
-  "phone": "3001234567",
-  "role": "Cajero",
-  "status": "Activo"
-}
+### 1. Instalar Dependencias
+```bash
+npm install
 ```
 
-#### 2. Login
-```http
-POST http://localhost:3000/api/auth/login
-Content-Type: application/json
-
-{
-  "username": "testuser",
-  "password": "Test123!"
-}
+### 2. Configurar Variables de Entorno
+```bash
+cp .env.example .env
+# Editar .env con tus valores
 ```
 
-#### 3. Buscar Usuarios
-```http
-GET http://localhost:3000/api/users/search?search=test&page=1&limit=10
+### 3. Configurar Base de Datos
+```bash
+# Con Docker
+docker-compose up -d
+
+# O instalar PostgreSQL localmente
 ```
 
-#### 4. Obtener Usuario por ID
-```http
-GET http://localhost:3000/api/users/550e8400-e29b-41d4-a716-446655440000
+### 4. Ejecutar Migraciones
+```bash
+npx prisma migrate dev
 ```
 
-#### 5. Actualizar Usuario
-```http
-PATCH http://localhost:3000/api/users/550e8400-e29b-41d4-a716-446655440000
-Content-Type: application/json
-
-{
-  "firstName": "Test Updated",
-  "status": "Suspendido"
-}
+### 5. Generar Cliente Prisma
+```bash
+npx prisma generate
 ```
 
-#### 6. Eliminar Usuario
-```http
-DELETE http://localhost:3000/api/users/550e8400-e29b-41d4-a716-446655440000
+### 6. Iniciar Servidor
+```bash
+# Desarrollo
+npm run dev
+
+# Producción
+npm run build
+npm start
 ```
 
 ---
 
 ## 📝 Notas Importantes
 
-### Seguridad
-1. **Passwords**: Nunca se devuelven en las respuestas (están hasheadas)
-2. **Tokens**: Expiran en 24 horas
-3. **CORS**: Configurado para desarrollo (ajustar en producción)
-4. **Validación**: Doble capa (Zod + lógica de negocio)
-
-### Paginación
-- **Default**: 10 items por página
-- **Máximo recomendado**: 100 items por página
-- **Formato**: Siempre incluye `total`, `page`, `limit`, `totalPages`
-
-**💡 Cálculo de Paginación:**
-```typescript
-// Ejemplo de cómo calcular páginas
-const totalPages = Math.ceil(total / limit);
-const hasNextPage = page < totalPages;
-const hasPreviousPage = page > 1;
-const startIndex = (page - 1) * limit + 1;
-const endIndex = Math.min(page * limit, total);
-
-console.log(`Mostrando ${startIndex} a ${endIndex} de ${total} resultados`);
-```
-
-### Timestamps
-- Todas las fechas están en formato ISO 8601 UTC
-- Ejemplo: `"2024-10-12T10:30:00.000Z"`
-
-### UUIDs
-- Todos los IDs son UUID v4
-- Ejemplo: `"550e8400-e29b-41d4-a716-446655440000"`
+- Todos los endpoints requieren `Content-Type: application/json`
+- Los endpoints protegidos requieren `Authorization: Bearer <token>`
+- Las validaciones usan Zod con mensajes en español
+- Los precios se manejan con 2 decimales
+- Los UUIDs se generan automáticamente
+- Los timestamps se manejan automáticamente
+- Las contraseñas se hashean con bcrypt
+- Los tokens JWT tienen duración limitada
 
 ---
 
-## 🚀 Próximas Implementaciones
+## 🤝 Contribución
 
-### ✅ Implementado
-- [x] Endpoints de Auth (Login, Register, Refresh Token, Reset Password)
-- [x] Endpoints de Users (CRUD completo con búsqueda y paginación)
-- [x] Endpoints de Categories (CRUD completo)
-- [x] Endpoints de Products (CRUD completo con relación a categorías)
-- [x] Endpoints de Stock Movements (6 tipos de movimientos)
-- [x] Endpoints de Customers (CRUD completo con contraseña autogenerada)
-
-### 🔜 Pendientes
-- [ ] Middleware de autenticación JWT
-- [ ] Control de acceso basado en roles (RBAC)
-- [ ] Endpoints de órdenes y ventas (Orders y OrderItems)
-- [ ] Endpoints de caja y cierres (CashRegister)
-- [ ] Endpoints de reportes y métricas (DailySalesReport)
-- [ ] WebSockets para notificaciones en tiempo real
-- [ ] Rate limiting y throttling
-- [ ] Logs de auditoría completos (ActivityLog)
-- [ ] Upload de imágenes (productos, usuarios)
-- [ ] Exportación de reportes (PDF, Excel)
-- [ ] Backup automático de base de datos
-- [ ] Dashboard de métricas en tiempo real
+1. Fork el proyecto
+2. Crea una rama para tu feature (`git checkout -b feature/nueva-funcionalidad`)
+3. Commit tus cambios (`git commit -m 'Agregar nueva funcionalidad'`)
+4. Push a la rama (`git push origin feature/nueva-funcionalidad`)
+5. Abre un Pull Request
 
 ---
 
-## 📞 Soporte
+## 📄 Licencia
 
-Para dudas o problemas con la API:
-- **Repositorio**: [GitHub - Backend Coquito]
-- **Desarrollador**: [Tu Nombre]
-- **Email**: [Tu Email]
+Este proyecto está bajo la Licencia ISC.
 
 ---
 
----
-
-## 📖 Guía Rápida de Integración
-
-### Para Desarrolladores Frontend
-
-**1. Instalación de Dependencias**
-```bash
-npm install axios
-# o
-npm install @tanstack/react-query axios
-```
-
-**2. Configuración Base**
-```typescript
-// src/config/api.ts
-export const API_URL = 'http://localhost:3000/api';
-
-// Interfaces globales
-export interface User {
-  id: string;
-  username: string;
-  email: string;
-  emailVerified: boolean;
-  firstName: string;
-  lastName: string;
-  phone: string;
-  role: 'Administrador' | 'Cajero';
-  status: 'Activo' | 'Inactivo' | 'Suspendido';
-  createdAt: string;
-  updatedAt: string;
-  lastConnection: string | null;
-}
-
-export interface ApiResponse<T> {
-  success: boolean;
-  data?: T;
-  error?: string;
-}
-```
-
-**3. Flujo Completo de Autenticación**
-```typescript
-// 1. Login
-const { user, token } = await login('juan123', 'Password123!');
-
-// 2. Guardar datos
-localStorage.setItem('token', token);
-localStorage.setItem('user', JSON.stringify(user));
-
-// 3. Verificar última conexión
-if (user.lastConnection) {
-  const lastLogin = new Date(user.lastConnection);
-  console.log(`Última sesión: ${lastLogin.toLocaleString()}`);
-}
-
-// 4. Configurar axios con token
-axios.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-
-// 5. Navegar al dashboard
-router.push('/dashboard');
-```
-
-**4. Patrones Recomendados**
-
-**Patrón A: Custom Hooks (React)**
-```typescript
-// hooks/useUsers.ts
-import { useState, useEffect } from 'react';
-
-export const useUsers = (filters?: SearchFilters) => {
-  const [users, setUsers] = useState([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchUsers = async () => {
-      setLoading(true);
-      const result = await searchUsers(filters);
-      if (result.success) {
-        setUsers(result.data.users);
-      } else {
-        setError(result.error);
-      }
-      setLoading(false);
-    };
-    fetchUsers();
-  }, [filters]);
-
-  return { users, loading, error };
-};
-```
-
-**Patrón B: TanStack Query (Recomendado)**
-```typescript
-// hooks/useUsers.ts
-import { useQuery } from '@tanstack/react-query';
-
-export const useUsers = (filters?: SearchFilters) => {
-  return useQuery({
-    queryKey: ['users', filters],
-    queryFn: () => searchUsers(filters),
-  });
-};
-
-// Uso en componente
-const UsersList = () => {
-  const { data, isLoading, error } = useUsers({ status: 'Activo' });
-  
-  if (isLoading) return <div>Cargando...</div>;
-  if (error) return <div>Error: {error}</div>;
-  
-  return (
-    <div>
-      {data?.users.map(user => <UserCard key={user.id} user={user} />)}
-    </div>
-  );
-};
-```
-
----
-
-## 🔍 Búsqueda y Filtrado Avanzado
-
-### Estrategias de Búsqueda
-
-**1. Búsqueda en Tiempo Real (Debounced)**
-```typescript
-import { useState, useEffect } from 'react';
-import { useDebounce } from 'use-debounce';
-
-const UsersSearch = () => {
-  const [searchTerm, setSearchTerm] = useState('');
-  const [debouncedSearch] = useDebounce(searchTerm, 500);
-  
-  useEffect(() => {
-    // Se ejecuta solo después de 500ms de inactividad
-    if (debouncedSearch) {
-      searchUsers({ search: debouncedSearch });
-    }
-  }, [debouncedSearch]);
-
-  return (
-    <input
-      placeholder="Buscar usuario..."
-      value={searchTerm}
-      onChange={(e) => setSearchTerm(e.target.value)}
-    />
-  );
-};
-```
-
-**2. Filtros Persistentes (URL)**
-```typescript
-import { useSearchParams } from 'react-router-dom';
-
-const UsersPage = () => {
-  const [searchParams, setSearchParams] = useSearchParams();
-  
-  // Leer filtros de la URL
-  const filters = {
-    search: searchParams.get('search') || '',
-    role: searchParams.get('role') || '',
-    page: Number(searchParams.get('page')) || 1,
-  };
-
-  // Actualizar URL al cambiar filtros
-  const updateFilters = (newFilters: Partial<typeof filters>) => {
-    const params = { ...filters, ...newFilters };
-    setSearchParams(params);
-  };
-
-  return <UsersTable filters={filters} onFilterChange={updateFilters} />;
-};
-```
-
-**3. Exportar Resultados**
-```typescript
-const exportUsers = async (filters: SearchFilters) => {
-  // Obtener todos los resultados (sin paginación)
-  const result = await searchUsers({ 
-    ...filters, 
-    limit: 10000 // Máximo
-  });
-  
-  if (result.success) {
-    // Convertir a CSV
-    const csv = convertToCSV(result.data.users);
-    downloadFile(csv, 'usuarios.csv');
-  }
-};
-```
-
----
-
-## 🛡️ Manejo de Errores Robusto
-
-```typescript
-// utils/errorHandler.ts
-export const handleApiError = (error: any): string => {
-  // Error de red
-  if (!error.response) {
-    return 'Error de conexión. Verifica tu internet.';
-  }
-
-  // Errores específicos por código
-  const status = error.response.status;
-  const message = error.response.data?.error;
-
-  switch (status) {
-    case 400:
-      return message || 'Datos inválidos';
-    case 401:
-      // Token expirado
-      localStorage.clear();
-      window.location.href = '/login';
-      return 'Sesión expirada. Inicia sesión nuevamente.';
-    case 403:
-      return 'No tienes permisos para esta acción';
-    case 404:
-      return message || 'Recurso no encontrado';
-    case 409:
-      return message || 'El recurso ya existe';
-    case 500:
-      return 'Error del servidor. Intenta más tarde.';
-    default:
-      return message || 'Error desconocido';
-  }
-};
-
-// Uso
-try {
-  await createUser(userData);
-} catch (error) {
-  const errorMessage = handleApiError(error);
-  showNotification(errorMessage, 'error');
-}
-```
-
----
-
-**Última actualización**: 22 de Octubre, 2025  
-**Versión**: 6.0.0
-
-**Cambios recientes:**
-- ✅ **SECCIÓN CUSTOMERS COMPLETA AGREGADA** ⭐ NUEVO
-  - 6 endpoints documentados (GET, POST, PATCH, DELETE, Search, por ID)
-  - Estructura de datos Customer explicada
-  - Sistema de contraseña autogenerada: `FirstName@` (ej: "Jesus" → "Jesus@")
-  - Validaciones de nombre/apellido (Primera letra mayúscula, sin números)
-  - Validación de teléfono: 8 dígitos local o +11 internacional
-  - Relación Customer → Orders documentada
-  - Ejemplos completos de CRUD con frontend
-  - No se puede eliminar cliente con órdenes asociadas
-  - Contraseñas NUNCA se devuelven en respuestas
-- ✅ **SISTEMA DE REFRESH TOKEN IMPLEMENTADO**
-  - Access Token: 1 hora (peticiones normales)
-  - Refresh Token: 7 días (renovar sesión)
-  - Endpoint `/api/auth/refresh-token` para renovación automática
-  - Refresh Token se guarda en base de datos (puede invalidarse)
-  - Login y Register ahora devuelven 2 tokens: `accessToken` y `refreshToken`
-  - Documentación completa con ejemplos de:
-    - Interceptor de Axios para renovación automática
-    - Hook de React para renovación programada
-    - Manejo de errores y sesiones expiradas
-  - Flujos completos de autenticación documentados
-- ✅ **Documentación completa en orden cronológico**
-  - 1. Auth → 2. Users → 3. Categories → 4. Products → 5. Stock Movements → 6. Customers
-- ✅ **Sección CATEGORIES completa agregada**
-  - 6 endpoints documentados (GET, POST, PATCH, DELETE, Search, por ID)
-  - Estructura de datos Category explicada
-  - Ejemplos del catálogo real de Embutidos Coquito
-- ✅ **Sección PRODUCTS completa agregada**
-  - 6 endpoints documentados con ejemplos reales
-  - Estructura de datos Product con campo `ingredients`
-  - Relación Category → Products explicada con diagramas
-  - Flujo completo: Crear categoría → Obtener ID → Crear producto
-  - Ejemplos JSON con `categoryId` y `productId`
-- ✅ **Sistema completo de Movimientos de Stock implementado**
-  - 6 tipos de movimientos: Reabastecimiento, Compra, Venta, Ajuste, Devolución, Dañado
-  - Actualización automática de stock en transacciones
-  - Historial completo por producto
-- ✅ **Campo `ingredients` agregado al modelo Product**
-  - Máximo 1000 caracteres
-  - Opcional, para listar ingredientes del producto
-- ✅ **Contexto de negocio actualizado**
-  - Empresa de productos derivados de pollo (Embutidos Coquito)
-  - Modelo de fábrica (Yacuiba) → tienda (Tarija)
-  - Ejemplos reales del catálogo: Chorizos, Salchichas, Hamburguesas, Pollo Trozado, etc.
-- ✅ Campo `lastConnection` agregado al modelo User
-- ✅ Contraseña autogenerada con política de la empresa
-- ✅ Documentación completa de integración frontend
-- ✅ Ejemplos de paginación y búsqueda avanzada
-- ✅ Patrones recomendados con React y TanStack Query
-
+**Desarrollado para Embutidos Coquito - Sistema POS** 🐔
