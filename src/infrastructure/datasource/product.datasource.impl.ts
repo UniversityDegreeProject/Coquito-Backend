@@ -35,33 +35,57 @@ export class ProductDatasourceImpl implements ProductDatasource {
 
     const { search, categoryId, status, minStock, page, limit } = getProductOptionalFiltersDto;
 
-    const where: any = {};
+    // const where: any = {};
 
-    if (search && search.trim() !== "") {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { sku: { contains: search, mode: 'insensitive' } },
-      ];
-    }
+    // if (search && search.trim() !== "") {
+    //   where.OR = [
+    //     { name: { contains: search, mode: 'insensitive' } },
+    //     { description: { contains: search, mode: 'insensitive' } },
+    //     { sku: { contains: search, mode: 'insensitive' } },
+    //   ];
+    // }
 
-    if (categoryId) {
-      where.categoryId = categoryId;
-    }
+    // if (categoryId) {
+    //   where.categoryId = categoryId;
+    // }
 
-    if (status) {
-      where.status = status;
-    }
+    // if (status) {
+    //   where.status = status;
+    // }
     
-    if (minStock) {
-      where.stock = {
-        lte: minStock
-      };
-    } // ? termina el filtro por stock bajo
+    // if (minStock) {
+    //   where.stock = {
+    //     lte: minStock
+    //   };
+    // } // ? termina el filtro por stock bajo
 
     const [ products, total] = await Promise.all([
       prismaClient.product.findMany({
-        where,
+        where: {
+          ...(search && search.trim() !== "" && {
+            OR: [
+              { name : { contains: search, mode: 'insensitive' } },
+              { description : { contains: search, mode: 'insensitive' } },
+              { sku : { contains: search, mode: 'insensitive' } },
+            ],
+          }),
+
+          ... ( categoryId && { 
+            categoryId: {}
+          }),
+
+          ... ( status && {
+            status : status
+          }),
+
+          ... ( minStock && {
+             stock: {
+              lte: minStock
+            }
+          }),
+
+        },
+        
         include: {
           category: true
         },
@@ -71,7 +95,32 @@ export class ProductDatasourceImpl implements ProductDatasource {
           createdAt: 'desc'
         },
       }),
-      prismaClient.product.count({ where }),
+      prismaClient.product.count({
+        where: {
+          ...(search && search.trim() !== "" && {
+            OR: [
+              { name : { contains: search, mode: 'insensitive' } },
+              { description : { contains: search, mode: 'insensitive' } },
+              { sku : { contains: search, mode: 'insensitive' } },
+            ],
+          }),
+
+          ... ( categoryId && { 
+            categoryId: {}
+          }),
+
+          ... ( status && {
+            status : status
+          }),
+
+          ... ( minStock && {
+             stock: {
+              lte: minStock
+            }
+          }),
+
+        },
+      }),
     ]);
 
     return {
