@@ -63,9 +63,6 @@ export class AuthController {
       //? Generar Access Token (1 hora)
       const accessToken = await this.jwtAdapter.generateAccessToken({ 
         id: user.id,
-        username: user.username,
-        email: user.email,
-        role: user.role
       });
       if( !accessToken ) return res.status(500).json({ error: "Error al generar access token" });
 

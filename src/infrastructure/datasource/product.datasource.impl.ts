@@ -71,7 +71,7 @@ export class ProductDatasourceImpl implements ProductDatasource {
           }),
 
           ... ( categoryId && { 
-            categoryId: {}
+            categoryId: categoryId
           }),
 
           ... ( status && {
@@ -106,7 +106,7 @@ export class ProductDatasourceImpl implements ProductDatasource {
           }),
 
           ... ( categoryId && { 
-            categoryId: {}
+            categoryId: categoryId
           }),
 
           ... ( status && {
