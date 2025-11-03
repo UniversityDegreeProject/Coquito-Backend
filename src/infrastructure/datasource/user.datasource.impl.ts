@@ -51,6 +51,7 @@ export class UserDatasourceImpl implements UserDatasource {
         where,
         skip: (page - 1) * limit,
         take: limit,
+        orderBy: { createdAt: 'asc' }, // Ordenar por fecha de creación ascendente (más antiguos primero)
       }),
       prismaClient.user.count({ where }),
     ]);
@@ -66,7 +67,7 @@ export class UserDatasourceImpl implements UserDatasource {
   }
 
   // * Obtener usuario por id
-  async getUserById(id: GetUserByIdDto): Promise<UserEntity> {
+  async getUserById (id: GetUserByIdDto): Promise<UserEntity> {
     const user = await prismaClient.user.findUnique({
       where: { id: id.id },
     });

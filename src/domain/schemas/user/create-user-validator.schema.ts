@@ -23,14 +23,14 @@ export const createUserSchema = zod.object({
     )
     .optional(),
   firstName: zod
-    .string({ error: "Nombre es requerido" })
-    .min(1, { error: "El nombre no puede estar vacio" })
-    .regex(/^[A-Z][a-z]+$/, { error: "El nombre debe comenzar con letra mayúscula y no puede contener numeros" }),
+  .string({ error: "Nombre es requerido" })
+  .min(1, { error: "El nombre no puede estar vacio" })
+  .regex(/^[A-Z][a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, { error: "El nombre debe comenzar con letra mayúscula y solo puede contener letras" }),
   
   lastName: zod
     .string({ error: "Apellido es requerido" })
     .min(1, { error: "El apellido no puede estar vacio" })
-    .regex(/^[A-Z][a-z]+$/, { error: "El apellido debe comenzar con letra mayúscula y no puede contener numeros" }),
+    .regex(/^[A-Z][a-zA-ZáéíóúÁÉÍÓÚñÑ\s]+$/, { error: "El Apellido debe comenzar con letra mayúscula y solo puede contener letras" }),
   
   phone: zod
   .string({ error: "Teléfono es requerido" })
