@@ -49,7 +49,7 @@ export class CategoryDatasourceImpl implements CategoryDatasource {
     const [categories, total] = await Promise.all([
       prismaClient.category.findMany({
         orderBy: {
-          createdAt: 'desc'
+          createdAt: 'asc'
         },
         where,
         skip: (page - 1) * limit,

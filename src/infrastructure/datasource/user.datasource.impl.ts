@@ -51,7 +51,7 @@ export class UserDatasourceImpl implements UserDatasource {
         where,
         skip: (page - 1) * limit,
         take: limit,
-        orderBy: { createdAt: 'asc' }, // Ordenar por fecha de creación ascendente (más antiguos primero)
+        orderBy: { createdAt: 'asc' }, // Ordenar por fecha de mas antiguo a mas nuevo
       }),
       prismaClient.user.count({ where }),
     ]);
