@@ -52,7 +52,7 @@ export class CustomerDatasourceImpl implements CustomerDatasource {
         where: where,
         skip: ( page - 1 ) * limit,
         take: limit,
-        orderBy: { createdAt: 'desc' },
+        orderBy: { createdAt: 'asc' },
       }),
 
       prismaClient.customer.count({ where: where }),

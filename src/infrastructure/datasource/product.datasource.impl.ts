@@ -92,7 +92,7 @@ export class ProductDatasourceImpl implements ProductDatasource {
         skip: (page - 1) * limit,
         take: limit,
         orderBy: {
-          createdAt: 'desc'
+          createdAt: 'asc'
         },
       }),
       prismaClient.product.count({
