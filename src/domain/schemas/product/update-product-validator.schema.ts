@@ -17,7 +17,7 @@ export const updateProductSchema = zod.object({
   
   price: zod
     .number({ error: "Precio inválido" })
-    .positive({ error: "El precio debe ser mayor a 0" })
+    .min(0, { error: "El precio no puede ser negativo" })
     .multipleOf(0.01, { error: "El precio debe tener máximo 2 decimales" })
     .optional(),
   
@@ -57,6 +57,17 @@ export const updateProductSchema = zod.object({
     .enum(["Disponible", "SinStock", "Descontinuado"], { 
       error: "Estado debe ser Disponible, SinStock o Descontinuado" 
     })
+    .optional(),
+  
+  isVariableWeight: zod
+    .boolean({ error: "isVariableWeight debe ser un booleano" })
+    .optional(),
+  
+  pricePerKg: zod
+    .number({ error: "Precio por kg inválido" })
+    .positive({ error: "Precio por kg debe ser mayor a 0" })
+    .multipleOf(0.01, { error: "Precio por kg debe tener máximo 2 decimales" })
+    .nullable()
     .optional(),
   
   updatedAt: zod

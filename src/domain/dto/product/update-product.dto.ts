@@ -12,6 +12,8 @@ export class UpdateProductDto {
     public readonly image: UpdateProductSchema["image"],
     public readonly categoryId: UpdateProductSchema["categoryId"],
     public readonly status: UpdateProductSchema["status"],
+    public readonly isVariableWeight: UpdateProductSchema["isVariableWeight"],
+    public readonly pricePerKg: UpdateProductSchema["pricePerKg"],
     public readonly updatedAt: UpdateProductSchema["updatedAt"]
   ) {}
 
@@ -30,6 +32,8 @@ export class UpdateProductDto {
     if (this.image !== undefined) returnObj.image = this.image;
     if (this.categoryId !== undefined) returnObj.categoryId = this.categoryId;
     if (this.status !== undefined) returnObj.status = this.status;
+    if (this.isVariableWeight !== undefined) returnObj.isVariableWeight = this.isVariableWeight;
+    if (this.pricePerKg !== undefined) returnObj.pricePerKg = this.pricePerKg;
     if (this.updatedAt !== undefined) returnObj.updatedAt = this.updatedAt;
     return returnObj;
   }
@@ -41,8 +45,8 @@ export class UpdateProductDto {
       return [firstError?.message, undefined];
     }
 
-    const { id, name, description, price, sku, stock, minStock, image, categoryId, status, updatedAt } = result.data;
-    return [undefined, new UpdateProductDto(id, name, description, price, sku, stock, minStock, image, categoryId, status, updatedAt)];
+    const { id, name, description, price, sku, stock, minStock, image, categoryId, status, isVariableWeight, pricePerKg, updatedAt } = result.data;
+    return [undefined, new UpdateProductDto(id, name, description, price, sku, stock, minStock, image, categoryId, status, isVariableWeight, pricePerKg, updatedAt)];
   }
 }
 

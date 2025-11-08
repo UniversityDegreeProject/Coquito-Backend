@@ -152,7 +152,7 @@ export class ProductDatasourceImpl implements ProductDatasource {
 
   // * Crear producto
   async createProduct(product: CreateProductDto): Promise<ProductEntity> {
-    const { name, description, price, sku, stock, minStock, image, ingredients, categoryId, status } = product;
+    const { name, description, price, sku, stock, minStock, image, ingredients, categoryId, status, isVariableWeight, pricePerKg } = product;
 
     //? Verificar que la categoría existe
     const categoryExists = await prismaClient.category.findUnique({
@@ -183,6 +183,11 @@ export class ProductDatasourceImpl implements ProductDatasource {
       }
     }
 
+    //? Validar que si es peso variable, debe tener pricePerKg
+    if (isVariableWeight && !pricePerKg) {
+      throw HttpCustomErrors.badRequest("Los productos de peso variable deben tener precio por kg");
+    }
+
     //? Crear producto
     const newProduct = await prismaClient.product.create({
       data: {
@@ -190,12 +195,14 @@ export class ProductDatasourceImpl implements ProductDatasource {
         description: description ?? null,
         price,
         sku: sku,
-        stock: stock,
+        stock: isVariableWeight ? 0 : stock, // Si es peso variable, stock se maneja por batches
         minStock: minStock,
         image: image,
         ingredients: ingredients ?? null,
         categoryId,
         status: status,
+        isVariableWeight: isVariableWeight,
+        pricePerKg: pricePerKg ?? null,
       },
       include: {
         category: true
@@ -240,6 +247,13 @@ export class ProductDatasourceImpl implements ProductDatasource {
 
     //? Preparar datos de actualización
     const updateData = product.values;
+
+    //? Si el producto ES de peso variable, NO actualizar price ni stock
+    //? Esos campos se calculan automáticamente a través de los batches
+    if (productToUpdate.isVariableWeight) {
+      delete updateData.price;
+      delete updateData.stock;
+    }
 
     //? Actualizar producto
     const updatedProduct = await prismaClient.product.update({

@@ -96,13 +96,18 @@ model Product {
   status      ProductStatus @default(Disponible)
   ingredients String?       @db.Text // Ingredientes del producto (ej: "Carne de pollo, sal, especias")
   
+  // Campos para productos de peso variable (pechugas, piernas, etc.)
+  isVariableWeight Boolean @default(false) @map("is_variable_weight")
+  pricePerKg       Decimal? @db.Decimal(10, 2) @map("price_per_kg")
+  
   // Relación con categoría
   categoryId  String   @map("category_id")
   category    Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   
   // Relaciones
   orderItems      OrderItem[] 
-  stockMovements  StockMovement[] 
+  stockMovements  StockMovement[]
+  batches         ProductBatch[] // Para productos de peso variable
   
   // Timestamps
   createdAt   DateTime @default(now()) @map("created_at")
@@ -111,7 +116,8 @@ model Product {
   @@map("products")
   @@index([categoryId])
   @@index([status])
-  @@index([stock]) 
+  @@index([stock])
+  @@index([isVariableWeight])
 }
 
 // ============================================
@@ -186,6 +192,33 @@ model StockMovement {
   @@index([productId])
   @@index([userId])
   @@index([type])
+  @@index([createdAt])
+}
+
+// ============================================
+// MODELO DE BATCHES (Para productos de peso variable)
+// ============================================
+
+model ProductBatch {
+  id          String   @id @default(uuid())
+  
+  // Relación con producto
+  productId   String   @map("product_id")
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  
+  // Información del batch
+  batchCode   String   @unique @map("batch_code") // Ej: "PEC-POL-450G-001"
+  weight      Decimal  @db.Decimal(10, 3) // Peso en kg (0.450, 0.485, etc.)
+  unitPrice   Decimal  @db.Decimal(10, 2) @map("unit_price") // Precio de esta unidad
+  stock       Int      @default(1) // Cuántas unidades de este peso/precio quedan
+  
+  // Timestamps
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+  
+  @@map("product_batches")
+  @@index([productId])
+  @@index([stock])
   @@index([createdAt])
 }
 

@@ -14,6 +14,8 @@ export class ProductEntity {
     public status: string,
     public ingredients: string | null,
     public categoryId: string,
+    public isVariableWeight: boolean,
+    public pricePerKg: number | null,
     public category?: CategoryEntity,
     public createdAt?: Date,
     public updatedAt?: Date | null
@@ -32,6 +34,8 @@ export class ProductEntity {
       status,
       ingredients,
       categoryId,
+      isVariableWeight,
+      pricePerKg,
       category,
       createdAt, 
       updatedAt 
@@ -44,11 +48,19 @@ export class ProductEntity {
     if (minStock === undefined || minStock === null) throw HttpCustomErrors.badRequest("minStock es requerido");
     if (!status) throw HttpCustomErrors.badRequest("status es requerido");
     if (!categoryId) throw HttpCustomErrors.badRequest("categoryId es requerido");
+    if (isVariableWeight === undefined || isVariableWeight === null) throw HttpCustomErrors.badRequest("isVariableWeight es requerido");
 
     //? Convertir Decimal de Prisma a number
     const priceNumber = typeof price === 'object' && 'toNumber' in price 
       ? price.toNumber() 
       : Number(price);
+
+    //? Convertir pricePerKg de Prisma a number (puede ser null)
+    const pricePerKgNumber = pricePerKg
+      ? (typeof pricePerKg === 'object' && 'toNumber' in pricePerKg 
+          ? pricePerKg.toNumber() 
+          : Number(pricePerKg))
+      : null;
 
     //? createdAt por defecto es la fecha actual en caso de que no se proporcione
     let createdAtDate: Date | undefined = undefined;
@@ -83,10 +95,13 @@ export class ProductEntity {
       status,
       ingredients ?? null,
       categoryId,
+      isVariableWeight ?? false,
+      pricePerKgNumber,
       categoryEntity,
       createdAtDate,
       updatedAtDate
     );
   }
 }
+
 

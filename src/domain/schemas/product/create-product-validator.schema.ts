@@ -13,7 +13,7 @@ export const createProductSchema = zod.object({
   
   price: zod
     .number({ error: "Precio es requerido" })
-    .positive({ error: "El precio debe ser mayor a 0" })
+    .min(0, { error: "El precio no puede ser negativo" })
     .multipleOf(0.01, { error: "El precio debe tener máximo 2 decimales" }),
   
   sku: zod
@@ -47,6 +47,56 @@ export const createProductSchema = zod.object({
       error: "Estado debe ser Disponible, SinStock o Descontinuado" 
     })
     .default("Disponible"),
+  
+  isVariableWeight: zod
+    .boolean({ error: "isVariableWeight debe ser un booleano" })
+    .default(false),
+  
+  pricePerKg: zod
+    .number({ error: "Precio por kg inválido" })
+    .positive({ error: "Precio por kg debe ser mayor a 0" })
+    .multipleOf(0.01, { error: "Precio por kg debe tener máximo 2 decimales" })
+    .optional(),
+}).superRefine((data, ctx) => {
+  // Validación condicional: si ES peso variable
+  if (data.isVariableWeight) {
+    // pricePerKg es requerido
+    if (!data.pricePerKg || data.pricePerKg <= 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["pricePerKg"],
+        message: "El precio por kg es requerido para productos de peso variable",
+      });
+    }
+    // price debe ser 0
+    if (data.price !== 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["price"],
+        message: "El precio debe ser 0 para productos de peso variable",
+      });
+    }
+    // stock debe ser 0
+    if (data.stock !== 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["stock"],
+        message: "El stock debe ser 0 para productos de peso variable",
+      });
+    }
+  }
+  
+  // Validación condicional: si NO es peso variable
+  if (!data.isVariableWeight) {
+    // price debe ser mayor a 0
+    if (data.price <= 0) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["price"],
+        message: "El precio debe ser mayor a 0",
+      });
+    }
+  }
 });
 
 export type CreateProductSchema = zod.infer<typeof createProductSchema>;
