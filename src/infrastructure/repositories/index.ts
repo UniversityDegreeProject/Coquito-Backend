@@ -5,3 +5,5 @@ export * from './product.repository.impl';
 export * from './product-batch.repository.impl';
 export * from './customer.repository.impl';
 export * from './stock-movement.repository.impl';
+export * from './cash-register.repository.impl';
+export * from './order.repository.impl';

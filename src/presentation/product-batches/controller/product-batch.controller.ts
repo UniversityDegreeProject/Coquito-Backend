@@ -59,7 +59,10 @@ export class ProductBatchController {
     new GetBatchesByProductUseCaseImpl(this.productBatchRepository)
       .execute(getBatchesDto)
       .then((batches) => {
-        return res.status(200).json({ batches });
+        return res.status(200).json({ 
+          message: "Batches obtenidos exitosamente",
+          batches 
+        });
       })
       .catch((error) => {
         return this.handleHttpStatusError(error, res);

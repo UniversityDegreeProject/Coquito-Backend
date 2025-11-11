@@ -236,8 +236,7 @@ enum OrderStatus {
 enum PaymentMethod {
   Efectivo      
   Tarjeta       
-  Transferencia 
-  Multiplo      
+  QR            
 }
 
 model Order {
@@ -338,7 +337,7 @@ model CashRegister {
   totalOrders       Int                @default(0) @map("total_orders")
   cashSales         Decimal            @db.Decimal(10, 2) @default(0) @map("cash_sales")
   cardSales         Decimal            @db.Decimal(10, 2) @default(0) @map("card_sales")
-  transferSales     Decimal            @db.Decimal(10, 2) @default(0) @map("transfer_sales")
+  qrSales           Decimal            @db.Decimal(10, 2) @default(0) @map("qr_sales")
   
   // Estado
   status            CashRegisterStatus @default(Abierto)
@@ -374,7 +373,7 @@ model DailySalesReport {
   // Ventas por método de pago
   cashSales         Decimal  @db.Decimal(10, 2) @map("cash_sales")
   cardSales         Decimal  @db.Decimal(10, 2) @map("card_sales")
-  transferSales     Decimal  @db.Decimal(10, 2) @map("transfer_sales")
+  qrSales           Decimal  @db.Decimal(10, 2) @map("qr_sales")
   
   // Timestamps
   createdAt         DateTime @default(now()) @map("created_at")

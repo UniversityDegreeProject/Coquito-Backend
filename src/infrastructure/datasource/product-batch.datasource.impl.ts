@@ -76,7 +76,7 @@ export class ProductBatchDatasourceImpl implements ProductBatchDatasource {
         //? Recalcular precio total del producto
         await this.recalculateProductPrice(prisma, productId);
 
-        return updatedBatch;
+        return ProductBatchEntity.mapFromPrisma(updatedBatch);
       }
 
       //? Si NO existe, generar código único y crear nuevo batch
@@ -282,18 +282,14 @@ export class ProductBatchDatasourceImpl implements ProductBatchDatasource {
   }
 
   // * Método auxiliar para recalcular el precio total del producto
-  private async recalculateProductPrice(
-    prisma: any,
-    productId: string
-  ): Promise<void> {
+  private async recalculateProductPrice( prisma: any,  productId: string ): Promise<void> {
     //? Obtener todos los batches del producto
     const batches = await prisma.productBatch.findMany({
       where: { productId },
     });
 
     //? Calcular precio total (suma de unitPrice × stock de cada batch)
-    const totalPrice = batches.reduce(
-      (sum: number, batch: any) => sum + (Number(batch.unitPrice) * batch.stock),
+    const totalPrice = batches.reduce( (sum: number, batch: any) => sum + (Number(batch.unitPrice) * batch.stock),
       0
     );
 
