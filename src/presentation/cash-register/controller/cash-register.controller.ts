@@ -5,10 +5,12 @@ import {
   OpenCashRegisterDto,
   CloseCashRegisterDto,
   GetCurrentCashRegisterDto,
+  GetCashRegisterHistoryDto,
   OpenCashRegisterUseCaseImpl,
   CloseCashRegisterUseCaseImpl,
   GetCurrentCashRegisterUseCaseImpl,
 } from "../../../domain";
+import { GetCashRegisterHistoryUseCaseImpl } from "../../../domain/use-cases/cash-register/get-cash-register-history.uc";
 
 export class CashRegisterController {
   constructor(private readonly cashRegisterRepository: CashRegisterRepository) {}
@@ -94,6 +96,36 @@ export class CashRegisterController {
           });
         }
         return res.status(200).json({ cashRegister });
+      })
+      .catch((error) => {
+        return this.handleHttpStatusError(error, res);
+      });
+  };
+
+  /**
+   * GET /api/cash-register/history
+   * Obtiene el historial de cierres de caja con paginación
+   * Query params: userId (opcional), startDate (opcional), endDate (opcional), page, limit
+   */
+  getCashRegisterHistory = async (req: Request, res: Response) => {
+    const query = req.query;
+
+    //? Parsear números
+    const parsedQuery = {
+      ...query,
+      page: query.page ? Number(query.page) : undefined,
+      limit: query.limit ? Number(query.limit) : undefined,
+    };
+
+    const [error, getCashRegisterHistoryDto] = GetCashRegisterHistoryDto.create(parsedQuery);
+    if (error) return res.status(400).json({ error: error });
+    if (!getCashRegisterHistoryDto)
+      return res.status(400).json({ error: "Parámetros de búsqueda incorrectos" });
+
+    new GetCashRegisterHistoryUseCaseImpl(this.cashRegisterRepository)
+      .execute(getCashRegisterHistoryDto)
+      .then((result) => {
+        return res.status(200).json(result);
       })
       .catch((error) => {
         return this.handleHttpStatusError(error, res);

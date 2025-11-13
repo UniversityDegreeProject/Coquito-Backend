@@ -1,7 +1,7 @@
 import { OrderEntity } from "../entities/order.entity";
 import { CreateOrderDto } from "../dto/order/create-order.dto";
 import { GetOrderByIdDto } from "../dto/order/get-order-by-id.dto";
-import { SearchOrdersDto } from "../dto/order/search-orders.dto";
+import { GetOrdersOptionalFiltersDto } from "../dto/order/get-orders-optional-filters.dto";
 import { PaginateResponse } from "../interfaces/shared/paginated-response.interface";
 
 /**
@@ -11,6 +11,6 @@ import { PaginateResponse } from "../interfaces/shared/paginated-response.interf
 export abstract class OrderRepository {
   abstract createOrder(dto: CreateOrderDto): Promise<OrderEntity>;
   abstract getOrderById(dto: GetOrderByIdDto): Promise<OrderEntity>;
-  abstract searchOrders(dto: SearchOrdersDto): Promise<PaginateResponse<OrderEntity>>;
+  abstract getOrders(dto: GetOrdersOptionalFiltersDto): Promise<PaginateResponse<OrderEntity>>;
 }
 

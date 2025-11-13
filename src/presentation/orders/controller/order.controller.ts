@@ -4,11 +4,11 @@ import {
   OrderRepository,
   CreateOrderDto,
   GetOrderByIdDto,
-  SearchOrdersDto,
+  GetOrdersOptionalFiltersDto,
   CreateOrderUseCaseImpl,
   GetOrderByIdUseCaseImpl,
-  SearchOrdersUseCaseImpl,
 } from "../../../domain";
+import { GetOrdersOptionalFiltersUseCaseImpl } from "../../../domain/use-cases/order/get-orders-optional-filters.uc";
 
 export class OrderController {
   constructor(private readonly orderRepository: OrderRepository) {}
@@ -68,9 +68,9 @@ export class OrderController {
 
   /**
    * GET /api/orders
-   * Busca órdenes con filtros opcionales y paginación
+   * Obtiene órdenes con filtros opcionales y paginación
    */
-  searchOrders = async (req: Request, res: Response) => {
+  getOrders = async (req: Request, res: Response) => {
     const query = req.query;
 
     //? Parsear números
@@ -80,13 +80,13 @@ export class OrderController {
       limit: query.limit ? Number(query.limit) : undefined,
     };
 
-    const [error, searchOrdersDto] = SearchOrdersDto.create(parsedQuery);
+    const [error, getOrdersOptionalFiltersDto] = GetOrdersOptionalFiltersDto.create(parsedQuery);
     if (error) return res.status(400).json({ error: error });
-    if (!searchOrdersDto)
+    if (!getOrdersOptionalFiltersDto)
       return res.status(400).json({ error: "Parámetros de búsqueda incorrectos" });
 
-    new SearchOrdersUseCaseImpl(this.orderRepository)
-      .execute(searchOrdersDto)
+    new GetOrdersOptionalFiltersUseCaseImpl(this.orderRepository)
+      .execute(getOrdersOptionalFiltersDto)
       .then((result) => {
         return res.status(200).json(result);
       })

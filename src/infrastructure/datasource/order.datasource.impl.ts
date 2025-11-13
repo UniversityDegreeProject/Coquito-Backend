@@ -4,7 +4,7 @@ import {
   OrderEntity,
   CreateOrderDto,
   GetOrderByIdDto,
-  SearchOrdersDto,
+  GetOrdersOptionalFiltersDto,
   HttpCustomErrors,
   PaginateResponse,
 } from "../../domain";
@@ -372,9 +372,9 @@ export class OrderDatasourceImpl implements OrderDatasource {
   }
 
   /**
-   * Busca órdenes con filtros opcionales y paginación
+   * Obtiene órdenes con filtros opcionales y paginación
    */
-  async searchOrders(dto: SearchOrdersDto): Promise<PaginateResponse<OrderEntity>> {
+  async getOrders(dto: GetOrdersOptionalFiltersDto): Promise<PaginateResponse<OrderEntity>> {
     const {
       userId,
       customerId,

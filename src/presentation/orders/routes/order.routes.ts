@@ -15,7 +15,7 @@ export class OrderRoutes {
 
     //* RESTful order routes
     router.post("/", orderController.createOrder);
-    router.get("/", orderController.searchOrders);
+    router.get("/", orderController.getOrders);
     router.get("/:orderId", orderController.getOrderById);
 
     return router;

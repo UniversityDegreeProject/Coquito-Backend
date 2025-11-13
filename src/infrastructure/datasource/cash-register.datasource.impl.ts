@@ -5,7 +5,9 @@ import {
   OpenCashRegisterDto,
   CloseCashRegisterDto,
   GetCurrentCashRegisterDto,
+  GetCashRegisterHistoryDto,
   HttpCustomErrors,
+  PaginateResponse,
 } from "../../domain";
 
 export class CashRegisterDatasourceImpl implements CashRegisterDatasource {
@@ -207,6 +209,63 @@ export class CashRegisterDatasourceImpl implements CashRegisterDatasource {
       where: { id: cashRegisterId },
       data: incrementData,
     });
+  }
+
+  /**
+   * Obtiene el historial de cierres de caja con paginación
+   * Solo retorna cajas cerradas, ordenadas por fecha de cierre descendente
+   */
+  async getCashRegisterHistory(dto: GetCashRegisterHistoryDto): Promise<PaginateResponse<CashRegisterEntity>> {
+    const { userId, startDate, endDate, page, limit } = dto;
+
+    //? Construir el where dinámico
+    const where: any = {
+      status: "Cerrado", // Solo cajas cerradas
+    };
+
+    if (userId) {
+      where.userId = userId;
+    }
+
+    // Filtro por rango de fechas (fecha de cierre)
+    if (startDate || endDate) {
+      where.closedAt = {};
+      if (startDate) where.closedAt.gte = startDate;
+      if (endDate) {
+        // Ajustar endDate al final del día
+        const endOfDay = new Date(endDate);
+        endOfDay.setHours(23, 59, 59, 999);
+        where.closedAt.lte = endOfDay;
+      }
+    }
+
+    //? Ejecutar consulta con paginación
+    const [cashRegisters, total] = await Promise.all([
+      prismaClient.cashRegister.findMany({
+        where,
+        include: {
+          user: true,
+        },
+        skip: (page - 1) * limit,
+        take: limit,
+        orderBy: {
+          closedAt: "desc", // Más recientes primero
+        },
+      }),
+      prismaClient.cashRegister.count({ where }),
+    ]);
+
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: cashRegisters.map((cr) => CashRegisterEntity.mapFromPrisma(cr)),
+      total,
+      page,
+      limit,
+      totalPages,
+      nextPage: page < totalPages ? `/api/cash-register/history?page=${page + 1}&limit=${limit}` : null,
+      previousPage: page > 1 ? `/api/cash-register/history?page=${page - 1}&limit=${limit}` : null,
+    };
   }
 }
 

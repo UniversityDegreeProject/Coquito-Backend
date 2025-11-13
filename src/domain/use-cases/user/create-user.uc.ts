@@ -32,8 +32,12 @@ export class CreateUserUseCaseImpl implements CreateUserUseCase {
       const hashedPassword = await this.generateDefaultPassword(firstName, lastName);
       user = new RegisterUserDto(username, email, firstName, lastName, phone, role, status, hashedPassword);
 
+
+
       return this.userRepository.createUser(user);
     }
+    const hashedPassword = await this.bcrypt.hash(password);
+    user = new RegisterUserDto(username, email, firstName, lastName, phone, role, status, hashedPassword);
 
     return this.userRepository.createUser(user);
   }

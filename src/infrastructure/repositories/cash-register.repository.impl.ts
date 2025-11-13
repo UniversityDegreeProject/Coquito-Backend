@@ -5,6 +5,8 @@ import {
   OpenCashRegisterDto,
   CloseCashRegisterDto,
   GetCurrentCashRegisterDto,
+  GetCashRegisterHistoryDto,
+  PaginateResponse,
 } from "../../domain";
 
 export class CashRegisterRepositoryImpl implements CashRegisterRepository {
@@ -32,6 +34,10 @@ export class CashRegisterRepositoryImpl implements CashRegisterRepository {
     paymentMethod: "Efectivo" | "Tarjeta" | "QR"
   ): Promise<void> {
     return this.cashRegisterDatasource.updateCashRegisterTotals(cashRegisterId, orderTotal, paymentMethod);
+  }
+
+  getCashRegisterHistory(dto: GetCashRegisterHistoryDto): Promise<PaginateResponse<CashRegisterEntity>> {
+    return this.cashRegisterDatasource.getCashRegisterHistory(dto);
   }
 }
 

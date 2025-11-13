@@ -21,6 +21,7 @@ export class CashRegisterRoutes {
     router.post("/open", cashRegisterController.openCashRegister);
     router.post("/close", cashRegisterController.closeCashRegister);
     router.get("/current/:userId", cashRegisterController.getCurrentCashRegister);
+    router.get("/history", cashRegisterController.getCashRegisterHistory);
 
     return router;
   }

@@ -1,4 +1,4 @@
 export * from "./create-order.uc";
 export * from "./get-order-by-id.uc";
-export * from "./search-orders.uc";
+export * from "./get-orders-optional-filters.uc";
 

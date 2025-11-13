@@ -4,7 +4,7 @@ import {
   OrderRepository,
   CreateOrderDto,
   GetOrderByIdDto,
-  SearchOrdersDto,
+  GetOrdersOptionalFiltersDto,
   PaginateResponse,
 } from "../../domain";
 
@@ -19,8 +19,8 @@ export class OrderRepositoryImpl implements OrderRepository {
     return this.orderDatasource.getOrderById(dto);
   }
 
-  searchOrders(dto: SearchOrdersDto): Promise<PaginateResponse<OrderEntity>> {
-    return this.orderDatasource.searchOrders(dto);
+  getOrders(dto: GetOrdersOptionalFiltersDto): Promise<PaginateResponse<OrderEntity>> {
+    return this.orderDatasource.getOrders(dto);
   }
 }
 

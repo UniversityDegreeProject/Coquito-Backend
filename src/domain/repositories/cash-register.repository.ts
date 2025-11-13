@@ -2,6 +2,8 @@ import { CashRegisterEntity } from "../entities/cash-register.entity";
 import { OpenCashRegisterDto } from "../dto/cash-register/open-cash-register.dto";
 import { CloseCashRegisterDto } from "../dto/cash-register/close-cash-register.dto";
 import { GetCurrentCashRegisterDto } from "../dto/cash-register/get-current-cash-register.dto";
+import { GetCashRegisterHistoryDto } from "../dto/cash-register/get-cash-register-history.dto";
+import { PaginateResponse } from "../interfaces/shared/paginated-response.interface";
 
 /**
  * Repository abstracto para Cash Register
@@ -17,5 +19,7 @@ export abstract class CashRegisterRepository {
     orderTotal: number,
     paymentMethod: "Efectivo" | "Tarjeta" | "QR"
   ): Promise<void>;
+
+  abstract getCashRegisterHistory(dto: GetCashRegisterHistoryDto): Promise<PaginateResponse<CashRegisterEntity>>;
 }
 
