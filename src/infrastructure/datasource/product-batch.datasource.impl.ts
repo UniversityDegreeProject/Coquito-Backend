@@ -180,13 +180,17 @@ export class ProductBatchDatasourceImpl implements ProductBatchDatasource {
         },
       });
 
+      //? Recalcular stock total del producto sumando todos los batches
+      const allBatches = await prisma.productBatch.findMany({
+        where: { productId: currentBatch.productId },
+      });
+      const totalStock = allBatches.reduce((sum, b) => sum + b.stock, 0);
+
       //? Actualizar el stock total del producto
       await prisma.product.update({
         where: { id: currentBatch.productId },
         data: {
-          stock: {
-            increment: stockDifference, // Puede ser positivo o negativo
-          },
+          stock: totalStock,
         },
       });
 

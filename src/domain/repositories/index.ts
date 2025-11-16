@@ -5,5 +5,6 @@ export * from './customer.repository';
 export * from './order.repository';
 export * from './product-batch.repository';
 export * from './product.repository';
+export * from './report.repository';
 export * from './stock-movement.repository';
 export * from './user.repository';

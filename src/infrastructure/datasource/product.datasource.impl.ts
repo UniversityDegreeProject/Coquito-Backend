@@ -87,7 +87,8 @@ export class ProductDatasourceImpl implements ProductDatasource {
         },
         
         include: {
-          category: true
+          category: true,
+          batches: true // Incluir batches para calcular precio correcto en productos variables
         },
         skip: (page - 1) * limit,
         take: limit,

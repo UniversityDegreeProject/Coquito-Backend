@@ -6,16 +6,19 @@ export const updateCustomerSchema = zod.object({
   firstName: zod
     .string({ error: "Nombre inválido" })
     .min(1, { error: "El nombre no puede estar vacío" })
-    .regex(/^[A-Z][a-z]+(\s[A-Z][a-z]+)*$/, { error: "El nombre debe comenzar con letra mayúscula y no puede contener números" }),
+    .regex(/^[A-Z][a-z]+(\s[a-zA-Z]+)*$/, { error: "El nombre debe comenzar con letra mayúscula y no puede contener números" })
+    .optional(),
   
   lastName: zod
     .string({ error: "Apellido inválido" })
     .min(1, { error: "El apellido no puede estar vacío" })
-    .regex(/^[A-Z][a-z]+(\s[A-Z][a-z]+)*$/, { error: "El apellido debe comenzar con letra mayúscula y no puede contener números" }),
+    .regex(/^[A-Z][a-z]+(\s[a-zA-Z]+)*$/, { error: "El apellido debe comenzar con letra mayúscula y no puede contener números" })
+    .optional(),
   
   email: zod
     .email({ error: "Formato de email inválido" })
-    .toLowerCase(),
+    .toLowerCase()
+    .optional(),
   
   phone: zod
     .string({ error: "Teléfono inválido" })
@@ -26,7 +29,8 @@ export const updateCustomerSchema = zod.object({
       {
         message: "Debe ingresar 8 números si es local o 11 números con el prefijo internacional"
       }
-    ),
+    )
+    .optional(),
   
   address: zod
     .string({ error: "Dirección inválida" })
@@ -46,7 +50,8 @@ export const updateCustomerSchema = zod.object({
   type: zod
     .enum(["Regular", "VIP", "Ocasional"], { 
       error: "Tipo debe ser Regular, VIP u Ocasional" 
-    }),
+    })
+    .optional(),
   
   updatedAt: zod
     .date({ error: "Fecha de actualización inválida" })

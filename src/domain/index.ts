@@ -8,6 +8,7 @@ export * from "./dto/customer";
 export * from "./dto/stock-movement";
 export * from "./dto/cash-register";
 export * from "./dto/order";
+export * from "./dto/report";
 export * from "./dto/shared";
 
 // *Interfaces
@@ -29,3 +30,4 @@ export * from "./use-cases/customer";
 export * from "./use-cases/stock-movement";
 export * from "./use-cases/cash-register";
 export * from "./use-cases/order";
+export * from "./use-cases/report";

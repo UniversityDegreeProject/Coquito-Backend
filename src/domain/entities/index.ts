@@ -4,5 +4,6 @@ export * from './customer.entity';
 export * from './order.entity';
 export * from './product-batch.entity';
 export * from './product.entity';
+export * from './report.entity';
 export * from './stock-movement.entity';
 export * from './user.entity';

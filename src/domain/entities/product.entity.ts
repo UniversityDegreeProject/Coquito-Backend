@@ -1,5 +1,6 @@
 import { HttpCustomErrors } from "../errors/http-custom-errors";
 import { CategoryEntity } from "./category.entity";
+import { ProductBatchEntity } from "./product-batch.entity";
 
 export class ProductEntity {
   constructor(
@@ -17,6 +18,7 @@ export class ProductEntity {
     public isVariableWeight: boolean,
     public pricePerKg: number | null,
     public category?: CategoryEntity,
+    public batches?: ProductBatchEntity[],
     public createdAt?: Date,
     public updatedAt?: Date | null
   ) {}
@@ -37,6 +39,7 @@ export class ProductEntity {
       isVariableWeight,
       pricePerKg,
       category,
+      batches,
       createdAt, 
       updatedAt 
     } = prismaProduct;
@@ -83,6 +86,11 @@ export class ProductEntity {
     //? Mapear categoría si existe
     const categoryEntity = category ? CategoryEntity.mapFromPrisma(category) : undefined;
 
+    //? Mapear batches si existen
+    const batchesEntities = batches && Array.isArray(batches)
+      ? batches.map((batch: any) => ProductBatchEntity.mapFromPrisma(batch))
+      : undefined;
+
     return new ProductEntity(
       id,
       name,
@@ -98,6 +106,7 @@ export class ProductEntity {
       isVariableWeight ?? false,
       pricePerKgNumber,
       categoryEntity,
+      batchesEntities,
       createdAtDate,
       updatedAtDate
     );

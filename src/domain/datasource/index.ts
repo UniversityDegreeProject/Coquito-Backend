@@ -5,5 +5,6 @@ export * from './customer.datasource';
 export * from './order.datasource';
 export * from './product-batch.datasource';
 export * from './product.datasource';
+export * from './report.datasource';
 export * from './stock-movement.datasource';
 export * from './user.datasource';

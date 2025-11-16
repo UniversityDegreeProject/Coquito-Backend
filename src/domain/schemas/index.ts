@@ -7,4 +7,5 @@ export * from "./customer";
 export * from "./stock-movement";
 export * from "./cash-register";
 export * from "./order";
+export * from "./report";
 export * from "./shared";
