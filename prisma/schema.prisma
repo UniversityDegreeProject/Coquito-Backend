@@ -100,6 +100,9 @@ model Product {
   isVariableWeight Boolean @default(false) @map("is_variable_weight")
   pricePerKg       Decimal? @db.Decimal(10, 2) @map("price_per_kg")
   
+  // Fecha de vencimiento (para productos sin batches)
+  expirationDate   DateTime? @map("expiration_date")
+  
   // Relación con categoría
   categoryId  String   @map("category_id")
   category    Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
@@ -211,6 +214,9 @@ model ProductBatch {
   weight      Decimal  @db.Decimal(10, 3) // Peso en kg (0.450, 0.485, etc.)
   unitPrice   Decimal  @db.Decimal(10, 2) @map("unit_price") // Precio de esta unidad
   stock       Int      @default(1) // Cuántas unidades de este peso/precio quedan
+  
+  // Fecha de vencimiento del batch
+  expirationDate   DateTime? @map("expiration_date")
   
   // Timestamps
   createdAt   DateTime @default(now()) @map("created_at")

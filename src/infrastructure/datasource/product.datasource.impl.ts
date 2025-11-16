@@ -153,7 +153,7 @@ export class ProductDatasourceImpl implements ProductDatasource {
 
   // * Crear producto
   async createProduct(product: CreateProductDto): Promise<ProductEntity> {
-    const { name, description, price, sku, stock, minStock, image, ingredients, categoryId, status, isVariableWeight, pricePerKg } = product;
+    const { name, description, price, sku, stock, minStock, image, ingredients, categoryId, status, isVariableWeight, pricePerKg, expirationDate } = product;
 
     //? Verificar que la categoría existe
     const categoryExists = await prismaClient.category.findUnique({
@@ -204,6 +204,7 @@ export class ProductDatasourceImpl implements ProductDatasource {
         status: status,
         isVariableWeight: isVariableWeight,
         pricePerKg: pricePerKg ?? null,
+        expirationDate: expirationDate ? new Date(expirationDate) : null,
       },
       include: {
         category: true

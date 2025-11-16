@@ -70,6 +70,12 @@ export const updateProductSchema = zod.object({
     .nullable()
     .optional(),
   
+  expirationDate: zod
+    .string()
+    .datetime({ error: "Fecha de vencimiento debe ser una fecha válida en formato ISO" })
+    .optional()
+    .nullable(),
+  
   updatedAt: zod
     .date({ error: "Fecha de actualización inválida" })
     .optional(),

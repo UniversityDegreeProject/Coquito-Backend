@@ -17,6 +17,7 @@ export class ProductEntity {
     public categoryId: string,
     public isVariableWeight: boolean,
     public pricePerKg: number | null,
+    public expirationDate: Date | null,
     public category?: CategoryEntity,
     public batches?: ProductBatchEntity[],
     public createdAt?: Date,
@@ -38,6 +39,7 @@ export class ProductEntity {
       categoryId,
       isVariableWeight,
       pricePerKg,
+      expirationDate,
       category,
       batches,
       createdAt, 
@@ -83,6 +85,15 @@ export class ProductEntity {
       }
     }
 
+    //? expirationDate por defecto es null en caso de que no se proporcione
+    let expirationDateValue: Date | null = null;
+    if (expirationDate) {
+      expirationDateValue = new Date(expirationDate);
+      if (isNaN(expirationDateValue.getTime()) || expirationDateValue.toString() === "Invalid Date") {
+        expirationDateValue = null; // Si no es válida, establecer como null
+      }
+    }
+
     //? Mapear categoría si existe
     const categoryEntity = category ? CategoryEntity.mapFromPrisma(category) : undefined;
 
@@ -105,6 +116,7 @@ export class ProductEntity {
       categoryId,
       isVariableWeight ?? false,
       pricePerKgNumber,
+      expirationDateValue,
       categoryEntity,
       batchesEntities,
       createdAtDate,

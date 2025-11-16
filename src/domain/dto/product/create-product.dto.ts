@@ -13,7 +13,8 @@ export class CreateProductDto {
     public readonly categoryId: CreateProductSchema["categoryId"],
     public readonly status: CreateProductSchema["status"],
     public readonly isVariableWeight: CreateProductSchema["isVariableWeight"],
-    public readonly pricePerKg: CreateProductSchema["pricePerKg"]
+    public readonly pricePerKg: CreateProductSchema["pricePerKg"],
+    public readonly expirationDate: CreateProductSchema["expirationDate"]
   ) {}
 
   public static create(dto: { [key: string]: any }): [string?, CreateProductDto?] {
@@ -23,8 +24,8 @@ export class CreateProductDto {
       return [firstError?.message, undefined];
     }
 
-    const { name, description, price, sku, stock, minStock, image, ingredients, categoryId, status, isVariableWeight, pricePerKg } = result.data;
-    return [undefined, new CreateProductDto(name, description, price, sku, stock, minStock, image, ingredients, categoryId, status, isVariableWeight, pricePerKg)];
+    const { name, description, price, sku, stock, minStock, image, ingredients, categoryId, status, isVariableWeight, pricePerKg, expirationDate } = result.data;
+    return [undefined, new CreateProductDto(name, description, price, sku, stock, minStock, image, ingredients, categoryId, status, isVariableWeight, pricePerKg, expirationDate)];
   }
 }
 

@@ -9,6 +9,7 @@ export class ProductBatchEntity {
     public weight: number,
     public unitPrice: number,
     public stock: number,
+    public expirationDate: Date | null,
     public createdAt: Date,
     public updatedAt: Date | null,
     public product?: ProductEntity
@@ -22,6 +23,7 @@ export class ProductBatchEntity {
       weight,
       unitPrice,
       stock,
+      expirationDate,
       createdAt,
       updatedAt,
       product
@@ -63,6 +65,15 @@ export class ProductBatchEntity {
       }
     }
 
+    //? expirationDate por defecto es null en caso de que no se proporcione
+    let expirationDateValue: Date | null = null;
+    if (expirationDate) {
+      expirationDateValue = new Date(expirationDate);
+      if (isNaN(expirationDateValue.getTime()) || expirationDateValue.toString() === "Invalid Date") {
+        expirationDateValue = null; // Si no es válida, establecer como null
+      }
+    }
+
     //? Mapear producto si existe
     const productEntity = product ? ProductEntity.mapFromPrisma(product) : undefined;
 
@@ -73,6 +84,7 @@ export class ProductBatchEntity {
       weightNumber,
       unitPriceNumber,
       stock,
+      expirationDateValue,
       createdAtDate,
       updatedAtDate,
       productEntity

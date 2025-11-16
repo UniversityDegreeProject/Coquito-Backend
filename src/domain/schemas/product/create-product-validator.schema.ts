@@ -57,6 +57,12 @@ export const createProductSchema = zod.object({
     .positive({ error: "Precio por kg debe ser mayor a 0" })
     .multipleOf(0.01, { error: "Precio por kg debe tener máximo 2 decimales" })
     .optional(),
+  
+  expirationDate: zod
+    .string()
+    .datetime({ error: "Fecha de vencimiento debe ser una fecha válida en formato ISO" })
+    .optional()
+    .nullable(),
 }).superRefine((data, ctx) => {
   // Validación condicional: si ES peso variable
   if (data.isVariableWeight) {

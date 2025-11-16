@@ -24,7 +24,7 @@ export class ProductBatchDatasourceImpl implements ProductBatchDatasource {
 
   // * Crear batch
   async createBatch(createBatchDto: CreateProductBatchDto): Promise<ProductBatchEntity> {
-    const { productId, weight, unitPrice } = createBatchDto;
+    const { productId, weight, unitPrice, expirationDate } = createBatchDto;
 
     //? Usar transacción para asegurar consistencia
     const result = await prismaClient.$transaction(async (prisma) => {
@@ -90,6 +90,7 @@ export class ProductBatchDatasourceImpl implements ProductBatchDatasource {
           weight,
           unitPrice,
           stock: 1, // Siempre empieza en 1 unidad
+          expirationDate: expirationDate ? new Date(expirationDate) : null,
         },
         include: {
           product: {

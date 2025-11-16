@@ -7,7 +7,8 @@ export class CreateProductBatchDto {
   constructor(
     public readonly productId: CreateProductBatchSchema["productId"],
     public readonly weight: CreateProductBatchSchema["weight"],
-    public readonly unitPrice: CreateProductBatchSchema["unitPrice"]
+    public readonly unitPrice: CreateProductBatchSchema["unitPrice"],
+    public readonly expirationDate: CreateProductBatchSchema["expirationDate"]
   ) {}
 
   public static create(dto: { [key: string]: any }): [string?, CreateProductBatchDto?] {
@@ -17,8 +18,8 @@ export class CreateProductBatchDto {
       return [firstError?.message, undefined];
     }
 
-    const { productId, weight, unitPrice } = result.data;
-    return [undefined, new CreateProductBatchDto(productId, weight, unitPrice)];
+    const { productId, weight, unitPrice, expirationDate } = result.data;
+    return [undefined, new CreateProductBatchDto(productId, weight, unitPrice, expirationDate)];
   }
 }
 

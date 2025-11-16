@@ -12,6 +12,12 @@ export const createProductBatchSchema = zod.object({
     .number({ error: "Precio de unidad es requerido" })
     .positive({ error: "Precio debe ser mayor a 0" })
     .multipleOf(0.01, { error: "Precio debe tener máximo 2 decimales" }),
+  
+  expirationDate: zod
+    .string()
+    .datetime({ error: "Fecha de vencimiento debe ser una fecha válida en formato ISO" })
+    .optional()
+    .nullable(),
 });
 
 export type CreateProductBatchSchema = zod.infer<typeof createProductBatchSchema>;

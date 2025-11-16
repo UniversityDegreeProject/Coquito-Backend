@@ -14,6 +14,7 @@ export class UpdateProductDto {
     public readonly status: UpdateProductSchema["status"],
     public readonly isVariableWeight: UpdateProductSchema["isVariableWeight"],
     public readonly pricePerKg: UpdateProductSchema["pricePerKg"],
+    public readonly expirationDate: UpdateProductSchema["expirationDate"],
     public readonly updatedAt: UpdateProductSchema["updatedAt"]
   ) {}
 
@@ -34,6 +35,10 @@ export class UpdateProductDto {
     if (this.status !== undefined) returnObj.status = this.status;
     if (this.isVariableWeight !== undefined) returnObj.isVariableWeight = this.isVariableWeight;
     if (this.pricePerKg !== undefined) returnObj.pricePerKg = this.pricePerKg;
+    // expirationDate: si es undefined no se incluye, si es null se incluye para limpiar el campo
+    if (this.expirationDate !== undefined) {
+      returnObj.expirationDate = this.expirationDate ? new Date(this.expirationDate) : null;
+    }
     if (this.updatedAt !== undefined) returnObj.updatedAt = this.updatedAt;
     return returnObj;
   }
@@ -45,8 +50,8 @@ export class UpdateProductDto {
       return [firstError?.message, undefined];
     }
 
-    const { id, name, description, price, sku, stock, minStock, image, categoryId, status, isVariableWeight, pricePerKg, updatedAt } = result.data;
-    return [undefined, new UpdateProductDto(id, name, description, price, sku, stock, minStock, image, categoryId, status, isVariableWeight, pricePerKg, updatedAt)];
+    const { id, name, description, price, sku, stock, minStock, image, categoryId, status, isVariableWeight, pricePerKg, expirationDate, updatedAt } = result.data;
+    return [undefined, new UpdateProductDto(id, name, description, price, sku, stock, minStock, image, categoryId, status, isVariableWeight, pricePerKg, expirationDate, updatedAt)];
   }
 }
 
