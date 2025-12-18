@@ -7,8 +7,9 @@ export * from "./dto/product-batch";
 export * from "./dto/customer";
 export * from "./dto/stock-movement";
 export * from "./dto/cash-register";
-export * from "./dto/order";
+export * from "./dto/sale";
 export * from "./dto/report";
+export * from "./dto/system-config";
 export * from "./dto/shared";
 
 // *Interfaces
@@ -29,5 +30,6 @@ export * from "./use-cases/product-batch";
 export * from "./use-cases/customer";
 export * from "./use-cases/stock-movement";
 export * from "./use-cases/cash-register";
-export * from "./use-cases/order";
+export * from "./use-cases/sale";
 export * from "./use-cases/report";
+export * from "./use-cases/system-config";

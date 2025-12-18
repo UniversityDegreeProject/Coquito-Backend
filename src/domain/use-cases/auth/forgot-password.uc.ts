@@ -16,12 +16,16 @@ export class ForgotPasswordUseCaseImpl implements ForgotPasswordUseCase {
     private readonly emailService: EmailService
   ) {}
 
-  async execute (forgotPasswordDto: ForgotPasswordDto): Promise<{ message: string }> {
+  async execute(
+    forgotPasswordDto: ForgotPasswordDto
+  ): Promise<{ message: string }> {
     const { email } = forgotPasswordDto;
 
-    const [error, getUserByEmailDto] = GetUserByEmailDto.create({ email: email });
-    if( error ) throw HttpCustomErrors.badRequest(error);
-    if( !getUserByEmailDto ) throw HttpCustomErrors.badRequest("User not found");
+    const [error, getUserByEmailDto] = GetUserByEmailDto.create({
+      email: email,
+    });
+    if (error) throw HttpCustomErrors.badRequest(error);
+    if (!getUserByEmailDto) throw HttpCustomErrors.badRequest("User not found");
 
     const user = await this.userRepository.getUserByEmail(getUserByEmailDto);
 
@@ -44,7 +48,8 @@ export class ForgotPasswordUseCaseImpl implements ForgotPasswordUseCase {
       return { message: "Error al enviar el email" };
     }
 
-    return { message: "Se ha enviado un correo electronico para cambiar su contraseña" };
+    return {
+      message: "Se ha enviado un correo electronico para cambiar su contraseña",
+    };
   }
 }
-

@@ -128,9 +128,7 @@ export class ProductDatasourceImpl implements ProductDatasource {
     ]);
 
     return {
-      data: products.map((product: ProductEntity) =>
-        ProductEntity.mapFromPrisma(product)
-      ),
+      data: products.map((product) => ProductEntity.mapFromPrisma(product)),
       total: total,
       page: page,
       limit: limit,
@@ -314,7 +312,7 @@ export class ProductDatasourceImpl implements ProductDatasource {
     const productToDelete = await prismaClient.product.findUnique({
       where: { id: id.id },
       include: {
-        orderItems: true,
+        saleItems: true,
         category: true,
       },
     });
@@ -322,10 +320,10 @@ export class ProductDatasourceImpl implements ProductDatasource {
     if (!productToDelete)
       throw HttpCustomErrors.notFound("Producto no encontrado");
 
-    //? Verificar si tiene items de orden asociados
-    if (productToDelete.orderItems.length > 0) {
+    //? Verificar si tiene items de venta asociados
+    if (productToDelete.saleItems.length > 0) {
       throw HttpCustomErrors.badRequest(
-        `No se puede eliminar el producto porque tiene ${productToDelete.orderItems.length} orden(es) asociada(s)`
+        `No se puede eliminar el producto porque tiene ${productToDelete.saleItems.length} venta(s) asociada(s)`
       );
     }
 

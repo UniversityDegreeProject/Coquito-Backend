@@ -6,6 +6,7 @@ export * from "./product-batch";
 export * from "./customer";
 export * from "./stock-movement";
 export * from "./cash-register";
-export * from "./order";
+export * from "./sale";
 export * from "./report";
+export * from "./system-config";
 export * from "./shared";

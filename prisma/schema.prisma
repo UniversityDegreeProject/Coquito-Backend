@@ -3,12 +3,11 @@
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../src/generated/prisma"
+  output   = "../generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("POSTGRES_URL")
 }
 
 // ============================================
@@ -37,10 +36,10 @@ model User {
   phone         String?
   role          UserRole   @default(Cajero)
   status        UserStatus @default(Activo)
-  refreshToken  String?    @map("refresh_token") @db.Text // Token para renovar sesión
+  refreshToken  String?    @map("refresh_token") @db.Text 
   
   // Relaciones
-  orders          Order[]          
+  sales           Sale[]          
   cashRegisters   CashRegister[]   
   stockMovements  StockMovement[]  
   activityLogs    ActivityLog[]    
@@ -94,7 +93,7 @@ model Product {
   minStock    Int           @default(5) @map("min_stock") 
   image       String?       
   status      ProductStatus @default(Disponible)
-  ingredients String?       @db.Text // Ingredientes del producto (ej: "Carne de pollo, sal, especias")
+  ingredients String?       @db.Text 
   
   // Campos para productos de peso variable (pechugas, piernas, etc.)
   isVariableWeight Boolean @default(false) @map("is_variable_weight")
@@ -107,12 +106,10 @@ model Product {
   categoryId  String   @map("category_id")
   category    Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   
-  // Relaciones
-  orderItems      OrderItem[] 
+  saleItems       SaleItem[] 
   stockMovements  StockMovement[]
-  batches         ProductBatch[] // Para productos de peso variable
+  batches         ProductBatch[] 
   
-  // Timestamps
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   
@@ -144,7 +141,7 @@ model Customer {
   type        CustomerType @default(Regular)
   
   
-  orders      Order[]
+  sales       Sale[]
   
   
   createdAt   DateTime @default(now()) @map("created_at")
@@ -158,37 +155,31 @@ model Customer {
 // ============================================
 
 enum StockMovementType {
-  Reabastecimiento // Transferencia desde fábrica (Yacuiba) a tienda (Tarija)
-  Compra           // Compra a proveedores externos (insumos, empaques, etc.)
-  Venta            // Venta a clientes
-  Ajuste           // Corrección de inventario físico
-  Devolucion       // Cliente devuelve producto
-  Dañado           // Producto dañado, vencido o en mal estado
+  Reabastecimiento 
+  Compra           
+  Venta            
+  Ajuste           
+  Devolucion       
+  Dañado           
 }
 
 model StockMovement {
   id          String   @id @default(uuid())
   
-  // Relación con producto
   productId   String   @map("product_id")
   product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   
-  // Relación con usuario que realizó el movimiento
   userId      String   @map("user_id")
   user        User     @relation(fields: [userId], references: [id], onDelete: Restrict)
   
-  // Información del movimiento
   type        StockMovementType
   quantity    Int      
   previousStock Int    @map("previous_stock")
   newStock    Int      @map("new_stock") 
   
-  // Información adicional
-  reason      String?  // Razón del movimiento (ej: "Compra factura #123", "Venta orden #456")
-  reference   String?  // Referencia externa (ID de orden, factura, etc.)
-  notes       String?  // Notas adicionales
-  
-  // Timestamps
+  reason      String? 
+  reference   String? 
+  notes       String? 
   createdAt   DateTime @default(now()) @map("created_at")
   
   @@map("stock_movements")
@@ -205,20 +196,15 @@ model StockMovement {
 model ProductBatch {
   id          String   @id @default(uuid())
   
-  // Relación con producto
   productId   String   @map("product_id")
   product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
   
-  // Información del batch
-  batchCode   String   @unique @map("batch_code") // Ej: "PEC-POL-450G-001"
-  weight      Decimal  @db.Decimal(10, 3) // Peso en kg (0.450, 0.485, etc.)
-  unitPrice   Decimal  @db.Decimal(10, 2) @map("unit_price") // Precio de esta unidad
-  stock       Int      @default(1) // Cuántas unidades de este peso/precio quedan
-  
-  // Fecha de vencimiento del batch
+  batchCode   String   @unique @map("batch_code")
+  weight      Decimal  @db.Decimal(10, 3) 
+  unitPrice   Decimal  @db.Decimal(10, 2) @map("unit_price") 
+  stock       Int      @default(1) 
   expirationDate   DateTime? @map("expiration_date")
   
-  // Timestamps
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   
@@ -232,7 +218,7 @@ model ProductBatch {
 // MODELOS DE ÓRDENES Y VENTAS
 // ============================================
 
-enum OrderStatus {
+enum SaleStatus {
   Pendiente   
   Completado  
   Cancelado   
@@ -245,9 +231,9 @@ enum PaymentMethod {
   QR            
 }
 
-model Order {
+model Sale {
   id              String   @id @default(uuid())
-  orderNumber     String   @unique @map("order_number") 
+  saleNumber      String   @unique @map("sale_number") 
   
   // Relaciones
   customerId      String?  @map("customer_id")
@@ -260,7 +246,7 @@ model Order {
   cashRegister    CashRegister? @relation(fields: [cashRegisterId], references: [id], onDelete: SetNull)
   
   // Items de la orden
-  items           OrderItem[]
+  items           SaleItem[]
   
   // Información de la orden
   subtotal        Decimal  @db.Decimal(10, 2) 
@@ -273,7 +259,7 @@ model Order {
   change          Decimal  @db.Decimal(10, 2) @default(0) 
   
   // Estado y notas
-  status          OrderStatus @default(Pendiente)
+  status          SaleStatus @default(Pendiente)
   notes           String?     
   
   // Timestamps
@@ -281,7 +267,7 @@ model Order {
   updatedAt       DateTime @updatedAt @map("updated_at")
   completedAt     DateTime? @map("completed_at") 
   
-  @@map("orders")
+  @@map("sales")
   @@index([userId])
   @@index([customerId])
   @@index([cashRegisterId])
@@ -289,12 +275,12 @@ model Order {
   @@index([createdAt])
 }
 
-model OrderItem {
+model SaleItem {
   id         String   @id @default(uuid())
   
   // Relaciones
-  orderId    String   @map("order_id")
-  order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  saleId     String   @map("sale_id")
+  sale       Sale     @relation(fields: [saleId], references: [id], onDelete: Cascade)
   
   productId  String   @map("product_id")
   product    Product  @relation(fields: [productId], references: [id], onDelete: Restrict)
@@ -307,8 +293,8 @@ model OrderItem {
   // Timestamps
   createdAt  DateTime @default(now()) @map("created_at")
   
-  @@map("order_items")
-  @@index([orderId])
+  @@map("sale_items")
+  @@index([saleId])
   @@index([productId])
 }
 
@@ -317,25 +303,24 @@ model OrderItem {
 // ============================================
 
 enum CashRegisterStatus {
-  Abierto // Caja abierta
-  Cerrado // Caja cerrada
+  Abierto 
+  Cerrado 
 }
 
 model CashRegister {
   id                String             @id @default(uuid())
   
-  // Usuario (cajero) asignado
   userId            String             @map("user_id")
   user              User               @relation(fields: [userId], references: [id], onDelete: Restrict)
   
   // Información de apertura
-  openingAmount     Decimal            @db.Decimal(10, 2) @map("opening_amount") // Monto inicial en caja
+  openingAmount     Decimal            @db.Decimal(10, 2) @map("opening_amount")
   openedAt          DateTime           @default(now()) @map("opened_at")
   
   // Información de cierre
-  closingAmount     Decimal?           @db.Decimal(10, 2) @map("closing_amount") // Monto final en caja
-  expectedAmount    Decimal?           @db.Decimal(10, 2) @map("expected_amount") // Monto esperado según ventas
-  difference        Decimal?           @db.Decimal(10, 2) // Diferencia entre expected y closing
+  closingAmount     Decimal?           @db.Decimal(10, 2) @map("closing_amount")
+  expectedAmount    Decimal?           @db.Decimal(10, 2) @map("expected_amount")
+  difference        Decimal?           @db.Decimal(10, 2)
   closedAt          DateTime?          @map("closed_at")
   
   // Resumen de ventas
@@ -350,7 +335,7 @@ model CashRegister {
   notes             String?  // Notas del cierre
   
   // Relaciones
-  orders            Order[]
+  sales             Sale[]
   
   // Timestamps
   createdAt         DateTime @default(now()) @map("created_at")
@@ -363,80 +348,15 @@ model CashRegister {
 }
 
 // ============================================
-// MODELOS DE REPORTES Y MÉTRICAS
-// ============================================
-
-model DailySalesReport {
-  id                String   @id @default(uuid())
-  date              DateTime @unique @db.Date // Fecha del reporte
-  
-  // Métricas del día
-  totalSales        Decimal  @db.Decimal(10, 2) @map("total_sales")
-  totalOrders       Int      @map("total_orders")
-  averageTicket     Decimal  @db.Decimal(10, 2) @map("average_ticket") // Ticket promedio
-  newCustomers      Int      @default(0) @map("new_customers")
-  
-  // Ventas por método de pago
-  cashSales         Decimal  @db.Decimal(10, 2) @map("cash_sales")
-  cardSales         Decimal  @db.Decimal(10, 2) @map("card_sales")
-  qrSales           Decimal  @db.Decimal(10, 2) @map("qr_sales")
-  
-  // Timestamps
-  createdAt         DateTime @default(now()) @map("created_at")
-  updatedAt         DateTime @updatedAt @map("updated_at")
-  
-  @@map("daily_sales_reports")
-  @@index([date])
-}
-
-model HourlySales {
-  id          String   @id @default(uuid())
-  date        DateTime @db.Date
-  hour        Int      // Hora del día (0-23)
-  
-  // Métricas de la hora
-  totalSales  Decimal  @db.Decimal(10, 2) @map("total_sales")
-  totalOrders Int      @map("total_orders")
-  
-  // Timestamps
-  createdAt   DateTime @default(now()) @map("created_at")
-  
-  @@unique([date, hour])
-  @@map("hourly_sales")
-  @@index([date])
-}
-
-model TopProduct {
-  id             String   @id @default(uuid())
-  date           DateTime @db.Date
-  
-  // Información del producto
-  productId      String   @map("product_id")
-  productName    String   @map("product_name")
-  
-  // Métricas
-  totalQuantity  Int      @map("total_quantity") // Unidades vendidas
-  totalRevenue   Decimal  @db.Decimal(10, 2) @map("total_revenue") // Ingreso generado
-  
-  // Timestamps
-  createdAt      DateTime @default(now()) @map("created_at")
-  
-  @@unique([date, productId])
-  @@map("top_products")
-  @@index([date])
-}
-
-// ============================================
 // MODELOS DE CONFIGURACIÓN Y SISTEMA
 // ============================================
 
 model SystemConfig {
   id          String   @id @default(uuid())
-  key         String   @unique // Clave de configuración (ej: "tax_rate", "currency", "business_name")
-  value       String   // Valor de configuración (JSON si es complejo)
-  description String?  // Descripción de la configuración
+  key         String   @unique 
+  value       String   
+  description String?  
   
-  // Timestamps
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
   
@@ -457,11 +377,9 @@ model ActivityLog {
   description String   // Descripción legible de la acción
   metadata    String?  @db.Text // Datos adicionales en formato JSON
   
-  // Información de la sesión
   ipAddress   String?  @map("ip_address")
   userAgent   String?  @map("user_agent")
   
-  // Timestamps
   createdAt   DateTime @default(now()) @map("created_at")
   
   @@map("activity_logs")
