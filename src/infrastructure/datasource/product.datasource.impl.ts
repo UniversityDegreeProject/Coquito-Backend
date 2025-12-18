@@ -1,25 +1,27 @@
 import { prismaClient } from "../../data/postgres";
-import { 
-  ProductDatasource, 
-  ProductEntity, 
-  CreateProductDto, 
-  UpdateProductDto, 
-  GetProductByIdDto, 
-  DeleteProductByIdDto, 
+import {
+  ProductDatasource,
+  ProductEntity,
+  CreateProductDto,
+  UpdateProductDto,
+  GetProductByIdDto,
+  DeleteProductByIdDto,
   HttpCustomErrors,
   PaginateResponse,
-  GetProductOptionalFiltersDto, 
+  GetProductOptionalFiltersDto,
 } from "../../domain";
 
 export class ProductDatasourceImpl implements ProductDatasource {
+  constructor() {}
 
-
-  constructor() {
-    
-  }
-
-  private generateUrl(search: string | undefined, categoryId: string | undefined, status: string | undefined, minStock: number | undefined, page: number, limit: number): string {
-
+  private generateUrl(
+    search: string | undefined,
+    categoryId: string | undefined,
+    status: string | undefined,
+    minStock: number | undefined,
+    page: number,
+    limit: number
+  ): string {
     const params = new URLSearchParams();
     if (search) params.append("search", search);
     if (categoryId) params.append("categoryId", categoryId);
@@ -28,12 +30,13 @@ export class ProductDatasourceImpl implements ProductDatasource {
     params.append("page", page.toString());
     params.append("limit", limit.toString());
     return `/products?${params.toString()}`;
-  }  
+  }
   // * Obtener todos los productos
-  async getProducts(getProductOptionalFiltersDto: GetProductOptionalFiltersDto): Promise<PaginateResponse<ProductEntity>> {
-
-
-    const { search, categoryId, status, minStock, page, limit } = getProductOptionalFiltersDto;
+  async getProducts(
+    getProductOptionalFiltersDto: GetProductOptionalFiltersDto
+  ): Promise<PaginateResponse<ProductEntity>> {
+    const { search, categoryId, status, minStock, page, limit } =
+      getProductOptionalFiltersDto;
 
     // const where: any = {};
 
@@ -52,98 +55,118 @@ export class ProductDatasourceImpl implements ProductDatasource {
     // if (status) {
     //   where.status = status;
     // }
-    
+
     // if (minStock) {
     //   where.stock = {
     //     lte: minStock
     //   };
     // } // ? termina el filtro por stock bajo
 
-    const [ products, total] = await Promise.all([
+    const [products, total] = await Promise.all([
       prismaClient.product.findMany({
         where: {
-          ...(search && search.trim() !== "" && {
-            OR: [
-              { name : { contains: search, mode: 'insensitive' } },
-              { description : { contains: search, mode: 'insensitive' } },
-              { sku : { contains: search, mode: 'insensitive' } },
-            ],
+          ...(search &&
+            search.trim() !== "" && {
+              OR: [
+                { name: { contains: search, mode: "insensitive" } },
+                { description: { contains: search, mode: "insensitive" } },
+                { sku: { contains: search, mode: "insensitive" } },
+              ],
+            }),
+
+          ...(categoryId && {
+            categoryId: categoryId,
           }),
 
-          ... ( categoryId && { 
-            categoryId: categoryId
+          ...(status && {
+            status: status,
           }),
 
-          ... ( status && {
-            status : status
+          ...(minStock && {
+            stock: {
+              lte: minStock,
+            },
           }),
-
-          ... ( minStock && {
-             stock: {
-              lte: minStock
-            }
-          }),
-
         },
-        
+
         include: {
           category: true,
-          batches: true // Incluir batches para calcular precio correcto en productos variables
+          batches: true, // Incluir batches para calcular precio correcto en productos variables
         },
         skip: (page - 1) * limit,
         take: limit,
         orderBy: {
-          createdAt: 'asc'
+          createdAt: "asc",
         },
       }),
       prismaClient.product.count({
         where: {
-          ...(search && search.trim() !== "" && {
-            OR: [
-              { name : { contains: search, mode: 'insensitive' } },
-              { description : { contains: search, mode: 'insensitive' } },
-              { sku : { contains: search, mode: 'insensitive' } },
-            ],
+          ...(search &&
+            search.trim() !== "" && {
+              OR: [
+                { name: { contains: search, mode: "insensitive" } },
+                { description: { contains: search, mode: "insensitive" } },
+                { sku: { contains: search, mode: "insensitive" } },
+              ],
+            }),
+
+          ...(categoryId && {
+            categoryId: categoryId,
           }),
 
-          ... ( categoryId && { 
-            categoryId: categoryId
+          ...(status && {
+            status: status,
           }),
 
-          ... ( status && {
-            status : status
+          ...(minStock && {
+            stock: {
+              lte: minStock,
+            },
           }),
-
-          ... ( minStock && {
-             stock: {
-              lte: minStock
-            }
-          }),
-
         },
       }),
     ]);
 
     return {
-      data: products.map(product => ProductEntity.mapFromPrisma(product)),
+      data: products.map((product: ProductEntity) =>
+        ProductEntity.mapFromPrisma(product)
+      ),
       total: total,
       page: page,
       limit: limit,
       totalPages: Math.ceil(total / limit),
-      nextPage: page < Math.ceil(total / limit) ? this.generateUrl(search, categoryId, status, minStock, page + 1, limit) : null,
-      previousPage: page > 1 ? this.generateUrl(search, categoryId, status, minStock, page - 1, limit) : null,
+      nextPage:
+        page < Math.ceil(total / limit)
+          ? this.generateUrl(
+              search,
+              categoryId,
+              status,
+              minStock,
+              page + 1,
+              limit
+            )
+          : null,
+      previousPage:
+        page > 1
+          ? this.generateUrl(
+              search,
+              categoryId,
+              status,
+              minStock,
+              page - 1,
+              limit
+            )
+          : null,
     };
   }
-
-
 
   // * Obtener producto por ID
   async getProductById(id: GetProductByIdDto): Promise<ProductEntity> {
     const product = await prismaClient.product.findUnique({
       where: { id: id.id },
       include: {
-        category: true
-      }
+        category: true,
+      },
     });
 
     if (!product) throw HttpCustomErrors.notFound("Producto no encontrado");
@@ -153,11 +176,25 @@ export class ProductDatasourceImpl implements ProductDatasource {
 
   // * Crear producto
   async createProduct(product: CreateProductDto): Promise<ProductEntity> {
-    const { name, description, price, sku, stock, minStock, image, ingredients, categoryId, status, isVariableWeight, pricePerKg, expirationDate } = product;
+    const {
+      name,
+      description,
+      price,
+      sku,
+      stock,
+      minStock,
+      image,
+      ingredients,
+      categoryId,
+      status,
+      isVariableWeight,
+      pricePerKg,
+      expirationDate,
+    } = product;
 
     //? Verificar que la categoría existe
     const categoryExists = await prismaClient.category.findUnique({
-      where: { id: categoryId }
+      where: { id: categoryId },
     });
 
     if (!categoryExists) {
@@ -167,7 +204,7 @@ export class ProductDatasourceImpl implements ProductDatasource {
     //? Verificar que el SKU no esté en uso (si se proporciona)
     if (sku) {
       const existingProduct = await prismaClient.product.findUnique({
-        where: { sku }
+        where: { sku },
       });
 
       if (existingProduct) {
@@ -175,18 +212,20 @@ export class ProductDatasourceImpl implements ProductDatasource {
       }
     }
 
-    if(name){
+    if (name) {
       const existingProductByName = await prismaClient.product.findFirst({
-        where: { name: { contains: name, mode: 'insensitive' } }
+        where: { name: { contains: name, mode: "insensitive" } },
       });
-      if(existingProductByName){
+      if (existingProductByName) {
         throw HttpCustomErrors.badRequest("El producto ya existe");
       }
     }
 
     //? Validar que si es peso variable, debe tener pricePerKg
     if (isVariableWeight && !pricePerKg) {
-      throw HttpCustomErrors.badRequest("Los productos de peso variable deben tener precio por kg");
+      throw HttpCustomErrors.badRequest(
+        "Los productos de peso variable deben tener precio por kg"
+      );
     }
 
     //? Crear producto
@@ -207,8 +246,8 @@ export class ProductDatasourceImpl implements ProductDatasource {
         expirationDate: expirationDate ? new Date(expirationDate) : null,
       },
       include: {
-        category: true
-      }
+        category: true,
+      },
     });
 
     return ProductEntity.mapFromPrisma(newProduct);
@@ -222,7 +261,8 @@ export class ProductDatasourceImpl implements ProductDatasource {
     const productToUpdate = await prismaClient.product.findUnique({
       where: { id },
     });
-    if (!productToUpdate) throw HttpCustomErrors.notFound("Producto no encontrado");
+    if (!productToUpdate)
+      throw HttpCustomErrors.notFound("Producto no encontrado");
 
     //? Validar que el SKU no esté en uso por OTRO producto
     if (sku) {
@@ -239,7 +279,7 @@ export class ProductDatasourceImpl implements ProductDatasource {
     //? Validar que la categoría existe (si se proporciona)
     if (categoryId) {
       const categoryExists = await prismaClient.category.findUnique({
-        where: { id: categoryId }
+        where: { id: categoryId },
       });
 
       if (!categoryExists) {
@@ -262,8 +302,8 @@ export class ProductDatasourceImpl implements ProductDatasource {
       where: { id },
       data: updateData,
       include: {
-        category: true
-      }
+        category: true,
+      },
     });
 
     return ProductEntity.mapFromPrisma(updatedProduct);
@@ -275,11 +315,12 @@ export class ProductDatasourceImpl implements ProductDatasource {
       where: { id: id.id },
       include: {
         orderItems: true,
-        category: true
-      }
+        category: true,
+      },
     });
 
-    if (!productToDelete) throw HttpCustomErrors.notFound("Producto no encontrado");
+    if (!productToDelete)
+      throw HttpCustomErrors.notFound("Producto no encontrado");
 
     //? Verificar si tiene items de orden asociados
     if (productToDelete.orderItems.length > 0) {
@@ -291,13 +332,10 @@ export class ProductDatasourceImpl implements ProductDatasource {
     const product = await prismaClient.product.delete({
       where: { id: id.id },
       include: {
-        category: true
-      }
+        category: true,
+      },
     });
 
     return ProductEntity.mapFromPrisma(product);
   }
-
-  
 }
-
