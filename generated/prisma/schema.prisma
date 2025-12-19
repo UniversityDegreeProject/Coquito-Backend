@@ -1,0 +1,404 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============================================
+//* MODELOS DE AUTENTICACIÓN Y USUARIOS
+// ============================================
+
+enum UserRole {
+  Administrador
+  Cajero
+}
+
+enum UserStatus {
+  Activo
+  Inactivo
+  Suspendido
+}
+
+model User {
+  id            String     @id @default(uuid())
+  username      String     @unique
+  email         String     @unique
+  emailVerified Boolean    @default(false) @map("email_verified")
+  password      String
+  firstName     String     @map("first_name")
+  lastName      String     @map("last_name")
+  phone         String?
+  role          UserRole   @default(Cajero)
+  status        UserStatus @default(Activo)
+  refreshToken  String?    @map("refresh_token") @db.Text // Token para renovar sesión
+
+  // Relaciones
+  sales          Sale[]
+  cashRegisters  CashRegister[]
+  stockMovements StockMovement[]
+  activityLogs   ActivityLog[]
+
+  // Timestamps
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
+  lastConnection DateTime? @map("last_connection")
+
+  @@map("users")
+}
+
+// ============================================
+// MODELOS DE CATÁLOGO (Productos y Categorías)
+// ============================================
+
+enum CategoryStatus {
+  Activo
+  Inactivo
+}
+
+model Category {
+  id          String         @id @default(uuid())
+  name        String         @unique
+  description String?
+  status      CategoryStatus @default(Activo)
+
+  // Relaciones
+  products Product[]
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("categories")
+}
+
+enum ProductStatus {
+  Disponible
+  SinStock
+  Descontinuado
+}
+
+model Product {
+  id          String        @id @default(uuid())
+  name        String
+  description String?
+  price       Decimal       @db.Decimal(10, 2)
+  sku         String?       @unique
+  stock       Int           @default(0)
+  minStock    Int           @default(5) @map("min_stock")
+  image       String?
+  status      ProductStatus @default(Disponible)
+  ingredients String?       @db.Text // Ingredientes del producto (ej: "Carne de pollo, sal, especias")
+
+  // Campos para productos de peso variable (pechugas, piernas, etc.)
+  isVariableWeight Boolean  @default(false) @map("is_variable_weight")
+  pricePerKg       Decimal? @map("price_per_kg") @db.Decimal(10, 2)
+
+  // Fecha de vencimiento (para productos sin batches)
+  expirationDate DateTime? @map("expiration_date")
+
+  // Relación con categoría
+  categoryId String   @map("category_id")
+  category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  // Relaciones
+  saleItems      SaleItem[]
+  stockMovements StockMovement[]
+  batches        ProductBatch[] // Para productos de peso variable
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([categoryId])
+  @@index([status])
+  @@index([stock])
+  @@index([isVariableWeight])
+  @@map("products")
+}
+
+// ============================================
+// MODELOS DE CLIENTES
+// ============================================
+
+enum CustomerType {
+  Regular
+  VIP
+  Ocasional
+}
+
+model Customer {
+  id        String       @id @default(uuid())
+  firstName String       @map("first_name")
+  lastName  String       @map("last_name")
+  email     String?      @unique
+  phone     String?
+  address   String?
+  password  String
+  type      CustomerType @default(Regular)
+
+  sales Sale[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("customers")
+}
+
+// ============================================
+// MODELOS DE INVENTARIO
+// ============================================
+
+enum StockMovementType {
+  Reabastecimiento // Transferencia desde fábrica (Yacuiba) a tienda (Tarija)
+  Compra // Compra a proveedores externos (insumos, empaques, etc.)
+  Venta // Venta a clientes
+  Ajuste // Corrección de inventario físico
+  Devolucion // Cliente devuelve producto
+  Dañado // Producto dañado, vencido o en mal estado
+}
+
+model StockMovement {
+  id String @id @default(uuid())
+
+  // Relación con producto
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // Relación con usuario que realizó el movimiento
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  // Información del movimiento
+  type          StockMovementType
+  quantity      Int
+  previousStock Int               @map("previous_stock")
+  newStock      Int               @map("new_stock")
+
+  // Información adicional
+  reason    String? // Razón del movimiento (ej: "Compra factura #123", "Venta orden #456")
+  reference String? // Referencia externa (ID de orden, factura, etc.)
+  notes     String? // Notas adicionales
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([productId])
+  @@index([userId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("stock_movements")
+}
+
+// ============================================
+// MODELO DE BATCHES (Para productos de peso variable)
+// ============================================
+
+model ProductBatch {
+  id String @id @default(uuid())
+
+  // Relación con producto
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  // Información del batch
+  batchCode String  @unique @map("batch_code") // Ej: "PEC-POL-450G-001"
+  weight    Decimal @db.Decimal(10, 3) // Peso en kg (0.450, 0.485, etc.)
+  unitPrice Decimal @map("unit_price") @db.Decimal(10, 2) // Precio de esta unidad
+  stock     Int     @default(1) // Cuántas unidades de este peso/precio quedan
+
+  // Fecha de vencimiento del batch
+  expirationDate DateTime? @map("expiration_date")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([productId])
+  @@index([stock])
+  @@index([createdAt])
+  @@map("product_batches")
+}
+
+// ============================================
+// MODELOS DE ÓRDENES Y VENTAS
+// ============================================
+
+enum SaleStatus {
+  Pendiente
+  Completado
+  Cancelado
+  Reembolsado
+}
+
+enum PaymentMethod {
+  Efectivo
+  Tarjeta
+  QR
+}
+
+model Sale {
+  id         String @id @default(uuid())
+  saleNumber String @unique @map("sale_number")
+
+  // Relaciones
+  customerId String?   @map("customer_id")
+  customer   Customer? @relation(fields: [customerId], references: [id], onDelete: SetNull)
+
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  cashRegisterId String?       @map("cash_register_id")
+  cashRegister   CashRegister? @relation(fields: [cashRegisterId], references: [id], onDelete: SetNull)
+
+  // Items de la orden
+  items SaleItem[]
+
+  // Información de la orden
+  subtotal Decimal @db.Decimal(10, 2)
+  tax      Decimal @default(0) @db.Decimal(10, 2)
+  total    Decimal @db.Decimal(10, 2)
+
+  // Información de pago
+  paymentMethod PaymentMethod @map("payment_method")
+  amountPaid    Decimal       @map("amount_paid") @db.Decimal(10, 2)
+  change        Decimal       @default(0) @db.Decimal(10, 2)
+
+  // Estado y notas
+  status SaleStatus @default(Pendiente)
+  notes  String?
+
+  // Timestamps
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+  completedAt DateTime? @map("completed_at")
+
+  @@index([userId])
+  @@index([customerId])
+  @@index([cashRegisterId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("sales")
+}
+
+model SaleItem {
+  id String @id @default(uuid())
+
+  // Relaciones
+  saleId String @map("sale_id")
+  sale   Sale   @relation(fields: [saleId], references: [id], onDelete: Cascade)
+
+  productId String  @map("product_id")
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict)
+
+  // Información del item
+  quantity  Int // Cantidad del producto
+  unitPrice Decimal @map("unit_price") @db.Decimal(10, 2) // Precio unitario al momento de la venta
+  total     Decimal @db.Decimal(10, 2) // quantity * unitPrice
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([saleId])
+  @@index([productId])
+  @@map("sale_items")
+}
+
+// ============================================
+// MODELOS DE CAJA Y CIERRE
+// ============================================
+
+enum CashRegisterStatus {
+  Abierto // Caja abierta
+  Cerrado // Caja cerrada
+}
+
+model CashRegister {
+  id String @id @default(uuid())
+
+  // Usuario (cajero) asignado
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  // Información de apertura
+  openingAmount Decimal  @map("opening_amount") @db.Decimal(10, 2) // Monto inicial en caja
+  openedAt      DateTime @default(now()) @map("opened_at")
+
+  // Información de cierre
+  closingAmount  Decimal?  @map("closing_amount") @db.Decimal(10, 2) // Monto final en caja
+  expectedAmount Decimal?  @map("expected_amount") @db.Decimal(10, 2) // Monto esperado según ventas
+  difference     Decimal?  @db.Decimal(10, 2) // Diferencia entre expected y closing
+  closedAt       DateTime? @map("closed_at")
+
+  // Resumen de ventas
+  totalSales  Decimal @default(0) @map("total_sales") @db.Decimal(10, 2)
+  totalOrders Int     @default(0) @map("total_orders")
+  cashSales   Decimal @default(0) @map("cash_sales") @db.Decimal(10, 2)
+  cardSales   Decimal @default(0) @map("card_sales") @db.Decimal(10, 2)
+  qrSales     Decimal @default(0) @map("qr_sales") @db.Decimal(10, 2)
+
+  // Estado
+  status CashRegisterStatus @default(Abierto)
+  notes  String? // Notas del cierre
+
+  // Relaciones
+  sales Sale[]
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([userId])
+  @@index([status])
+  @@index([openedAt])
+  @@map("cash_registers")
+}
+
+// ============================================
+// MODELOS DE CONFIGURACIÓN Y SISTEMA
+// ============================================
+
+model SystemConfig {
+  id          String  @id @default(uuid())
+  key         String  @unique // Clave de configuración (ej: "tax_rate", "currency", "business_name")
+  value       String // Valor de configuración (JSON si es complejo)
+  description String? // Descripción de la configuración
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("system_config")
+}
+
+model ActivityLog {
+  id String @id @default(uuid())
+
+  // Usuario que realizó la acción
+  userId String @map("user_id")
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  // Información de la actividad
+  action      String // Acción realizada (ej: "CREATE_PRODUCT", "UPDATE_ORDER", "CLOSE_CASH_REGISTER")
+  entity      String // Entidad afectada (ej: "Product", "Order", "CashRegister")
+  entityId    String? @map("entity_id") // ID de la entidad afectada
+  description String // Descripción legible de la acción
+  metadata    String? @db.Text // Datos adicionales en formato JSON
+
+  // Información de la sesión
+  ipAddress String? @map("ip_address")
+  userAgent String? @map("user_agent")
+
+  // Timestamps
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([entity, entityId])
+  @@index([createdAt])
+  @@map("activity_logs")
+}

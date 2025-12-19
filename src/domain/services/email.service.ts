@@ -13,7 +13,11 @@ export class EmailService {
    * @param username - Nombre de usuario
    * @param token - Token de verificación JWT
    */
-  async sendEmailVerification(email: string, username: string, token: string): Promise<boolean> {
+  async sendEmailVerification(
+    email: string,
+    username: string,
+    token: string
+  ): Promise<boolean> {
     const verificationLink = `${this.webServiceUrl}/auth/verify-email/${token}`;
 
     const htmlContent = `
@@ -69,7 +73,6 @@ export class EmailService {
       subject: "Verifica tu cuenta - Embutidos Coquito",
       html: htmlContent,
     });
-    
   }
 
   /**
@@ -78,7 +81,11 @@ export class EmailService {
    * @param username - Nombre de usuario
    * @param token - Token de recuperación JWT
    */
-  async sendPasswordRecovery(email: string, username: string, token: string): Promise<boolean> {
+  async sendPasswordRecovery(
+    email: string,
+    username: string,
+    token: string
+  ): Promise<boolean> {
     // Link apunta al BACKEND que sirve la página HTML
     const recoveryLink = `${this.webServiceUrl}/auth/reset-password-page/${token}`;
 
@@ -144,9 +151,9 @@ export class EmailService {
    * @param date - Fecha del cierre
    */
   // async sendCashRegisterClosureNotification(
-  //   email: string, 
-  //   cashierName: string, 
-  //   totalSales: number, 
+  //   email: string,
+  //   cashierName: string,
+  //   totalSales: number,
   //   date: Date
   // ): Promise<boolean> {
   //   const htmlContent = `
@@ -182,4 +189,3 @@ export class EmailService {
   //   });
   // }
 }
-
