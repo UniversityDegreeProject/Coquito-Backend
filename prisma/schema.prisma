@@ -16,7 +16,7 @@ datasource db {
 
 enum UserRole {
   Administrador  
-  Cajero
+  Vendedor
 }
 
 enum UserStatus {
@@ -34,7 +34,7 @@ model User {
   firstName     String     @map("first_name")
   lastName      String     @map("last_name")
   phone         String?
-  role          UserRole   @default(Cajero)
+  role          UserRole   @default(Vendedor) @map("role")
   status        UserStatus @default(Activo)
   refreshToken  String?    @map("refresh_token") @db.Text 
   

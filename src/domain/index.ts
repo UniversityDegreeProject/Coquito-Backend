@@ -10,6 +10,7 @@ export * from "./dto/cash-register";
 export * from "./dto/sale";
 export * from "./dto/report";
 export * from "./dto/system-config";
+export * from "./dto/activity-log/search-activity-logs.dto";
 export * from "./dto/shared";
 
 // *Interfaces
@@ -33,3 +34,5 @@ export * from "./use-cases/cash-register";
 export * from "./use-cases/sale";
 export * from "./use-cases/report";
 export * from "./use-cases/system-config";
+export * from "./use-cases/activity-log/get-activity-logs.use-case";
+export * from "./use-cases/activity-log/get-activity-log-by-id.use-case";

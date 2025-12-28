@@ -10,6 +10,7 @@ import {
   GetSalesOptionalFiltersUseCaseImpl,
   SaleEntity,
 } from "../../../domain";
+import { ActivityLogger } from "../../../domain/services/activity-logger.service";
 
 export class SaleController {
   constructor(private readonly saleRepository: SaleRepository) {}
@@ -36,7 +37,28 @@ export class SaleController {
 
     new CreateSaleUseCaseImpl(this.saleRepository)
       .execute(createSaleDto)
-      .then((sale: SaleEntity) => {
+      .then(async (sale: SaleEntity) => {
+        // Registrar actividad
+        const userId = (req as any).user?.id;
+        if (userId) {
+          await ActivityLogger.log({
+            userId,
+            action: "CREATE",
+            entity: "Sale",
+            entityId: sale.id,
+            description: `Registró venta #${sale.id.substring(0, 8)} por $${
+              sale.total
+            }`,
+            metadata: {
+              paymentMethod: sale.paymentMethod,
+              total: sale.total,
+              itemsCount: sale.items?.length || 0,
+            },
+            ipAddress: req.ip,
+            userAgent: req.headers?.["user-agent"],
+          });
+        }
+
         return res.status(201).json({
           message: "Venta registrada exitosamente",
           sale,

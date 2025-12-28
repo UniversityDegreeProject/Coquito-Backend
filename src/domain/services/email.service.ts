@@ -145,8 +145,8 @@ export class EmailService {
 
   /**
    * Envía notificación de cierre de caja (opcional)
-   * @param email - Email del cajero
-   * @param cashierName - Nombre del cajero
+   * @param email - Email del vendedor
+   * @param cashierName - Nombre del vendedor
    * @param totalSales - Total de ventas
    * @param date - Fecha del cierre
    */

@@ -11,9 +11,12 @@ import {
   GetCurrentCashRegisterUseCaseImpl,
 } from "../../../domain";
 import { GetCashRegisterHistoryUseCaseImpl } from "../../../domain/use-cases/cash-register/get-cash-register-history.uc";
+import { ActivityLogger } from "../../../domain/services/activity-logger.service";
 
 export class CashRegisterController {
-  constructor(private readonly cashRegisterRepository: CashRegisterRepository) {}
+  constructor(
+    private readonly cashRegisterRepository: CashRegisterRepository
+  ) {}
 
   private handleHttpStatusError = (error: unknown, res: Response) => {
     if (error instanceof HttpCustomErrors) {
@@ -36,7 +39,24 @@ export class CashRegisterController {
 
     new OpenCashRegisterUseCaseImpl(this.cashRegisterRepository)
       .execute(openCashRegisterDto)
-      .then((cashRegister) => {
+      .then(async (cashRegister) => {
+        // Registrar actividad
+        const userId = (req as any).user?.id;
+        if (userId) {
+          await ActivityLogger.log({
+            userId,
+            action: "OPEN_CASH_REGISTER",
+            entity: "CashRegister",
+            entityId: cashRegister.id,
+            description: `Abrió caja con monto inicial: $${cashRegister.openingAmount}`,
+            metadata: {
+              openingAmount: cashRegister.openingAmount,
+            },
+            ipAddress: req.ip,
+            userAgent: req.headers?.["user-agent"],
+          });
+        }
+
         return res.status(201).json({
           message: "Caja abierta exitosamente",
           cashRegister,
@@ -61,7 +81,28 @@ export class CashRegisterController {
 
     new CloseCashRegisterUseCaseImpl(this.cashRegisterRepository)
       .execute(closeCashRegisterDto)
-      .then((cashRegister) => {
+      .then(async (cashRegister) => {
+        // Registrar actividad
+        const userId = (req as any).user?.id;
+        if (userId) {
+          await ActivityLogger.log({
+            userId,
+            action: "CLOSE_CASH_REGISTER",
+            entity: "CashRegister",
+            entityId: cashRegister.id,
+            description: `Cerró caja - Esperado: $${cashRegister.expectedAmount}, Real: $${cashRegister.closingAmount}, Diferencia: $${cashRegister.difference}`,
+            metadata: {
+              openingAmount: cashRegister.openingAmount,
+              closingAmount: cashRegister.closingAmount,
+              expectedAmount: cashRegister.expectedAmount,
+              difference: cashRegister.difference,
+              totalSales: cashRegister.totalSales,
+            },
+            ipAddress: req.ip,
+            userAgent: req.headers?.["user-agent"],
+          });
+        }
+
         return res.status(200).json({
           message: "Caja cerrada exitosamente",
           cashRegister,
@@ -79,9 +120,11 @@ export class CashRegisterController {
   getCurrentCashRegister = async (req: Request, res: Response) => {
     const { userId } = req.params;
 
-    const [error, getCurrentCashRegisterDto] = GetCurrentCashRegisterDto.create({
-      userId,
-    });
+    const [error, getCurrentCashRegisterDto] = GetCurrentCashRegisterDto.create(
+      {
+        userId,
+      }
+    );
     if (error) return res.status(400).json({ error: error });
     if (!getCurrentCashRegisterDto)
       return res.status(400).json({ error: "ID de usuario inválido" });
@@ -117,10 +160,13 @@ export class CashRegisterController {
       limit: query.limit ? Number(query.limit) : undefined,
     };
 
-    const [error, getCashRegisterHistoryDto] = GetCashRegisterHistoryDto.create(parsedQuery);
+    const [error, getCashRegisterHistoryDto] =
+      GetCashRegisterHistoryDto.create(parsedQuery);
     if (error) return res.status(400).json({ error: error });
     if (!getCashRegisterHistoryDto)
-      return res.status(400).json({ error: "Parámetros de búsqueda incorrectos" });
+      return res
+        .status(400)
+        .json({ error: "Parámetros de búsqueda incorrectos" });
 
     new GetCashRegisterHistoryUseCaseImpl(this.cashRegisterRepository)
       .execute(getCashRegisterHistoryDto)
@@ -132,4 +178,3 @@ export class CashRegisterController {
       });
   };
 }
-

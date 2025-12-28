@@ -11,13 +11,12 @@ import {
   DeleteProductUseCaseImpl,
   GetProductByIdUseCaseImpl,
   GetProductOptionalFiltersDto,
-  GetProductOptionalFiltersUseCaseImpl
+  GetProductOptionalFiltersUseCaseImpl,
 } from "../../../domain";
+import { ActivityLogger } from "../../../domain/services/activity-logger.service";
 
 export class ProductController {
-  constructor(
-    private readonly productRepository: ProductRepository
-  ) {}
+  constructor(private readonly productRepository: ProductRepository) {}
 
   private handleHttpStatusError = (error: unknown, res: Response) => {
     if (error instanceof HttpCustomErrors) {
@@ -27,20 +26,23 @@ export class ProductController {
   };
 
   getProducts = async (req: Request, res: Response) => {
-
-    const [ error, getProductOptionalFiltersDto ] = GetProductOptionalFiltersDto.create(req.query);
-    if (error) return res.status(400).json({ error: error });               
-    if (!getProductOptionalFiltersDto) return res.status(400).json({ error: "Parámetros de búsqueda inválidos" });
+    const [error, getProductOptionalFiltersDto] =
+      GetProductOptionalFiltersDto.create(req.query);
+    if (error) return res.status(400).json({ error: error });
+    if (!getProductOptionalFiltersDto)
+      return res
+        .status(400)
+        .json({ error: "Parámetros de búsqueda inválidos" });
 
     new GetProductOptionalFiltersUseCaseImpl(this.productRepository)
-      .execute( getProductOptionalFiltersDto )
-      .then( ({ data, ...rest }) => {
-        return res.status(200).json({ 
+      .execute(getProductOptionalFiltersDto)
+      .then(({ data, ...rest }) => {
+        return res.status(200).json({
           data,
-          ...rest
-         });
+          ...rest,
+        });
       })
-      .catch(error => {
+      .catch((error) => {
         return this.handleHttpStatusError(error, res);
       });
   };
@@ -50,15 +52,17 @@ export class ProductController {
 
     const [error, getProductByIdDto] = GetProductByIdDto.create({ id });
     if (error) return res.status(400).json({ error: error });
-    if (!getProductByIdDto) return res.status(400).json({ error: "Producto no encontrado" });
+    if (!getProductByIdDto)
+      return res.status(400).json({ error: "Producto no encontrado" });
 
     new GetProductByIdUseCaseImpl(this.productRepository)
       .execute(getProductByIdDto)
-      .then(product => {
-        if (!product) return res.status(404).json({ error: "Producto no encontrado" });
+      .then((product) => {
+        if (!product)
+          return res.status(404).json({ error: "Producto no encontrado" });
         return res.status(200).json({ product });
       })
-      .catch(error => {
+      .catch((error) => {
         return this.handleHttpStatusError(error, res);
       });
   };
@@ -68,17 +72,30 @@ export class ProductController {
 
     const [error, createProductDto] = CreateProductDto.create(body);
     if (error) return res.status(400).json({ error: error });
-    if (!createProductDto) return res.status(400).json({ error: "Datos incorrectos" });
+    if (!createProductDto)
+      return res.status(400).json({ error: "Datos incorrectos" });
 
     new CreateProductUseCaseImpl(this.productRepository)
       .execute(createProductDto)
-      .then(product => {
+      .then(async (product) => {
+        // Registrar actividad
+        const userId = (req as any).user?.id;
+        if (userId) {
+          await ActivityLogger.logCreate(
+            userId,
+            "Product",
+            product.id,
+            product.name,
+            req
+          );
+        }
+
         return res.status(201).json({
           message: "Producto creado exitosamente",
-          product
+          product,
         });
       })
-      .catch(error => {
+      .catch((error) => {
         return this.handleHttpStatusError(error, res);
       });
   };
@@ -89,18 +106,34 @@ export class ProductController {
 
     const [error, updateProductDto] = UpdateProductDto.create({ id, ...body });
     if (error) return res.status(400).json({ error: error });
-    if (!updateProductDto) return res.status(400).json({ error: "Producto no encontrado" });
+    if (!updateProductDto)
+      return res.status(400).json({ error: "Producto no encontrado" });
 
     new UpdateProductUseCaseImpl(this.productRepository)
       .execute(updateProductDto)
-      .then(product => {
-        if (!product) return res.status(404).json({ error: "Producto no encontrado" });
+      .then(async (product) => {
+        if (!product)
+          return res.status(404).json({ error: "Producto no encontrado" });
+
+        // Registrar actividad
+        const userId = (req as any).user?.id;
+        if (userId) {
+          await ActivityLogger.logUpdate(
+            userId,
+            "Product",
+            product.id,
+            product.name,
+            { ...body },
+            req
+          );
+        }
+
         return res.status(200).json({
           message: "Producto actualizado exitosamente",
-          product
+          product,
         });
       })
-      .catch(error => {
+      .catch((error) => {
         return this.handleHttpStatusError(error, res);
       });
   };
@@ -110,22 +143,34 @@ export class ProductController {
 
     const [error, deleteProductDto] = DeleteProductByIdDto.create({ id: id });
     if (error) return res.status(400).json({ error: error });
-    if (!deleteProductDto) return res.status(400).json({ error: "Id de producto no encontrado" });
+    if (!deleteProductDto)
+      return res.status(400).json({ error: "Id de producto no encontrado" });
 
     new DeleteProductUseCaseImpl(this.productRepository)
       .execute(deleteProductDto)
-      .then(product => {
-        if (!product) return res.status(404).json({ error: "Producto no encontrado" });
+      .then(async (product) => {
+        if (!product)
+          return res.status(404).json({ error: "Producto no encontrado" });
+
+        // Registrar actividad
+        const userId = (req as any).user?.id;
+        if (userId) {
+          await ActivityLogger.logDelete(
+            userId,
+            "Product",
+            product.id,
+            product.name,
+            req
+          );
+        }
+
         return res.status(200).json({
           message: "Producto eliminado exitosamente",
-          product
+          product,
         });
       })
-      .catch(error => {
+      .catch((error) => {
         return this.handleHttpStatusError(error, res);
       });
   };
-
-  
 }
-

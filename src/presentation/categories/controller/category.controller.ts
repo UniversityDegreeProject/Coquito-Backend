@@ -13,11 +13,10 @@ import {
   GetCategoriesOptionalFiltersDto,
 } from "../../../domain";
 import { GetCategoriesOptionalFiltersUseCaseImpl } from "../../../domain/use-cases/category/get-categories-optional-filters.uc";
+import { ActivityLogger } from "../../../domain/services/activity-logger.service";
 
 export class CategoryController {
-  constructor(
-    private readonly categoryRepository: CategoryRepository
-  ) {}
+  constructor(private readonly categoryRepository: CategoryRepository) {}
 
   private handleHttpStatusError = (error: unknown, res: Response) => {
     if (error instanceof HttpCustomErrors) {
@@ -27,20 +26,23 @@ export class CategoryController {
   };
 
   getCategories = async (req: Request, res: Response) => {
-
-    const [error, getCategoriesOptionalFiltersDto] = GetCategoriesOptionalFiltersDto.create(req.query);
+    const [error, getCategoriesOptionalFiltersDto] =
+      GetCategoriesOptionalFiltersDto.create(req.query);
     if (error) return res.status(400).json({ error: error });
-    if (!getCategoriesOptionalFiltersDto) return res.status(400).json({ error: "Parámetros de búsqueda inválidos" });
+    if (!getCategoriesOptionalFiltersDto)
+      return res
+        .status(400)
+        .json({ error: "Parámetros de búsqueda inválidos" });
 
     new GetCategoriesOptionalFiltersUseCaseImpl(this.categoryRepository)
       .execute(getCategoriesOptionalFiltersDto)
-      .then(( {data, ...rest } ) => {
-        return res.status(200).json({ 
+      .then(({ data, ...rest }) => {
+        return res.status(200).json({
           data,
-          ...rest
-         });
+          ...rest,
+        });
       })
-      .catch(error => {
+      .catch((error) => {
         return this.handleHttpStatusError(error, res);
       });
   };
@@ -50,15 +52,17 @@ export class CategoryController {
 
     const [error, getCategoryByIdDto] = GetCategoryByIdDto.create({ id });
     if (error) return res.status(400).json({ error: error });
-    if (!getCategoryByIdDto) return res.status(400).json({ error: "Categoría no encontrada" });
+    if (!getCategoryByIdDto)
+      return res.status(400).json({ error: "Categoría no encontrada" });
 
     new GetCategoryByIdUseCaseImpl(this.categoryRepository)
       .execute(getCategoryByIdDto)
-      .then(category => {
-        if (!category) return res.status(404).json({ error: "Categoría no encontrada" });
+      .then((category) => {
+        if (!category)
+          return res.status(404).json({ error: "Categoría no encontrada" });
         return res.status(200).json({ category });
       })
-      .catch(error => {
+      .catch((error) => {
         return this.handleHttpStatusError(error, res);
       });
   };
@@ -68,17 +72,30 @@ export class CategoryController {
 
     const [error, createCategoryDto] = CreateCategoryDto.create(body);
     if (error) return res.status(400).json({ error: error });
-    if (!createCategoryDto) return res.status(400).json({ error: "Datos incorrectos" });
+    if (!createCategoryDto)
+      return res.status(400).json({ error: "Datos incorrectos" });
 
     new CreateCategoryUseCaseImpl(this.categoryRepository)
       .execute(createCategoryDto)
-      .then(category => {
+      .then(async (category) => {
+        // Registrar actividad
+        const userId = (req as any).user?.id; // Asumiendo que el user viene del middleware de auth
+        if (userId) {
+          await ActivityLogger.logCreate(
+            userId,
+            "Category",
+            category.id,
+            category.name,
+            req
+          );
+        }
+
         return res.status(201).json({
           message: "Categoría creada exitosamente",
-          category
+          category,
         });
       })
-      .catch(error => {
+      .catch((error) => {
         return this.handleHttpStatusError(error, res);
       });
   };
@@ -87,20 +104,39 @@ export class CategoryController {
     const { id } = req.params;
     const body = req.body;
 
-    const [error, updateCategoryDto] = UpdateCategoryDto.create({ id, ...body });
+    const [error, updateCategoryDto] = UpdateCategoryDto.create({
+      id,
+      ...body,
+    });
     if (error) return res.status(400).json({ error: error });
-    if (!updateCategoryDto) return res.status(400).json({ error: "Categoría no encontrada" });
+    if (!updateCategoryDto)
+      return res.status(400).json({ error: "Categoría no encontrada" });
 
     new UpdateCategoryUseCaseImpl(this.categoryRepository)
       .execute(updateCategoryDto)
-      .then(category => {
-        if (!category) return res.status(404).json({ error: "Categoría no encontrada" });
+      .then(async (category) => {
+        if (!category)
+          return res.status(404).json({ error: "Categoría no encontrada" });
+
+        // Registrar actividad
+        const userId = (req as any).user?.id;
+        if (userId) {
+          await ActivityLogger.logUpdate(
+            userId,
+            "Category",
+            category.id,
+            category.name,
+            { ...body },
+            req
+          );
+        }
+
         return res.status(200).json({
           message: "Categoría actualizada exitosamente",
-          category
+          category,
         });
       })
-      .catch(error => {
+      .catch((error) => {
         return this.handleHttpStatusError(error, res);
       });
   };
@@ -110,22 +146,34 @@ export class CategoryController {
 
     const [error, deleteCategoryDto] = DeleteCategoryByIdDto.create({ id: id });
     if (error) return res.status(400).json({ error: error });
-    if (!deleteCategoryDto) return res.status(400).json({ error: "Id de categoría no encontrado" });
+    if (!deleteCategoryDto)
+      return res.status(400).json({ error: "Id de categoría no encontrado" });
 
     new DeleteCategoryUseCaseImpl(this.categoryRepository)
       .execute(deleteCategoryDto)
-      .then(category => {
-        if (!category) return res.status(404).json({ error: "Categoría no encontrada" });
+      .then(async (category) => {
+        if (!category)
+          return res.status(404).json({ error: "Categoría no encontrada" });
+
+        // Registrar actividad
+        const userId = (req as any).user?.id;
+        if (userId) {
+          await ActivityLogger.logDelete(
+            userId,
+            "Category",
+            category.id,
+            category.name,
+            req
+          );
+        }
+
         return res.status(200).json({
           message: "Categoría eliminada exitosamente",
-          category
+          category,
         });
       })
-      .catch(error => {
+      .catch((error) => {
         return this.handleHttpStatusError(error, res);
       });
   };
-
- 
 }
-
