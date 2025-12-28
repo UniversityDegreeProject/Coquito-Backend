@@ -9,6 +9,7 @@ import { CashRegisterRoutes } from "./cash-register/routes/cash-register.routes"
 import { SaleRoutes } from "./sales/routes/sale.routes";
 import { ReportRoutes } from "./reports/routes/report.routes";
 import { SystemConfigRoutes } from "./system-config/routes/system-config.routes";
+import { ActivityLogRoutes } from "./activity-log/routes/activity-log.routes";
 
 export class AppRoutes {
   static get routes(): Router {
@@ -24,6 +25,7 @@ export class AppRoutes {
     router.use("/api/sales", SaleRoutes.routes);
     router.use("/api/reports", ReportRoutes.routes);
     router.use("/api/system-config", SystemConfigRoutes.routes);
+    router.use("/api/activity-logs", ActivityLogRoutes.routes);
 
     return router;
   }

@@ -20,6 +20,7 @@ import {
 } from "../../../domain";
 import { BcryptAdapter, JwtAdapter } from "../../../config";
 import { EmailService } from "../../../domain/services/email.service";
+import { ActivityLogger } from "../../../domain/services/activity-logger.service";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -94,6 +95,9 @@ export class AuthController {
 
         //? Guardar Refresh Token en la base de datos
         await this.userRepository.saveRefreshToken(user.id, refreshToken);
+
+        // Registrar actividad de login
+        await ActivityLogger.logLogin(user.id, user.email, req);
 
         const { password, ...rest } = user;
         return res.status(200).json({

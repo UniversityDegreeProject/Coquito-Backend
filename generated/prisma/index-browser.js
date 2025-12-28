@@ -291,7 +291,7 @@ exports.Prisma.NullsOrder = {
 };
 exports.UserRole = exports.$Enums.UserRole = {
   Administrador: 'Administrador',
-  Cajero: 'Cajero'
+  Vendedor: 'Vendedor'
 };
 
 exports.UserStatus = exports.$Enums.UserStatus = {

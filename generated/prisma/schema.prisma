@@ -16,7 +16,7 @@ datasource db {
 
 enum UserRole {
   Administrador
-  Cajero
+  Vendedor
 }
 
 enum UserStatus {
@@ -34,9 +34,9 @@ model User {
   firstName     String     @map("first_name")
   lastName      String     @map("last_name")
   phone         String?
-  role          UserRole   @default(Cajero)
+  role          UserRole   @default(Vendedor) @map("role")
   status        UserStatus @default(Activo)
-  refreshToken  String?    @map("refresh_token") @db.Text // Token para renovar sesión
+  refreshToken  String?    @map("refresh_token") @db.Text
 
   // Relaciones
   sales          Sale[]
@@ -93,7 +93,7 @@ model Product {
   minStock    Int           @default(5) @map("min_stock")
   image       String?
   status      ProductStatus @default(Disponible)
-  ingredients String?       @db.Text // Ingredientes del producto (ej: "Carne de pollo, sal, especias")
+  ingredients String?       @db.Text
 
   // Campos para productos de peso variable (pechugas, piernas, etc.)
   isVariableWeight Boolean  @default(false) @map("is_variable_weight")
@@ -106,12 +106,10 @@ model Product {
   categoryId String   @map("category_id")
   category   Category @relation(fields: [categoryId], references: [id], onDelete: Restrict)
 
-  // Relaciones
   saleItems      SaleItem[]
   stockMovements StockMovement[]
-  batches        ProductBatch[] // Para productos de peso variable
+  batches        ProductBatch[]
 
-  // Timestamps
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -155,37 +153,31 @@ model Customer {
 // ============================================
 
 enum StockMovementType {
-  Reabastecimiento // Transferencia desde fábrica (Yacuiba) a tienda (Tarija)
-  Compra // Compra a proveedores externos (insumos, empaques, etc.)
-  Venta // Venta a clientes
-  Ajuste // Corrección de inventario físico
-  Devolucion // Cliente devuelve producto
-  Dañado // Producto dañado, vencido o en mal estado
+  Reabastecimiento
+  Compra
+  Venta
+  Ajuste
+  Devolucion
+  Dañado
 }
 
 model StockMovement {
   id String @id @default(uuid())
 
-  // Relación con producto
   productId String  @map("product_id")
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  // Relación con usuario que realizó el movimiento
   userId String @map("user_id")
   user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
 
-  // Información del movimiento
   type          StockMovementType
   quantity      Int
   previousStock Int               @map("previous_stock")
   newStock      Int               @map("new_stock")
 
-  // Información adicional
-  reason    String? // Razón del movimiento (ej: "Compra factura #123", "Venta orden #456")
-  reference String? // Referencia externa (ID de orden, factura, etc.)
-  notes     String? // Notas adicionales
-
-  // Timestamps
+  reason    String?
+  reference String?
+  notes     String?
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([productId])
@@ -202,20 +194,15 @@ model StockMovement {
 model ProductBatch {
   id String @id @default(uuid())
 
-  // Relación con producto
   productId String  @map("product_id")
   product   Product @relation(fields: [productId], references: [id], onDelete: Cascade)
 
-  // Información del batch
-  batchCode String  @unique @map("batch_code") // Ej: "PEC-POL-450G-001"
-  weight    Decimal @db.Decimal(10, 3) // Peso en kg (0.450, 0.485, etc.)
-  unitPrice Decimal @map("unit_price") @db.Decimal(10, 2) // Precio de esta unidad
-  stock     Int     @default(1) // Cuántas unidades de este peso/precio quedan
-
-  // Fecha de vencimiento del batch
+  batchCode      String    @unique @map("batch_code")
+  weight         Decimal   @db.Decimal(10, 3)
+  unitPrice      Decimal   @map("unit_price") @db.Decimal(10, 2)
+  stock          Int       @default(1)
   expirationDate DateTime? @map("expiration_date")
 
-  // Timestamps
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -314,25 +301,24 @@ model SaleItem {
 // ============================================
 
 enum CashRegisterStatus {
-  Abierto // Caja abierta
-  Cerrado // Caja cerrada
+  Abierto
+  Cerrado
 }
 
 model CashRegister {
   id String @id @default(uuid())
 
-  // Usuario (cajero) asignado
   userId String @map("user_id")
   user   User   @relation(fields: [userId], references: [id], onDelete: Restrict)
 
   // Información de apertura
-  openingAmount Decimal  @map("opening_amount") @db.Decimal(10, 2) // Monto inicial en caja
+  openingAmount Decimal  @map("opening_amount") @db.Decimal(10, 2)
   openedAt      DateTime @default(now()) @map("opened_at")
 
   // Información de cierre
-  closingAmount  Decimal?  @map("closing_amount") @db.Decimal(10, 2) // Monto final en caja
-  expectedAmount Decimal?  @map("expected_amount") @db.Decimal(10, 2) // Monto esperado según ventas
-  difference     Decimal?  @db.Decimal(10, 2) // Diferencia entre expected y closing
+  closingAmount  Decimal?  @map("closing_amount") @db.Decimal(10, 2)
+  expectedAmount Decimal?  @map("expected_amount") @db.Decimal(10, 2)
+  difference     Decimal?  @db.Decimal(10, 2)
   closedAt       DateTime? @map("closed_at")
 
   // Resumen de ventas
@@ -365,11 +351,10 @@ model CashRegister {
 
 model SystemConfig {
   id          String  @id @default(uuid())
-  key         String  @unique // Clave de configuración (ej: "tax_rate", "currency", "business_name")
-  value       String // Valor de configuración (JSON si es complejo)
-  description String? // Descripción de la configuración
+  key         String  @unique
+  value       String
+  description String?
 
-  // Timestamps
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
@@ -390,11 +375,9 @@ model ActivityLog {
   description String // Descripción legible de la acción
   metadata    String? @db.Text // Datos adicionales en formato JSON
 
-  // Información de la sesión
   ipAddress String? @map("ip_address")
   userAgent String? @map("user_agent")
 
-  // Timestamps
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([userId])

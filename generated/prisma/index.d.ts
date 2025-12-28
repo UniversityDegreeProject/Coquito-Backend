@@ -75,7 +75,7 @@ export type ActivityLog = $Result.DefaultSelection<Prisma.$ActivityLogPayload>
 export namespace $Enums {
   export const UserRole: {
   Administrador: 'Administrador',
-  Cajero: 'Cajero'
+  Vendedor: 'Vendedor'
 };
 
 export type UserRole = (typeof UserRole)[keyof typeof UserRole]
