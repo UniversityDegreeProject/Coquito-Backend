@@ -4,6 +4,7 @@ import {
   ProductsReportEntity,
   CustomersReportEntity,
   CashRegisterSummaryReportEntity,
+  SellersReportEntity,
 } from "../entities/report.entity";
 import {
   GetDailyReportDto,
@@ -11,6 +12,7 @@ import {
   GetProductsReportDto,
   GetCustomersReportDto,
   GetCashRegisterSummaryDto,
+  GetSellersReportDto,
 } from "../dto/report";
 
 /**
@@ -33,16 +35,28 @@ export abstract class ReportDatasource {
   /**
    * Obtiene el reporte de productos más vendidos en un rango de fechas
    */
-  abstract getProductsReport(dto: GetProductsReportDto): Promise<ProductsReportEntity>;
+  abstract getProductsReport(
+    dto: GetProductsReportDto,
+  ): Promise<ProductsReportEntity>;
 
   /**
    * Obtiene el reporte de mejores clientes en un rango de fechas
    */
-  abstract getCustomersReport(dto: GetCustomersReportDto): Promise<CustomersReportEntity>;
+  abstract getCustomersReport(
+    dto: GetCustomersReportDto,
+  ): Promise<CustomersReportEntity>;
 
   /**
    * Obtiene el resumen de cierres de caja en un rango de fechas
    */
-  abstract getCashRegisterSummary(dto: GetCashRegisterSummaryDto): Promise<CashRegisterSummaryReportEntity>;
-}
+  abstract getCashRegisterSummary(
+    dto: GetCashRegisterSummaryDto,
+  ): Promise<CashRegisterSummaryReportEntity>;
 
+  /**
+   * Obtiene el reporte de ventas por vendedor en un rango de fechas
+   */
+  abstract getSellersReport(
+    dto: GetSellersReportDto,
+  ): Promise<SellersReportEntity>;
+}

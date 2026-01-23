@@ -19,34 +19,39 @@ export class ReportRoutes {
 
     const authMiddleware = new AuthMiddleware(
       new JwtAdapter(env.JWT_SEED),
-      new UserRepositoryImpl(new UserDatasourceImpl())
+      new UserRepositoryImpl(new UserDatasourceImpl()),
     );
 
     //* RESTful report routes
     router.get(
       "/daily",
       [authMiddleware.validateJWT],
-      reportController.getDailyReport
+      reportController.getDailyReport,
     );
     router.get(
       "/sales",
       [authMiddleware.validateJWT],
-      reportController.getSalesReport
+      reportController.getSalesReport,
     );
     router.get(
       "/products",
       [authMiddleware.validateJWT],
-      reportController.getProductsReport
+      reportController.getProductsReport,
     );
     router.get(
       "/customers",
       [authMiddleware.validateJWT],
-      reportController.getCustomersReport
+      reportController.getCustomersReport,
     );
     router.get(
       "/cash-register-summary",
       [authMiddleware.validateJWT],
-      reportController.getCashRegisterSummary
+      reportController.getCashRegisterSummary,
+    );
+    router.get(
+      "/sellers",
+      [authMiddleware.validateJWT],
+      reportController.getSellersReport,
     );
 
     return router;

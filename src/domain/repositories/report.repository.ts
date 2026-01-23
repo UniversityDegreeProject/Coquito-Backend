@@ -4,6 +4,7 @@ import {
   ProductsReportEntity,
   CustomersReportEntity,
   CashRegisterSummaryReportEntity,
+  SellersReportEntity,
 } from "../entities/report.entity";
 import {
   GetDailyReportDto,
@@ -11,6 +12,7 @@ import {
   GetProductsReportDto,
   GetCustomersReportDto,
   GetCashRegisterSummaryDto,
+  GetSellersReportDto,
 } from "../dto/report";
 
 /**
@@ -20,8 +22,16 @@ import {
 export abstract class ReportRepository {
   abstract getDailyReport(dto: GetDailyReportDto): Promise<DailyReportEntity>;
   abstract getSalesReport(dto: GetSalesReportDto): Promise<SalesReportEntity>;
-  abstract getProductsReport(dto: GetProductsReportDto): Promise<ProductsReportEntity>;
-  abstract getCustomersReport(dto: GetCustomersReportDto): Promise<CustomersReportEntity>;
-  abstract getCashRegisterSummary(dto: GetCashRegisterSummaryDto): Promise<CashRegisterSummaryReportEntity>;
+  abstract getProductsReport(
+    dto: GetProductsReportDto,
+  ): Promise<ProductsReportEntity>;
+  abstract getCustomersReport(
+    dto: GetCustomersReportDto,
+  ): Promise<CustomersReportEntity>;
+  abstract getCashRegisterSummary(
+    dto: GetCashRegisterSummaryDto,
+  ): Promise<CashRegisterSummaryReportEntity>;
+  abstract getSellersReport(
+    dto: GetSellersReportDto,
+  ): Promise<SellersReportEntity>;
 }
-

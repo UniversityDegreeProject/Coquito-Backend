@@ -6,11 +6,13 @@ import {
   ProductsReportEntity,
   CustomersReportEntity,
   CashRegisterSummaryReportEntity,
+  SellersReportEntity,
   GetDailyReportDto,
   GetSalesReportDto,
   GetProductsReportDto,
   GetCustomersReportDto,
   GetCashRegisterSummaryDto,
+  GetSellersReportDto,
 } from "../../domain";
 
 export class ReportRepositoryImpl implements ReportRepository {
@@ -28,12 +30,19 @@ export class ReportRepositoryImpl implements ReportRepository {
     return this.reportDatasource.getProductsReport(dto);
   }
 
-  getCustomersReport(dto: GetCustomersReportDto): Promise<CustomersReportEntity> {
+  getCustomersReport(
+    dto: GetCustomersReportDto,
+  ): Promise<CustomersReportEntity> {
     return this.reportDatasource.getCustomersReport(dto);
   }
 
-  getCashRegisterSummary(dto: GetCashRegisterSummaryDto): Promise<CashRegisterSummaryReportEntity> {
+  getCashRegisterSummary(
+    dto: GetCashRegisterSummaryDto,
+  ): Promise<CashRegisterSummaryReportEntity> {
     return this.reportDatasource.getCashRegisterSummary(dto);
   }
-}
 
+  getSellersReport(dto: GetSellersReportDto): Promise<SellersReportEntity> {
+    return this.reportDatasource.getSellersReport(dto);
+  }
+}

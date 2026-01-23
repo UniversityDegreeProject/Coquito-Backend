@@ -9,11 +9,14 @@ import {
   CashRegisterSummaryDayEntity,
   ProductReportItemEntity,
   CustomerReportItemEntity,
+  SellersReportEntity,
+  SellerReportItemEntity,
   GetDailyReportDto,
   GetSalesReportDto,
   GetProductsReportDto,
   GetCustomersReportDto,
   GetCashRegisterSummaryDto,
+  GetSellersReportDto,
   CashRegisterEntity,
 } from "../../domain";
 
@@ -133,7 +136,7 @@ export class ReportDatasourceImpl implements ReportDatasource {
         cash: cashSales,
         card: cardSales,
         qr: qrSales,
-      }
+      },
     );
   }
 
@@ -230,7 +233,7 @@ export class ReportDatasourceImpl implements ReportDatasource {
     });
 
     const salesByDay = Array.from(salesByDayMap.values()).sort(
-      (a, b) => a.date.getTime() - b.date.getTime()
+      (a, b) => a.date.getTime() - b.date.getTime(),
     );
 
     // Calcular ventas por hora (0-23)
@@ -265,7 +268,7 @@ export class ReportDatasourceImpl implements ReportDatasource {
       [];
     for (let hour = 0; hour < 24; hour++) {
       salesByHour.push(
-        salesByHourMap.get(hour) || { hour, total: 0, orders: 0 }
+        salesByHourMap.get(hour) || { hour, total: 0, orders: 0 },
       );
     }
 
@@ -281,7 +284,7 @@ export class ReportDatasourceImpl implements ReportDatasource {
         qr: qrSales,
       },
       salesByDay,
-      salesByHour
+      salesByHour,
     );
   }
 
@@ -289,7 +292,7 @@ export class ReportDatasourceImpl implements ReportDatasource {
    * Obtiene el reporte de productos más vendidos
    */
   async getProductsReport(
-    dto: GetProductsReportDto
+    dto: GetProductsReportDto,
   ): Promise<ProductsReportEntity> {
     const { startDate, endDate, limit } = dto;
 
@@ -367,7 +370,7 @@ export class ReportDatasourceImpl implements ReportDatasource {
     // Calcular total general para porcentajes
     const totalRevenue = productsArray.reduce(
       (sum, p) => sum + p.totalRevenue,
-      0
+      0,
     );
 
     // Agregar porcentajes
@@ -379,7 +382,7 @@ export class ReportDatasourceImpl implements ReportDatasource {
         product.productName,
         product.quantitySold,
         product.totalRevenue,
-        percentage
+        percentage,
       );
     });
 
@@ -390,7 +393,7 @@ export class ReportDatasourceImpl implements ReportDatasource {
    * Obtiene el reporte de mejores clientes
    */
   async getCustomersReport(
-    dto: GetCustomersReportDto
+    dto: GetCustomersReportDto,
   ): Promise<CustomersReportEntity> {
     const { startDate, endDate, limit } = dto;
 
@@ -476,7 +479,7 @@ export class ReportDatasourceImpl implements ReportDatasource {
         customer.customerName,
         customer.totalOrders,
         customer.totalSpent,
-        percentage
+        percentage,
       );
     });
 
@@ -487,7 +490,7 @@ export class ReportDatasourceImpl implements ReportDatasource {
    * Obtiene el resumen de cierres de caja en un rango de fechas
    */
   async getCashRegisterSummary(
-    dto: GetCashRegisterSummaryDto
+    dto: GetCashRegisterSummaryDto,
   ): Promise<CashRegisterSummaryReportEntity> {
     const { startDate, endDate } = dto;
 
@@ -599,8 +602,8 @@ export class ReportDatasourceImpl implements ReportDatasource {
           cr.status as "Abierto" | "Cerrado",
           openingAmount,
           closingAmount,
-          difference
-        )
+          difference,
+        ),
       );
     });
 
@@ -620,20 +623,132 @@ export class ReportDatasourceImpl implements ReportDatasource {
           "Cerrado", // Sin caja abierta
           null,
           null,
-          null
-        )
+          null,
+        ),
       );
     });
 
     // Convertir a array y ordenar por fecha
     const days = Array.from(daysMap.values()).sort(
-      (a, b) => a.date.getTime() - b.date.getTime()
+      (a, b) => a.date.getTime() - b.date.getTime(),
     );
 
     return new CashRegisterSummaryReportEntity(
       reportStartDate,
       reportEndDate,
-      days
+      days,
     );
+  }
+
+  /**
+   * Obtiene el reporte de ventas por vendedor en un rango de fechas
+   */
+  async getSellersReport(
+    dto: GetSellersReportDto,
+  ): Promise<SellersReportEntity> {
+    const { startDate, endDate, limit } = dto;
+
+    // Convertir strings a Date para las entidades
+    const reportStartDate = this.parseLocalDate(startDate);
+    reportStartDate.setHours(0, 0, 0, 0);
+    const reportEndDate = this.parseLocalDate(endDate);
+    reportEndDate.setHours(23, 59, 59, 999);
+
+    // Establecer inicio y fin del rango usando parseo local
+    const start = this.parseLocalDate(startDate);
+    start.setHours(0, 0, 0, 0);
+    const end = this.parseLocalDate(endDate);
+    end.setHours(23, 59, 59, 999);
+
+    // Obtener ventas completadas en el rango con información del usuario
+    const sales = await prismaClient.sale.findMany({
+      where: {
+        createdAt: {
+          gte: start,
+          lte: end,
+        },
+        status: "Completado",
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    // Agregar datos por vendedor
+    const sellersMap = new Map<
+      string,
+      {
+        userId: string;
+        sellerName: string;
+        username: string;
+        totalOrders: number;
+        totalSales: number;
+        cashTotal: number;
+        qrTotal: number;
+      }
+    >();
+
+    sales.forEach((sale) => {
+      const userId = sale.userId;
+      if (!userId) return; // Skip si no hay userId
+
+      const sellerName = sale.user
+        ? `${sale.user.firstName || ""} ${sale.user.lastName || ""}`.trim() ||
+          "Vendedor sin nombre"
+        : "Vendedor sin nombre";
+      const username = sale.user?.username || "N/A";
+      const total =
+        typeof sale.total === "object" && "toNumber" in sale.total
+          ? sale.total.toNumber()
+          : Number(sale.total);
+
+      if (!sellersMap.has(userId)) {
+        sellersMap.set(userId, {
+          userId,
+          sellerName,
+          username,
+          totalOrders: 0,
+          totalSales: 0,
+          cashTotal: 0,
+          qrTotal: 0,
+        });
+      }
+
+      const sellerData = sellersMap.get(userId)!;
+      sellerData.totalOrders += 1;
+      sellerData.totalSales += total;
+
+      if (sale.paymentMethod === "Efectivo") {
+        sellerData.cashTotal += total;
+      } else if (sale.paymentMethod === "QR") {
+        sellerData.qrTotal += total;
+      }
+    });
+
+    // Convertir a array y ordenar por totalSales descendente
+    const sellersArray = Array.from(sellersMap.values())
+      .sort((a, b) => b.totalSales - a.totalSales)
+      .slice(0, limit);
+
+    // Calcular total general para porcentajes
+    const totalSales = sellersArray.reduce((sum, s) => sum + s.totalSales, 0);
+
+    // Agregar porcentajes
+    const sellers = sellersArray.map((seller) => {
+      const percentage =
+        totalSales > 0 ? (seller.totalSales / totalSales) * 100 : 0;
+      return new SellerReportItemEntity(
+        seller.userId,
+        seller.sellerName,
+        seller.username,
+        seller.totalOrders,
+        seller.totalSales,
+        seller.cashTotal,
+        seller.qrTotal,
+        percentage,
+      );
+    });
+
+    return new SellersReportEntity(reportStartDate, reportEndDate, sellers);
   }
 }

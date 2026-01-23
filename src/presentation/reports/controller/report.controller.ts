@@ -7,11 +7,13 @@ import {
   GetProductsReportDto,
   GetCustomersReportDto,
   GetCashRegisterSummaryDto,
+  GetSellersReportDto,
   GetDailyReportUseCaseImpl,
   GetSalesReportUseCaseImpl,
   GetProductsReportUseCaseImpl,
   GetCustomersReportUseCaseImpl,
   GetCashRegisterSummaryUseCaseImpl,
+  GetSellersReportUseCaseImpl,
 } from "../../../domain";
 
 export class ReportController {
@@ -120,7 +122,8 @@ export class ReportController {
   getCashRegisterSummary = async (req: Request, res: Response) => {
     const query = req.query;
 
-    const [error, getCashRegisterSummaryDto] = GetCashRegisterSummaryDto.create(query);
+    const [error, getCashRegisterSummaryDto] =
+      GetCashRegisterSummaryDto.create(query);
     if (error) return res.status(400).json({ error: error });
     if (!getCashRegisterSummaryDto)
       return res.status(400).json({ error: "Parámetros incorrectos" });
@@ -134,5 +137,26 @@ export class ReportController {
         return this.handleHttpStatusError(error, res);
       });
   };
-}
 
+  /**
+   * GET /api/reports/sellers
+   * Obtiene el reporte de ventas por vendedor
+   */
+  getSellersReport = async (req: Request, res: Response) => {
+    const query = req.query;
+
+    const [error, getSellersReportDto] = GetSellersReportDto.create(query);
+    if (error) return res.status(400).json({ error: error });
+    if (!getSellersReportDto)
+      return res.status(400).json({ error: "Parámetros incorrectos" });
+
+    new GetSellersReportUseCaseImpl(this.reportRepository)
+      .execute(getSellersReportDto)
+      .then((report) => {
+        return res.status(200).json({ report });
+      })
+      .catch((error) => {
+        return this.handleHttpStatusError(error, res);
+      });
+  };
+}

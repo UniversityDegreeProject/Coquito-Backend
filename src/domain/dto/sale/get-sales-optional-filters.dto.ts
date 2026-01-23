@@ -13,7 +13,8 @@ export class GetSalesOptionalFiltersDto {
     public readonly startDate: GetSalesOptionalFiltersSchema["startDate"],
     public readonly endDate: GetSalesOptionalFiltersSchema["endDate"],
     public readonly page: GetSalesOptionalFiltersSchema["page"],
-    public readonly limit: GetSalesOptionalFiltersSchema["limit"]
+    public readonly limit: GetSalesOptionalFiltersSchema["limit"],
+    public readonly search: GetSalesOptionalFiltersSchema["search"],
   ) {}
 
   public static create(dto: {
@@ -35,6 +36,7 @@ export class GetSalesOptionalFiltersDto {
       endDate,
       page,
       limit,
+      search,
     } = result.data;
 
     return [
@@ -48,7 +50,8 @@ export class GetSalesOptionalFiltersDto {
         startDate,
         endDate,
         page,
-        limit
+        limit,
+        search,
       ),
     ];
   }

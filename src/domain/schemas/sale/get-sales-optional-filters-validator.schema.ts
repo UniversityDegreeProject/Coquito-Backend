@@ -23,6 +23,9 @@ export const getSalesOptionalFiltersSchema = paginationSchema.extend({
   // Filtros de fecha
   startDate: zod.coerce.date({ error: "Fecha de inicio inválida" }).optional(),
   endDate: zod.coerce.date({ error: "Fecha de fin inválida" }).optional(),
+
+  // Búsqueda textual
+  search: zod.string().optional(),
 });
 
 export type GetSalesOptionalFiltersSchema = zod.infer<

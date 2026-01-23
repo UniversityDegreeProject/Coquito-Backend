@@ -15,7 +15,7 @@ export class DailyReportEntity {
       cash: number;
       card: number;
       qr: number;
-    }
+    },
   ) {}
 }
 
@@ -30,7 +30,7 @@ export class CashRegisterSummaryDayEntity {
     public status: "Abierto" | "Cerrado",
     public openingAmount: number | null,
     public closingAmount: number | null,
-    public difference: number | null
+    public difference: number | null,
   ) {}
 }
 
@@ -38,7 +38,7 @@ export class CashRegisterSummaryReportEntity {
   constructor(
     public startDate: Date,
     public endDate: Date,
-    public days: CashRegisterSummaryDayEntity[]
+    public days: CashRegisterSummaryDayEntity[],
   ) {}
 }
 
@@ -66,7 +66,7 @@ export class SalesReportEntity {
       hour: number;
       total: number;
       orders: number;
-    }>
+    }>,
   ) {}
 }
 
@@ -79,7 +79,7 @@ export class ProductReportItemEntity {
     public productName: string,
     public quantitySold: number,
     public totalRevenue: number,
-    public percentage: number
+    public percentage: number,
   ) {}
 }
 
@@ -87,7 +87,7 @@ export class ProductsReportEntity {
   constructor(
     public startDate: Date,
     public endDate: Date,
-    public products: ProductReportItemEntity[]
+    public products: ProductReportItemEntity[],
   ) {}
 }
 
@@ -100,7 +100,7 @@ export class CustomerReportItemEntity {
     public customerName: string,
     public totalOrders: number,
     public totalSpent: number,
-    public percentage: number
+    public percentage: number,
   ) {}
 }
 
@@ -108,7 +108,30 @@ export class CustomersReportEntity {
   constructor(
     public startDate: Date,
     public endDate: Date,
-    public customers: CustomerReportItemEntity[]
+    public customers: CustomerReportItemEntity[],
   ) {}
 }
 
+/**
+ * Entidad para Vendedor en Reporte de Vendedores
+ */
+export class SellerReportItemEntity {
+  constructor(
+    public userId: string,
+    public sellerName: string,
+    public username: string,
+    public totalOrders: number,
+    public totalSales: number,
+    public cashTotal: number,
+    public qrTotal: number,
+    public percentage: number,
+  ) {}
+}
+
+export class SellersReportEntity {
+  constructor(
+    public startDate: Date,
+    public endDate: Date,
+    public sellers: SellerReportItemEntity[],
+  ) {}
+}

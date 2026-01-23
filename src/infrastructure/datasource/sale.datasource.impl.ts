@@ -97,7 +97,7 @@ export class SaleDatasourceImpl implements SaleDatasource {
     }
     if (cashRegister.status === "Cerrado") {
       throw HttpCustomErrors.badRequest(
-        "No se puede registrar una venta en una caja cerrada"
+        "No se puede registrar una venta en una caja cerrada",
       );
     }
 
@@ -122,7 +122,7 @@ export class SaleDatasourceImpl implements SaleDatasource {
 
       if (!product) {
         throw HttpCustomErrors.notFound(
-          `Producto con ID ${productId} no encontrado`
+          `Producto con ID ${productId} no encontrado`,
         );
       }
 
@@ -130,7 +130,7 @@ export class SaleDatasourceImpl implements SaleDatasource {
       if (product.isVariableWeight) {
         if (!batchId) {
           throw HttpCustomErrors.badRequest(
-            `El producto "${product.name}" es de peso variable y requiere seleccionar un lote (batchId)`
+            `El producto "${product.name}" es de peso variable y requiere seleccionar un lote (batchId)`,
           );
         }
 
@@ -145,13 +145,13 @@ export class SaleDatasourceImpl implements SaleDatasource {
 
         if (batch.productId !== productId) {
           throw HttpCustomErrors.badRequest(
-            `El lote no pertenece al producto seleccionado`
+            `El lote no pertenece al producto seleccionado`,
           );
         }
 
         if (batch.stock < quantity) {
           throw HttpCustomErrors.badRequest(
-            `Stock insuficiente en el lote. Disponible: ${batch.stock}, Solicitado: ${quantity}`
+            `Stock insuficiente en el lote. Disponible: ${batch.stock}, Solicitado: ${quantity}`,
           );
         }
 
@@ -167,7 +167,7 @@ export class SaleDatasourceImpl implements SaleDatasource {
       else {
         if (product.stock < quantity) {
           throw HttpCustomErrors.badRequest(
-            `Stock insuficiente del producto "${product.name}". Disponible: ${product.stock}, Solicitado: ${quantity}`
+            `Stock insuficiente del producto "${product.name}". Disponible: ${product.stock}, Solicitado: ${quantity}`,
           );
         }
 
@@ -183,7 +183,7 @@ export class SaleDatasourceImpl implements SaleDatasource {
     //? 3. CALCULAR TOTALES
     const subtotal = itemsData.reduce(
       (sum, item) => sum + item.quantity * item.unitPrice,
-      0
+      0,
     );
     const tax = 0; // No hay impuestos según requerimientos
     const total = subtotal + tax;
@@ -192,8 +192,8 @@ export class SaleDatasourceImpl implements SaleDatasource {
     if (change < 0) {
       throw HttpCustomErrors.badRequest(
         `El monto pagado (${amountPaid} Bs) es insuficiente. Total: ${total.toFixed(
-          2
-        )} Bs`
+          2,
+        )} Bs`,
       );
     }
 
@@ -406,7 +406,7 @@ export class SaleDatasourceImpl implements SaleDatasource {
    * Obtiene ventas con filtros opcionales y paginación
    */
   async getSales(
-    dto: GetSalesOptionalFiltersDto
+    dto: GetSalesOptionalFiltersDto,
   ): Promise<PaginateResponse<SaleEntity>> {
     const {
       userId,
@@ -418,6 +418,7 @@ export class SaleDatasourceImpl implements SaleDatasource {
       endDate,
       page,
       limit,
+      search,
     } = dto;
 
     //? Construir el where dinámico
@@ -434,6 +435,28 @@ export class SaleDatasourceImpl implements SaleDatasource {
       where.createdAt = {};
       if (startDate) where.createdAt.gte = startDate;
       if (endDate) where.createdAt.lte = endDate;
+    }
+
+    // Búsqueda textual por nombre de vendedor, cliente o número de venta
+    if (search && search.trim()) {
+      const searchTerm = search.trim();
+      where.OR = [
+        // Buscar por número de venta
+        { saleNumber: { contains: searchTerm, mode: "insensitive" } },
+        // Buscar por nombre de usuario (vendedor)
+        { user: { username: { contains: searchTerm, mode: "insensitive" } } },
+        { user: { firstName: { contains: searchTerm, mode: "insensitive" } } },
+        { user: { lastName: { contains: searchTerm, mode: "insensitive" } } },
+        // Buscar por nombre de cliente
+        {
+          customer: {
+            firstName: { contains: searchTerm, mode: "insensitive" },
+          },
+        },
+        {
+          customer: { lastName: { contains: searchTerm, mode: "insensitive" } },
+        },
+      ];
     }
 
     //? Ejecutar consulta con paginación
