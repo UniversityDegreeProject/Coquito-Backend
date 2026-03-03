@@ -12,7 +12,7 @@ export class SystemConfigDatasourceImpl implements SystemConfigDatasource {
   async getAll(): Promise<SystemConfigEntity[]> {
     const configs = await prismaClient.systemConfig.findMany({
       orderBy: {
-        key: "asc",
+        key: "desc",
       },
     });
 
@@ -34,12 +34,12 @@ export class SystemConfigDatasourceImpl implements SystemConfigDatasource {
             value: config.value,
             description: config.description ?? null,
           },
-        })
-      )
+        }),
+      ),
     );
 
     return upsertedConfigs.map((config) =>
-      SystemConfigEntity.mapFromPrisma(config)
+      SystemConfigEntity.mapFromPrisma(config),
     );
   }
 }

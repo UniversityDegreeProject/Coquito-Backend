@@ -56,7 +56,7 @@ export class CustomerDatasourceImpl implements CustomerDatasource {
         where: where,
         skip: (page - 1) * limit,
         take: limit,
-        orderBy: { createdAt: "asc" },
+        orderBy: { createdAt: "desc" },
       }),
 
       prismaClient.customer.count({ where: where }),
