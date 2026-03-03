@@ -14,6 +14,7 @@ import {
 } from "../../../domain";
 import { GetCategoriesOptionalFiltersUseCaseImpl } from "../../../domain/use-cases/category/get-categories-optional-filters.uc";
 import { ActivityLogger } from "../../../domain/services/activity-logger.service";
+import { SocketService } from "../../socket/socket.service";
 
 export class CategoryController {
   constructor(private readonly categoryRepository: CategoryRepository) {}
@@ -86,9 +87,11 @@ export class CategoryController {
             "Category",
             category.id,
             category.name,
-            req
+            req,
           );
         }
+
+        SocketService.emit("category:created", { category });
 
         return res.status(201).json({
           message: "Categoría creada exitosamente",
@@ -127,9 +130,11 @@ export class CategoryController {
             category.id,
             category.name,
             { ...body },
-            req
+            req,
           );
         }
+
+        SocketService.emit("category:updated", { category });
 
         return res.status(200).json({
           message: "Categoría actualizada exitosamente",
@@ -163,9 +168,11 @@ export class CategoryController {
             "Category",
             category.id,
             category.name,
-            req
+            req,
           );
         }
+
+        SocketService.emit("category:deleted", { category });
 
         return res.status(200).json({
           message: "Categoría eliminada exitosamente",

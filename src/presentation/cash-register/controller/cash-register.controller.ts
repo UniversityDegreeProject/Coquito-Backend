@@ -12,10 +12,11 @@ import {
 } from "../../../domain";
 import { GetCashRegisterHistoryUseCaseImpl } from "../../../domain/use-cases/cash-register/get-cash-register-history.uc";
 import { ActivityLogger } from "../../../domain/services/activity-logger.service";
+import { SocketService } from "../../socket/socket.service";
 
 export class CashRegisterController {
   constructor(
-    private readonly cashRegisterRepository: CashRegisterRepository
+    private readonly cashRegisterRepository: CashRegisterRepository,
   ) {}
 
   private handleHttpStatusError = (error: unknown, res: Response) => {
@@ -56,6 +57,8 @@ export class CashRegisterController {
             userAgent: req.headers?.["user-agent"],
           });
         }
+
+        SocketService.emit("cash-register:opened", { cashRegister });
 
         return res.status(201).json({
           message: "Caja abierta exitosamente",
@@ -103,6 +106,8 @@ export class CashRegisterController {
           });
         }
 
+        SocketService.emit("cash-register:closed", { cashRegister });
+
         return res.status(200).json({
           message: "Caja cerrada exitosamente",
           cashRegister,
@@ -123,7 +128,7 @@ export class CashRegisterController {
     const [error, getCurrentCashRegisterDto] = GetCurrentCashRegisterDto.create(
       {
         userId,
-      }
+      },
     );
     if (error) return res.status(400).json({ error: error });
     if (!getCurrentCashRegisterDto)

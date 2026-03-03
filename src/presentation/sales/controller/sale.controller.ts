@@ -11,6 +11,7 @@ import {
   SaleEntity,
 } from "../../../domain";
 import { ActivityLogger } from "../../../domain/services/activity-logger.service";
+import { SocketService } from "../../socket/socket.service";
 
 export class SaleController {
   constructor(private readonly saleRepository: SaleRepository) {}
@@ -58,6 +59,8 @@ export class SaleController {
             userAgent: req.headers?.["user-agent"],
           });
         }
+
+        SocketService.emit("sale:created", { sale });
 
         return res.status(201).json({
           message: "Venta registrada exitosamente",

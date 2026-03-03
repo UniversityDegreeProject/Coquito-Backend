@@ -14,6 +14,7 @@ import {
   GetProductOptionalFiltersUseCaseImpl,
 } from "../../../domain";
 import { ActivityLogger } from "../../../domain/services/activity-logger.service";
+import { SocketService } from "../../socket/socket.service";
 
 export class ProductController {
   constructor(private readonly productRepository: ProductRepository) {}
@@ -86,9 +87,11 @@ export class ProductController {
             "Product",
             product.id,
             product.name,
-            req
+            req,
           );
         }
+
+        SocketService.emit("product:created", { product });
 
         return res.status(201).json({
           message: "Producto creado exitosamente",
@@ -124,9 +127,11 @@ export class ProductController {
             product.id,
             product.name,
             { ...body },
-            req
+            req,
           );
         }
+
+        SocketService.emit("product:updated", { product });
 
         return res.status(200).json({
           message: "Producto actualizado exitosamente",
@@ -160,9 +165,11 @@ export class ProductController {
             "Product",
             product.id,
             product.name,
-            req
+            req,
           );
         }
+
+        SocketService.emit("product:deleted", { product });
 
         return res.status(200).json({
           message: "Producto eliminado exitosamente",
