@@ -106,6 +106,15 @@ export class UserController {
     if (!updateUserDto)
       return res.status(400).json({ error: "User not found" });
 
+    // * Obtener rol previo para detectar si hubo un downgrade a Vendedor
+    let oldRole = "Vendedor";
+    try {
+      const existingUser = await prismaClient.user.findUnique({
+        where: { id },
+      });
+      if (existingUser) oldRole = existingUser.role;
+    } catch (e) {}
+
     new UpdateUserUseCaseImpl(this.userRepository, this.bcrypt)
       .execute(updateUserDto)
       .then(async (user) => {
@@ -113,15 +122,19 @@ export class UserController {
 
         SocketService.emit("user:updated", { user });
 
-        // Capa 1 + 3: Si el admin desactiva al usuario, forzar cierre de sesión
-        if (user.status === "Inactivo" || user.status === "Suspendido") {
-          // Capa 3: Invalidar refreshToken para que no pueda renovar sesión
+        //* Capa 1 Si el admin desactiva al usuario, o lo degrada a Vendedor, forzar cierre de sesión
+        if (
+          user.status === "Inactivo" ||
+          user.status === "Suspendido" ||
+          (oldRole === "Administrador" && user.role === "Vendedor")
+        ) {
+          //* Capa 3: Invalidar refreshToken para que no pueda renovar sesión
           await prismaClient.user.update({
             where: { id: user.id },
             data: { refreshToken: null },
           });
 
-          // Capa 1: Emitir force-logout para que el frontend cierre la sesión inmediatamente
+          //* Capa 1: Emitir force-logout para que el frontend cierre la sesión inmediatamente
           SocketService.emit("user:force-logout", { userId: user.id });
         }
 

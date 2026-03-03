@@ -178,6 +178,23 @@ export class UserDatasourceImpl implements UserDatasource {
     //? Preparar datos de actualización
     const updateData = user.values;
 
+    // * Regla de Oro: Proteger al super administrador "jesus"
+    if (userToUpdate.username === "jesus") {
+      if (
+        (updateData.username !== undefined &&
+          updateData.username !== "jesus") ||
+        (updateData.email !== undefined &&
+          updateData.email !== userToUpdate.email) ||
+        (updateData.role !== undefined &&
+          updateData.role !== "Administrador") ||
+        (updateData.status !== undefined && updateData.status !== "Activo")
+      ) {
+        throw HttpCustomErrors.badRequest(
+          "Acción denegada: No tienes permisos para modificar credenciales del S/A",
+        );
+      }
+    }
+
     //? Actualizar usuario
     const updatedUser = await prismaClient.user.update({
       where: { id },
