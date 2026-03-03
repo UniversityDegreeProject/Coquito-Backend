@@ -17,6 +17,7 @@ import {
 } from "../../../domain";
 import { BcryptAdapter } from "../../../config";
 import { SocketService } from "../../socket/socket.service";
+import { prismaClient } from "../../../data/postgres";
 
 export class UserController {
   constructor(
@@ -107,10 +108,22 @@ export class UserController {
 
     new UpdateUserUseCaseImpl(this.userRepository, this.bcrypt)
       .execute(updateUserDto)
-      .then((user) => {
+      .then(async (user) => {
         if (!user) return res.status(404).json({ error: "User not found" });
 
         SocketService.emit("user:updated", { user });
+
+        // Capa 1 + 3: Si el admin desactiva al usuario, forzar cierre de sesión
+        if (user.status === "Inactivo" || user.status === "Suspendido") {
+          // Capa 3: Invalidar refreshToken para que no pueda renovar sesión
+          await prismaClient.user.update({
+            where: { id: user.id },
+            data: { refreshToken: null },
+          });
+
+          // Capa 1: Emitir force-logout para que el frontend cierre la sesión inmediatamente
+          SocketService.emit("user:force-logout", { userId: user.id });
+        }
 
         return res.status(200).json({
           message: "Usuario actualizado exitosamente",

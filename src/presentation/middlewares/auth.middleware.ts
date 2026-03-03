@@ -15,7 +15,7 @@ export class AuthMiddleware {
   public validateJWT = async (
     req: Request,
     res: Response,
-    next: NextFunction
+    next: NextFunction,
   ) => {
     const authorization = req.header("Authorization");
     if (!authorization)
@@ -34,6 +34,12 @@ export class AuthMiddleware {
         return res
           .status(401)
           .json({ error: "Invalid token - user not found" });
+
+      // Verificar que el usuario siga activo en el sistema
+      if (user.status !== "Activo")
+        return res
+          .status(401)
+          .json({ error: "Usuario deshabilitado - sesión revocada" });
 
       // Inyectar usuario en request para uso posterior
       (req as any).user = user;
