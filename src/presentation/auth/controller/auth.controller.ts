@@ -21,6 +21,7 @@ import {
 import { BcryptAdapter, JwtAdapter } from "../../../config";
 import { EmailService } from "../../../domain/services/email.service";
 import { ActivityLogger } from "../../../domain/services/activity-logger.service";
+import { SocketService } from "../../socket/socket.service";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -34,7 +35,7 @@ export class AuthController {
     private readonly authRepository: AuthRepository,
     private readonly jwtAdapter: JwtAdapter,
     private readonly emailService: EmailService,
-    private readonly bcrypt: BcryptAdapter
+    private readonly bcrypt: BcryptAdapter,
   ) {}
 
   private handleHttpStatusError = (error: unknown, res: Response) => {
@@ -47,16 +48,16 @@ export class AuthController {
   private sendEmailValidationLink = async (
     id: string,
     email: string,
-    username: string
+    username: string,
   ): Promise<boolean> => {
     const emailToken = await this.jwtAdapter.generateToken(
       { id, email },
-      "15m"
+      "15m",
     );
     console.log(emailToken);
     if (!emailToken)
       throw HttpCustomErrors.internalServerError(
-        "Error al generar el token de verificación de email"
+        "Error al generar el token de verificación de email",
       );
 
     return this.emailService.sendEmailVerification(email, username, emailToken);
@@ -100,6 +101,9 @@ export class AuthController {
         await ActivityLogger.logLogin(user.id, user.email, req);
 
         const { password, ...rest } = user;
+
+        SocketService.emit("user:online", rest);
+
         return res.status(200).json({
           user: rest,
           accessToken,
@@ -128,12 +132,14 @@ export class AuthController {
         const emailSent = await this.sendEmailValidationLink(
           user.id,
           user.email,
-          user.username
+          user.username,
         );
         if (!emailSent)
           return res
             .status(500)
             .json({ error: "Error al enviar el email de verificación" });
+
+        SocketService.emit("user:created", { user: userWithoutPassword });
 
         return res.status(201).json({
           user: userWithoutPassword,
@@ -156,13 +162,13 @@ export class AuthController {
     if (!getUserByEmailDto)
       return res.status(400).json({ error: "Usuario no encontrado" });
     const user = await new GetUserEmailUseCaseImpl(this.userRepository).execute(
-      getUserByEmailDto
+      getUserByEmailDto,
     );
     if (!user) return res.status(400).json({ error: "Usuario no encontrado" });
     const emailSent = await this.sendEmailValidationLink(
       user.id,
       user.email,
-      user.username
+      user.username,
     );
     if (!emailSent)
       return res
@@ -184,10 +190,11 @@ export class AuthController {
     new VerifyEmailUseCaseImpl(
       this.userRepository,
       this.jwtAdapter,
-      this.bcrypt
+      this.bcrypt,
     )
       .execute(token)
       .then((result) => {
+        SocketService.emit("user:updated", { message: "Email verificado" });
         return res.status(200).send(result.message);
       })
       .catch((error) => {
@@ -207,7 +214,7 @@ export class AuthController {
     new ForgotPasswordUseCaseImpl(
       this.userRepository,
       this.jwtAdapter,
-      this.emailService
+      this.emailService,
     )
       .execute(forgotPasswordDto)
       .then((result) => {
@@ -233,7 +240,7 @@ export class AuthController {
         __dirname,
         "..",
         "views",
-        "reset-password.html"
+        "reset-password.html",
       );
       let html = fs.readFileSync(htmlPath, "utf8");
 
@@ -270,24 +277,28 @@ export class AuthController {
     new ResetPasswordUseCaseImpl(
       this.userRepository,
       this.jwtAdapter,
-      this.bcrypt
+      this.bcrypt,
     )
       .execute(resetPasswordDto)
       .then((result) => {
+        SocketService.emit("user:updated", {
+          message: "Contraseña actualizada",
+        });
+
         //? Leer página de éxito
         try {
           const htmlPath = path.join(
             __dirname,
             "..",
             "views",
-            "reset-password-success.html"
+            "reset-password-success.html",
           );
           const html = fs.readFileSync(htmlPath, "utf8");
 
           return res.send(html);
         } catch (error) {
           return res.send(
-            "<h1>Contraseña actualizada exitosamente. Puedes cerrar esta ventana.</h1>"
+            "<h1>Contraseña actualizada exitosamente. Puedes cerrar esta ventana.</h1>",
           );
         }
       })

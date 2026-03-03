@@ -9,6 +9,7 @@ import { IServerOptions } from "../domain/interfaces/server.option";
 import { createServer } from "http";
 //? socket
 import { Server as ServerIO } from "socket.io";
+import { SocketService } from "./socket/socket.service";
 
 export class Server {
   private readonly app: express.Application = express();
@@ -38,7 +39,11 @@ export class Server {
         origin: allowedOrigins,
         credentials: true,
         methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-        allowedHeaders: ["ngrok-skip-browser-warning"],
+        allowedHeaders: [
+          "Content-Type",
+          "Authorization",
+          "ngrok-skip-browser-warning",
+        ],
       }),
     );
 
@@ -60,13 +65,21 @@ export class Server {
         origin: allowedOrigins,
         credentials: true,
         methods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-        allowedHeaders: ["ngrok-skip-browser-warning"],
+        allowedHeaders: [
+          "Content-Type",
+          "Authorization",
+          "ngrok-skip-browser-warning",
+        ],
       },
     });
 
-    //* Start server
-    this.app.listen(this.port, () => {
+    //? Inicializar el servicio singleton de Socket.IO
+    SocketService.init(io);
+
+    //* Start server (usando httpServer para que Socket.IO funcione)
+    server.listen(this.port, () => {
       console.log(`Server is running on port ${this.port}`);
+      console.log(`Socket.IO ready on ws://localhost:${this.port}`);
     });
   }
 }

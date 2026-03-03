@@ -7,7 +7,6 @@ interface DeleteUserUseCase {
 }
 
 export class DeleteUserUseCaseImpl implements DeleteUserUseCase {
-
   constructor(private readonly userRepository: UserRepository) {}
 
   execute(id: DeleteUserByIdDto): Promise<UserEntity> {

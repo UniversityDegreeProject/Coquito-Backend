@@ -20,7 +20,7 @@ export class UserDatasourceImpl implements UserDatasource {
     role: string | undefined,
     status: string | undefined,
     page: number,
-    limit: number
+    limit: number,
   ): string {
     const params = new URLSearchParams();
     if (search) params.append("search", search);
@@ -33,7 +33,7 @@ export class UserDatasourceImpl implements UserDatasource {
 
   // * Obtener usuarios
   async getUsers(
-    getUserOptionalFiltersDto: GetUserOptionalFiltersDto
+    getUserOptionalFiltersDto: GetUserOptionalFiltersDto,
   ): Promise<PaginateResponse<UserEntity>> {
     const { page, limit, search, role, status } = getUserOptionalFiltersDto;
 
@@ -156,7 +156,7 @@ export class UserDatasourceImpl implements UserDatasource {
       //? Solo lanzar error si el email pertenece a OTRO usuario (no al usuario actual)
       if (existingUserByEmail && existingUserByEmail.id !== id) {
         throw HttpCustomErrors.badRequest(
-          "El correo electronico ya esta siendo usado por otra persona"
+          "El correo electronico ya esta siendo usado por otra persona",
         );
       }
     }
@@ -170,7 +170,7 @@ export class UserDatasourceImpl implements UserDatasource {
       //? Solo lanzar error si el username pertenece a OTRO usuario (no al usuario actual)
       if (existingUserByUsername && existingUserByUsername.id !== id) {
         throw HttpCustomErrors.badRequest(
-          "El nombre de usuario ya esta siendo usado por otra persona"
+          "El nombre de usuario ya esta siendo usado por otra persona",
         );
       }
     }
@@ -203,21 +203,29 @@ export class UserDatasourceImpl implements UserDatasource {
 
     if (!userToDelete) throw HttpCustomErrors.notFound("Usuario no encontrado");
 
+    // * No se puede eliminar al super administrador
+    if (userToDelete.username === "jesus") {
+      throw HttpCustomErrors.badRequest(
+        "No se puede eliminar al super administrador",
+      );
+    }
+
+    // * No se puede eliminar al usuario porque tiene ventas asociadas
     if (userToDelete.sales.length > 0) {
       throw HttpCustomErrors.badRequest(
-        "No se puede eliminar el usuario porque tiene ventas asociadas"
+        "No se puede eliminar el usuario porque tiene ventas asociadas",
       );
     }
 
     if (userToDelete.cashRegisters.length > 0) {
       throw HttpCustomErrors.badRequest(
-        "No se puede eliminar el usuario porque tiene control de caja asociadas"
+        "No se puede eliminar el usuario porque tiene control de caja asociadas",
       );
     }
 
     if (userToDelete.stockMovements.length > 0) {
       throw HttpCustomErrors.badRequest(
-        "No se puede eliminar el usuario porque tiene movimientos de inventario asociados"
+        "No se puede eliminar el usuario porque tiene movimientos de inventario asociados",
       );
     }
 
