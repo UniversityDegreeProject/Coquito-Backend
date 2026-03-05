@@ -62,6 +62,17 @@ export class SaleController {
 
         SocketService.emit("sale:created", { sale });
 
+        // Emitir product:updated para cada producto afectado en la venta
+        // Esto provee una señal redundante y directa para el módulo de Productos
+        if (sale.items && sale.items.length > 0) {
+          const uniqueProductIds = [
+            ...new Set(sale.items.map((item: any) => item.productId)),
+          ];
+          for (const productId of uniqueProductIds) {
+            SocketService.emit("product:updated", { productId });
+          }
+        }
+
         return res.status(201).json({
           message: "Venta registrada exitosamente",
           sale,
