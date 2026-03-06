@@ -1,5 +1,7 @@
 import { z as zod } from "zod";
 
+const stringToUndefined = (val: string) => (val === "" ? undefined : val);
+
 export const updateCustomerSchema = zod.object({
   id: zod.uuid({ error: "Id inválido" }),
 
@@ -21,23 +23,33 @@ export const updateCustomerSchema = zod.object({
     })
     .optional(),
 
-  email: zod
-    .email({ error: "Formato de email inválido" })
-    .toLowerCase()
-    .optional(),
+  email: zod.preprocess(
+    stringToUndefined,
+    zod
+      .string()
+      .email({ error: "Formato de email inválido" })
+      .toLowerCase()
+      .optional(),
+  ),
 
-  phone: zod
-    .string({ error: "Teléfono inválido" })
-    .refine((val) => /^\d{8}$/.test(val) || /^\+\d{11}$/.test(val), {
-      message:
-        "Debe ingresar 8 números si es local o 11 números con el prefijo internacional",
-    })
-    .optional(),
+  phone: zod.preprocess(
+    stringToUndefined,
+    zod
+      .string({ error: "Teléfono inválido" })
+      .refine((val) => /^\d{8}$/.test(val) || /^\+\d{11}$/.test(val), {
+        message:
+          "Debe ingresar 8 números si es local o 11 números con el prefijo internacional",
+      })
+      .optional(),
+  ),
 
-  address: zod
-    .string({ error: "Dirección inválida" })
-    .max(255, { error: "La dirección debe tener máximo 255 caracteres" })
-    .optional(),
+  address: zod.preprocess(
+    stringToUndefined,
+    zod
+      .string({ error: "Dirección inválida" })
+      .max(255, { error: "La dirección debe tener máximo 255 caracteres" })
+      .optional(),
+  ),
 
   password: zod
     .string({ error: "Contraseña inválida" })
