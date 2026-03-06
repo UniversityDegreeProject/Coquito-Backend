@@ -15,6 +15,7 @@ export * from "./dto/shared";
 
 // *Interfaces
 export * from "./interfaces/shared";
+export * from "./interfaces/email.interface";
 
 // *Entities
 export * from "./entities";

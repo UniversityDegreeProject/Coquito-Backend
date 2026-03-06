@@ -10,9 +10,15 @@ export const env = {
 
   JWT_SEED: get("JWT_SEED").required().asString(),
 
-  MAILER_SERVICE: get("MAILER_SERVICE").required().asString(),
-  MAILER_EMAIL: get("MAILER_EMAIL").required().asString(),
-  MAILER_SECRET_KEY: get("MAILER_SECRET_KEY").required().asString(),
+  MAILER_PROVIDER: get("MAILER_PROVIDER").required().asString(),
+  MAILER_API_KEY: get("RESEND_API_KEY").asString(),
+  MAILER_SERVICE: get("MAILER_SERVICE").asString(),
+  MAILER_EMAIL: get("MAILER_EMAIL").asString(),
+  MAILER_SECRET_KEY: get("MAILER_SECRET_KEY").asString(),
+
+  MAILER_FROM_EMAIL: get("MAILER_FROM_EMAIL")
+    .default("Embutidos Coquito <soporte-coquito@jezedev.pro>")
+    .asString(),
 
   WEBSERVICE_URL: get("WEBSERVICE_URL")
     .default("http://localhost:3000/api")

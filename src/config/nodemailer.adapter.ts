@@ -1,12 +1,14 @@
-import nodemailer, { SendMailOptions, Transporter } from "nodemailer";
+import nodemailer, { Transporter } from "nodemailer";
+import { IEmailAdapter, SendEmailOptions } from "../domain";
 
-export class EmailAdapter {
+export class EmailAdapter implements IEmailAdapter {
   private readonly transporter: Transporter;
 
   constructor(
     private readonly mailerService: string,
     private readonly mailerEmail: string,
     private readonly senderEmailPassword: string,
+    private readonly fromEmail: string,
   ) {
     this.transporter = nodemailer.createTransport({
       service: this.mailerService,
@@ -19,16 +21,16 @@ export class EmailAdapter {
 
   /**
    * Envía un email usando nodemailer
-   * @param options - Opciones del email (to, subject, html, attachments)
+   * @param options - Opciones del email (to, subject, html)
    * @returns Promise<boolean> - true si se envió correctamente, false si falló
    */
-  
-  async sendEmail(options: SendMailOptions): Promise<boolean> {
+
+  async sendEmail(options: SendEmailOptions): Promise<boolean> {
     const { to, subject, html, attachments = [] } = options;
-    
+
     try {
       const sentInfo = await this.transporter.sendMail({
-        from: this.mailerEmail,
+        from: this.fromEmail,
         to,
         subject,
         html,
@@ -39,9 +41,8 @@ export class EmailAdapter {
       if (sentInfo.accepted && sentInfo.accepted.length > 0) {
         return true;
       }
-      
+
       return false;
-      
     } catch (error) {
       return false;
     }

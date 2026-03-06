@@ -1,10 +1,9 @@
-import { EmailAdapter } from "../../config";
+import { IEmailAdapter } from "../interfaces/email.interface";
 
 export class EmailService {
   constructor(
-    private readonly emailAdapter: EmailAdapter,
+    private readonly emailAdapter: IEmailAdapter,
     private readonly webServiceUrl: string,
-    private readonly frontendUrl: string
   ) {}
 
   /**
@@ -16,7 +15,7 @@ export class EmailService {
   async sendEmailVerification(
     email: string,
     username: string,
-    token: string
+    token: string,
   ): Promise<boolean> {
     const verificationLink = `${this.webServiceUrl}/auth/verify-email/${token}`;
 
@@ -84,7 +83,7 @@ export class EmailService {
   async sendPasswordRecovery(
     email: string,
     username: string,
-    token: string
+    token: string,
   ): Promise<boolean> {
     // Link apunta al BACKEND que sirve la página HTML
     const recoveryLink = `${this.webServiceUrl}/auth/reset-password-page/${token}`;

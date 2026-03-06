@@ -1,20 +1,25 @@
 import { Router } from "express";
 import { AuthController } from "../controller/auth.controller";
-import { UserDatasourceImpl, UserRepositoryImpl, AuthDatasourceImpl, AuthRepositoryImpl } from "../../../infrastructure";
-import { JwtAdapter, env, EmailAdapter, BcryptAdapter } from "../../../config";
+import {
+  UserDatasourceImpl,
+  UserRepositoryImpl,
+  AuthDatasourceImpl,
+  AuthRepositoryImpl,
+} from "../../../infrastructure";
+import {
+  JwtAdapter,
+  env,
+  EmailAdapter,
+  BcryptAdapter,
+  ResendEmailAdapter,
+} from "../../../config";
 import { EmailService } from "../../../domain/services/email.service";
 
-
 export class AuthRoutes {
-
-  constructor() {
-    
-  }
-
+  constructor() {}
 
   static get routes(): Router {
     const router = Router();
-
 
     //* Instancia de JWT y bcrypt adapter
     const jwtAdapter = new JwtAdapter(env.JWT_SEED);
@@ -23,41 +28,52 @@ export class AuthRoutes {
     //* Instancias de user crud
     const userDatasourceImpl = new UserDatasourceImpl();
     const userRepositoryImpl = new UserRepositoryImpl(userDatasourceImpl);
-    
-    
+
     //* Instancias de auth login
     const authDatasourceImpl = new AuthDatasourceImpl(bcryptAdapter);
     const authRepositoryImpl = new AuthRepositoryImpl(authDatasourceImpl);
-    
-    //* Instancia de Email adapter y servicio
-    const emailAdapter = new EmailAdapter(
-      env.MAILER_SERVICE,
-      env.MAILER_EMAIL,
-      env.MAILER_SECRET_KEY
-    );
+
+    //* Instancia de Email adapter dinámico (Nodemailer o Resend)
+    let emailSendingAdapter;
+
+    if (env.MAILER_PROVIDER === "resend") {
+      console.log("apikey", env.MAILER_API_KEY);
+      console.log("fromEmail", env.MAILER_FROM_EMAIL);
+      emailSendingAdapter = new ResendEmailAdapter(
+        env.MAILER_API_KEY!,
+        env.MAILER_FROM_EMAIL,
+      );
+    } else {
+      emailSendingAdapter = new EmailAdapter(
+        env.MAILER_SERVICE!,
+        env.MAILER_EMAIL!,
+        env.MAILER_SECRET_KEY!,
+        env.MAILER_FROM_EMAIL,
+      );
+    }
+
     const emailService = new EmailService(
-      emailAdapter, 
+      emailSendingAdapter,
       env.WEBSERVICE_URL,
-      env.FRONTEND_URL
     );
-    
+
     //* Controller con repositorios, JWT adapter y Email service
     const authController = new AuthController(
-      userRepositoryImpl, 
-      authRepositoryImpl, 
+      userRepositoryImpl,
+      authRepositoryImpl,
       jwtAdapter,
       emailService,
-      bcryptAdapter
+      bcryptAdapter,
     );
-    
-    router.post('/login', authController.loginUser);
-    router.post('/register', authController.registerUser);
-    router.post('/retry-verify-email', authController.retryVerifyEmail);
-    router.get('/verify-email/:token', authController.verifyEmail);
-    router.post('/forgot-password', authController.forgotPassword);
-    router.get('/reset-password-page/:token', authController.resetPasswordPage);
-    router.post('/reset-password-submit', authController.resetPasswordSubmit);
-    
+
+    router.post("/login", authController.loginUser);
+    router.post("/register", authController.registerUser);
+    router.post("/retry-verify-email", authController.retryVerifyEmail);
+    router.get("/verify-email/:token", authController.verifyEmail);
+    router.post("/forgot-password", authController.forgotPassword);
+    router.get("/reset-password-page/:token", authController.resetPasswordPage);
+    router.post("/reset-password-submit", authController.resetPasswordSubmit);
+
     return router;
   }
 }
