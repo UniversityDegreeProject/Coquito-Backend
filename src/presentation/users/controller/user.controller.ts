@@ -162,6 +162,7 @@ export class UserController {
         if (!user) return res.status(404).json({ error: "User not found" });
 
         SocketService.emit("user:deleted", { user });
+        SocketService.emit("user:force-logout", { userId: user.id });
 
         return res.status(200).json({
           message: "Usuario eliminado exitosamente",
