@@ -35,6 +35,8 @@ export class Server {
       "http://localhost:5173",
       "https://transferable-lawana-roadworthy.ngrok-free.dev",
       env.FRONTEND_URL,
+      "https://jezedev.pro",
+      "https://www.jezedev.pro",
     ];
     // *cors
     this.app.use(
