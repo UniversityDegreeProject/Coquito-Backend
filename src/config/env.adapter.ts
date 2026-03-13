@@ -2,7 +2,8 @@ import envVar from "env-var";
 const { get } = envVar;
 import dotenv from "dotenv";
 
-dotenv.config();
+const envFile = process.env.NODE_ENV === "production" ? ".env.prod" : ".env";
+dotenv.config({ path: envFile });
 
 export const env = {
   PORT: get("PORT").default(3000).asPortNumber(),

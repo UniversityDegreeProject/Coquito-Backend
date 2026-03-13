@@ -11,6 +11,8 @@ import { createServer } from "http";
 import { Server as ServerIO } from "socket.io";
 import { SocketService } from "./socket/socket.service";
 
+import { env } from "../config/env.adapter";
+
 export class Server {
   private readonly app: express.Application = express();
   private readonly port: number;
@@ -32,6 +34,7 @@ export class Server {
     const allowedOrigins = [
       "http://localhost:5173",
       "https://transferable-lawana-roadworthy.ngrok-free.dev",
+      env.FRONTEND_URL,
     ];
     // *cors
     this.app.use(
