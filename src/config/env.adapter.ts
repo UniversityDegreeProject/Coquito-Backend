@@ -2,8 +2,11 @@ import envVar from "env-var";
 const { get } = envVar;
 import dotenv from "dotenv";
 
-const envFile = process.env.NODE_ENV === "production" ? ".env.prod" : ".env";
-dotenv.config({ path: envFile });
+// En producción (Seenode), las variables vienen directo de process.env
+// Solo cargamos dotenv en desarrollo local
+if (process.env.NODE_ENV !== "production") {
+  dotenv.config({ path: ".env" });
+}
 
 export const env = {
   PORT: get("PORT").default(3000).asPortNumber(),
