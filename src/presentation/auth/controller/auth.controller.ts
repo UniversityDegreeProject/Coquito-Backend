@@ -39,6 +39,7 @@ export class AuthController {
   ) {}
 
   private handleHttpStatusError = (error: unknown, res: Response) => {
+    console.error(error); // Log the error to see it in Seenode logs
     if (error instanceof HttpCustomErrors) {
       return res.status(error.statusCode).json({ error: error.message });
     }
