@@ -285,6 +285,11 @@ export class AuthController {
         SocketService.emit("user:updated", {
           message: "Contraseña actualizada",
         });
+        
+        // Forzar cierre de sesión en todos los clientes tras cambio de clave
+        SocketService.emit("user:force-logout", {
+          userId: result.userId
+        });
 
         //? Leer página de éxito
         try {

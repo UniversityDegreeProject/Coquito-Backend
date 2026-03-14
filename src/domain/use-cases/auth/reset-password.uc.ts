@@ -7,7 +7,7 @@ import { HttpCustomErrors } from "../../errors/http-custom-errors";
 import { UpdateUserUseCaseImpl } from "../user";
 
 export interface ResetPasswordUseCase {
-  execute(resetPasswordDto: ResetPasswordDto): Promise<{ message: string }>;
+  execute(resetPasswordDto: ResetPasswordDto): Promise<{ message: string; userId: string }>;
 }
 
 export class ResetPasswordUseCaseImpl implements ResetPasswordUseCase {
@@ -17,7 +17,7 @@ export class ResetPasswordUseCaseImpl implements ResetPasswordUseCase {
     private readonly bcrypt: BcryptAdapter
   ) {}
 
-  async execute(resetPasswordDto: ResetPasswordDto): Promise<{ message: string }> {
+  async execute(resetPasswordDto: ResetPasswordDto): Promise<{ message: string; userId: string }> {
     const { token, newPassword } = resetPasswordDto;
 
     const payload = this.jwtAdapter.verifyToken<{ id: string; email: string }>(token);
@@ -39,7 +39,7 @@ export class ResetPasswordUseCaseImpl implements ResetPasswordUseCase {
 
     await new UpdateUserUseCaseImpl(this.userRepository, this.bcrypt).execute(updateUserDto);
 
-    return { message: "Contraseña actualizada exitosamente" };
+    return { message: "Contraseña actualizada exitosamente", userId: user.id };
   }
 }
 
