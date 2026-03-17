@@ -1,0 +1,1 @@
+const a={allSales:["sales"],saleById:s=>[...a.allSales,s],salesWithFilters:s=>[...a.allSales,"filters",s]},e=s=>`Bs ${s.toLocaleString("es-BO",{minimumFractionDigits:2,maximumFractionDigits:2})}`;export{e as f,a as s};
