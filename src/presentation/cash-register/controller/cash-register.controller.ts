@@ -49,7 +49,7 @@ export class CashRegisterController {
             action: "OPEN_CASH_REGISTER",
             entity: "CashRegister",
             entityId: cashRegister.id,
-            description: `Abrió caja con monto inicial: $${cashRegister.openingAmount}`,
+            description: `Abrió caja con monto inicial: Bs.${cashRegister.openingAmount}`,
             metadata: {
               openingAmount: cashRegister.openingAmount,
             },
@@ -93,7 +93,7 @@ export class CashRegisterController {
             action: "CLOSE_CASH_REGISTER",
             entity: "CashRegister",
             entityId: cashRegister.id,
-            description: `Cerró caja - Esperado: $${cashRegister.expectedAmount}, Real: $${cashRegister.closingAmount}, Diferencia: $${cashRegister.difference}`,
+            description: `Cerró caja - Esperado: Bs.${cashRegister.expectedAmount}, Real: Bs.${cashRegister.closingAmount}, Diferencia: Bs.${cashRegister.difference}`,
             metadata: {
               openingAmount: cashRegister.openingAmount,
               closingAmount: cashRegister.closingAmount,
