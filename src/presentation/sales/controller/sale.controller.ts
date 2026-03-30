@@ -10,11 +10,15 @@ import {
   GetSalesOptionalFiltersUseCaseImpl,
   SaleEntity,
 } from "../../../domain";
+import { PaymentRepository } from "../../../domain/repositories/payment.repository";
 import { ActivityLogger } from "../../../domain/services/activity-logger.service";
 import { SocketService } from "../../socket/socket.service";
 
 export class SaleController {
-  constructor(private readonly saleRepository: SaleRepository) {}
+  constructor(
+    private readonly saleRepository: SaleRepository,
+    private readonly paymentRepository: PaymentRepository,
+  ) {}
 
   private handleHttpStatusError = (error: unknown, res: Response) => {
     if (error instanceof HttpCustomErrors) {
@@ -27,6 +31,7 @@ export class SaleController {
   /**
    * POST /api/sales
    * Crea una nueva venta
+   * Si el pago es por QR, verifica contra Libélula que el monto pagado sea correcto
    */
   createSale = async (req: Request, res: Response) => {
     const body = req.body;
@@ -35,6 +40,45 @@ export class SaleController {
     if (error) return res.status(400).json({ error: error });
     if (!createSaleDto)
       return res.status(400).json({ error: "Datos incorrectos" });
+
+    // ★ VALIDACIÓN DE PAGO QR — Verificar monto contra Libélula
+    if (createSaleDto.paymentMethod === "QR") {
+      if (!createSaleDto.codigoRecaudacion) {
+        return res.status(400).json({
+          error: "El código de recaudación es requerido para pagos por QR",
+        });
+      }
+
+      try {
+        const verificacion = await this.paymentRepository.verificarPago(
+          createSaleDto.codigoRecaudacion,
+        );
+
+        if (!verificacion.pagado) {
+          return res.status(400).json({
+            error: "El pago QR no ha sido confirmado por la pasarela de pagos",
+          });
+        }
+
+        // Calcular el total esperado de la venta
+        const totalEsperado = createSaleDto.items.reduce(
+          (sum, item) => sum + item.quantity * item.unitPrice,
+          0,
+        );
+
+        // Verificar que el monto registrado en Libélula coincide con el total
+        if (verificacion.valorTotal < totalEsperado) {
+          return res.status(400).json({
+            error: `El monto pagado por QR (${verificacion.valorTotal} Bs) no cubre el total de la venta (${totalEsperado.toFixed(2)} Bs). Posible pago parcial detectado.`,
+          });
+        }
+      } catch (verifyError) {
+        console.error("Error al verificar pago QR con Libélula:", verifyError);
+        return res.status(500).json({
+          error: "No se pudo verificar el pago QR con la pasarela de pagos",
+        });
+      }
+    }
 
     new CreateSaleUseCaseImpl(this.saleRepository)
       .execute(createSaleDto)
@@ -63,7 +107,6 @@ export class SaleController {
         SocketService.emit("sale:created", { sale });
 
         // Emitir product:updated para cada producto afectado en la venta
-        // Esto provee una señal redundante y directa para el módulo de Productos
         if (sale.items && sale.items.length > 0) {
           const uniqueProductIds = [
             ...new Set(sale.items.map((item: any) => item.productId)),

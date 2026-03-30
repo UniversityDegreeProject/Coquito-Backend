@@ -1,5 +1,5 @@
 import axios from "axios";
-import { PaymentDatasource } from "../../domain/datasource/payment.datasource";
+import { PaymentDatasource, type VerificarPagoResult } from "../../domain/datasource/payment.datasource";
 
 export class PaymentDatasourceImpl implements PaymentDatasource {
   private readonly apiUrl = process.env.LIBELULA_API_URL!;
@@ -25,10 +25,32 @@ export class PaymentDatasourceImpl implements PaymentDatasource {
       `${this.apiUrl}/deuda/consultar_deudas/por_identificador`,
       {
         appkey: this.appKey,
-        codigo_recaudacion: idRecaudacion, //? codigo numerico cite: 666
+        codigo_recaudacion: idRecaudacion,
       },
     );
     console.log(data);
     return data;
+  }
+
+  /**
+   * Verifica contra Libélula que un pago QR fue realizado correctamente
+   * y que el monto pagado coincide con el valor total registrado.
+   */
+  async verificarPago(codigoRecaudacion: string): Promise<VerificarPagoResult> {
+    const { data } = await axios.post(
+      `${this.apiUrl}/deuda/consultar_deudas/por_identificador`,
+      {
+        appkey: this.appKey,
+        codigo_recaudacion: codigoRecaudacion,
+      },
+    );
+
+    const deuda = data.datos;
+
+    return {
+      pagado: deuda?.pagado === true,
+      montoPagado: deuda?.valor_total ?? 0,
+      valorTotal: deuda?.valor_total ?? 0,
+    };
   }
 }

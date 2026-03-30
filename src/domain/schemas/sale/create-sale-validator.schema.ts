@@ -48,6 +48,11 @@ export const createSaleSchema = zod
       .string({ error: "Notas inválidas" })
       .max(500, { error: "Las notas deben tener máximo 500 caracteres" })
       .optional(),
+
+    // Código de recaudación de Libélula (requerido para pagos QR)
+    codigoRecaudacion: zod
+      .string({ error: "Código de recaudación inválido" })
+      .optional(),
   })
   .superRefine((data, ctx) => {
     // Calcular el total de la venta
@@ -63,6 +68,15 @@ export const createSaleSchema = zod
         message: `El monto pagado (${
           data.amountPaid
         } Bs) debe ser mayor o igual al total (${total.toFixed(2)} Bs)`,
+      });
+    }
+
+    // Validar que pagos QR tengan código de recaudación
+    if (data.paymentMethod === "QR" && !data.codigoRecaudacion) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["codigoRecaudacion"],
+        message: "El código de recaudación es requerido para pagos por QR",
       });
     }
   });

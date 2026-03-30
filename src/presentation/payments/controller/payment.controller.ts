@@ -41,11 +41,11 @@ export class PaymentController {
     this.paymentRepository
       .consultarEstado(id as string)
       .then((result) => {
-        // La respuesta de este servicio devuelve un objeto 'datos' [cite: 721]
         const info = result.datos;
         res.json({
-          pagado: info.pagado, // El manual indica que es booleano [cite: 608]
+          pagado: info.pagado,
           fecha_pago: info.fecha_pago,
+          valor_total: info.valor_total ?? 0,
         });
       })
       .catch((error) => {

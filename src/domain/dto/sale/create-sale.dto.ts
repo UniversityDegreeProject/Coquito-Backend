@@ -12,7 +12,8 @@ export class CreateSaleDto {
     public readonly items: SaleItemSchema[],
     public readonly paymentMethod: CreateSaleSchema["paymentMethod"],
     public readonly amountPaid: CreateSaleSchema["amountPaid"],
-    public readonly notes: CreateSaleSchema["notes"]
+    public readonly notes: CreateSaleSchema["notes"],
+    public readonly codigoRecaudacion?: CreateSaleSchema["codigoRecaudacion"],
   ) {}
 
   public static create(dto: { [key: string]: any }): [string?, CreateSaleDto?] {
@@ -30,6 +31,7 @@ export class CreateSaleDto {
       paymentMethod,
       amountPaid,
       notes,
+      codigoRecaudacion,
     } = result.data;
     return [
       undefined,
@@ -40,7 +42,8 @@ export class CreateSaleDto {
         items,
         paymentMethod,
         amountPaid,
-        notes
+        notes,
+        codigoRecaudacion,
       ),
     ];
   }
