@@ -3,7 +3,7 @@
  * Client
 **/
 
-import * as runtime from './runtime/library.js';
+import * as runtime from './runtime/client.js';
 import $Types = runtime.Types // general types
 import $Public = runtime.Types.Public
 import $Utils = runtime.Types.Utils
@@ -68,6 +68,11 @@ export type SystemConfig = $Result.DefaultSelection<Prisma.$SystemConfigPayload>
  * 
  */
 export type ActivityLog = $Result.DefaultSelection<Prisma.$ActivityLogPayload>
+/**
+ * Model QrCheckoutSession
+ * 
+ */
+export type QrCheckoutSession = $Result.DefaultSelection<Prisma.$QrCheckoutSessionPayload>
 
 /**
  * Enums
@@ -154,6 +159,15 @@ export const CashRegisterStatus: {
 
 export type CashRegisterStatus = (typeof CashRegisterStatus)[keyof typeof CashRegisterStatus]
 
+
+export const QrCheckoutStatus: {
+  Reservado: 'Reservado',
+  Completado: 'Completado',
+  Cancelado: 'Cancelado'
+};
+
+export type QrCheckoutStatus = (typeof QrCheckoutStatus)[keyof typeof QrCheckoutStatus]
+
 }
 
 export type UserRole = $Enums.UserRole
@@ -192,19 +206,25 @@ export type CashRegisterStatus = $Enums.CashRegisterStatus
 
 export const CashRegisterStatus: typeof $Enums.CashRegisterStatus
 
+export type QrCheckoutStatus = $Enums.QrCheckoutStatus
+
+export const QrCheckoutStatus: typeof $Enums.QrCheckoutStatus
+
 /**
  * ##  Prisma Client ʲˢ
  *
  * Type-safe database client for TypeScript & Node.js
  * @example
  * ```
- * const prisma = new PrismaClient()
+ * const prisma = new PrismaClient({
+ *   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL })
+ * })
  * // Fetch zero or more Users
  * const users = await prisma.user.findMany()
  * ```
  *
  *
- * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client).
+ * Read more in our [docs](https://pris.ly/d/client).
  */
 export class PrismaClient<
   ClientOptions extends Prisma.PrismaClientOptions = Prisma.PrismaClientOptions,
@@ -219,13 +239,15 @@ export class PrismaClient<
    * Type-safe database client for TypeScript & Node.js
    * @example
    * ```
-   * const prisma = new PrismaClient()
+   * const prisma = new PrismaClient({
+   *   adapter: new PrismaPg({ connectionString: process.env.DATABASE_URL })
+   * })
    * // Fetch zero or more Users
    * const users = await prisma.user.findMany()
    * ```
    *
    *
-   * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client).
+   * Read more in our [docs](https://pris.ly/d/client).
    */
 
   constructor(optionsArg ?: Prisma.Subset<ClientOptions, Prisma.PrismaClientOptions>);
@@ -248,7 +270,7 @@ export class PrismaClient<
    * const result = await prisma.$executeRaw`UPDATE User SET cool = ${true} WHERE email = ${'user@email.com'};`
    * ```
    *
-   * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client/raw-database-access).
+   * Read more in our [docs](https://pris.ly/d/raw-queries).
    */
   $executeRaw<T = unknown>(query: TemplateStringsArray | Prisma.Sql, ...values: any[]): Prisma.PrismaPromise<number>;
 
@@ -260,7 +282,7 @@ export class PrismaClient<
    * const result = await prisma.$executeRawUnsafe('UPDATE User SET cool = $1 WHERE email = $2 ;', true, 'user@email.com')
    * ```
    *
-   * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client/raw-database-access).
+   * Read more in our [docs](https://pris.ly/d/raw-queries).
    */
   $executeRawUnsafe<T = unknown>(query: string, ...values: any[]): Prisma.PrismaPromise<number>;
 
@@ -271,7 +293,7 @@ export class PrismaClient<
    * const result = await prisma.$queryRaw`SELECT * FROM User WHERE id = ${1} OR email = ${'user@email.com'};`
    * ```
    *
-   * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client/raw-database-access).
+   * Read more in our [docs](https://pris.ly/d/raw-queries).
    */
   $queryRaw<T = unknown>(query: TemplateStringsArray | Prisma.Sql, ...values: any[]): Prisma.PrismaPromise<T>;
 
@@ -283,7 +305,7 @@ export class PrismaClient<
    * const result = await prisma.$queryRawUnsafe('SELECT * FROM User WHERE id = $1 OR email = $2;', 1, 'user@email.com')
    * ```
    *
-   * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client/raw-database-access).
+   * Read more in our [docs](https://pris.ly/d/raw-queries).
    */
   $queryRawUnsafe<T = unknown>(query: string, ...values: any[]): Prisma.PrismaPromise<T>;
 
@@ -299,12 +321,11 @@ export class PrismaClient<
    * ])
    * ```
    * 
-   * Read more in our [docs](https://www.prisma.io/docs/concepts/components/prisma-client/transactions).
+   * Read more in our [docs](https://www.prisma.io/docs/orm/prisma-client/queries/transactions).
    */
-  $transaction<P extends Prisma.PrismaPromise<any>[]>(arg: [...P], options?: { isolationLevel?: Prisma.TransactionIsolationLevel }): $Utils.JsPromise<runtime.Types.Utils.UnwrapTuple<P>>
+  $transaction<P extends Prisma.PrismaPromise<any>[]>(arg: [...P], options?: { maxWait?: number, timeout?: number, isolationLevel?: Prisma.TransactionIsolationLevel }): $Utils.JsPromise<runtime.Types.Utils.UnwrapTuple<P>>
 
   $transaction<R>(fn: (prisma: Omit<PrismaClient, runtime.ITXClientDenyList>) => $Utils.JsPromise<R>, options?: { maxWait?: number, timeout?: number, isolationLevel?: Prisma.TransactionIsolationLevel }): $Utils.JsPromise<R>
-
 
   $extends: $Extensions.ExtendsHook<"extends", Prisma.TypeMapCb<ClientOptions>, ExtArgs, $Utils.Call<Prisma.TypeMapCb<ClientOptions>, {
     extArgs: ExtArgs
@@ -419,6 +440,16 @@ export class PrismaClient<
     * ```
     */
   get activityLog(): Prisma.ActivityLogDelegate<ExtArgs, ClientOptions>;
+
+  /**
+   * `prisma.qrCheckoutSession`: Exposes CRUD operations for the **QrCheckoutSession** model.
+    * Example usage:
+    * ```ts
+    * // Fetch zero or more QrCheckoutSessions
+    * const qrCheckoutSessions = await prisma.qrCheckoutSession.findMany()
+    * ```
+    */
+  get qrCheckoutSession(): Prisma.QrCheckoutSessionDelegate<ExtArgs, ClientOptions>;
 }
 
 export namespace Prisma {
@@ -459,14 +490,6 @@ export namespace Prisma {
   export type DecimalJsLike = runtime.DecimalJsLike
 
   /**
-   * Metrics
-   */
-  export type Metrics = runtime.Metrics
-  export type Metric<T> = runtime.Metric<T>
-  export type MetricHistogram = runtime.MetricHistogram
-  export type MetricHistogramBucket = runtime.MetricHistogramBucket
-
-  /**
   * Extensions
   */
   export import Extension = $Extensions.UserArgs
@@ -477,11 +500,12 @@ export namespace Prisma {
   export import Exact = $Public.Exact
 
   /**
-   * Prisma Client JS version: 6.19.2
-   * Query Engine version: c2990dca591cba766e3b7ef5d9e8a84796e47ab7
+   * Prisma Client JS version: 7.8.0
+   * Query Engine version: 3c6e192761c0362d496ed980de936e2f3cebcd3a
    */
   export type PrismaVersion = {
     client: string
+    engine: string
   }
 
   export const prismaVersion: PrismaVersion
@@ -870,15 +894,13 @@ export namespace Prisma {
     SaleItem: 'SaleItem',
     CashRegister: 'CashRegister',
     SystemConfig: 'SystemConfig',
-    ActivityLog: 'ActivityLog'
+    ActivityLog: 'ActivityLog',
+    QrCheckoutSession: 'QrCheckoutSession'
   };
 
   export type ModelName = (typeof ModelName)[keyof typeof ModelName]
 
 
-  export type Datasources = {
-    db?: Datasource
-  }
 
   interface TypeMapCb<ClientOptions = {}> extends $Utils.Fn<{extArgs: $Extensions.InternalArgs }, $Utils.Record<string, any>> {
     returns: Prisma.TypeMap<this['params']['extArgs'], ClientOptions extends { omit: infer OmitOptions } ? OmitOptions : {}>
@@ -889,7 +911,7 @@ export namespace Prisma {
       omit: GlobalOmitOptions
     }
     meta: {
-      modelProps: "user" | "category" | "product" | "customer" | "stockMovement" | "productBatch" | "sale" | "saleItem" | "cashRegister" | "systemConfig" | "activityLog"
+      modelProps: "user" | "category" | "product" | "customer" | "stockMovement" | "productBatch" | "sale" | "saleItem" | "cashRegister" | "systemConfig" | "activityLog" | "qrCheckoutSession"
       txIsolationLevel: Prisma.TransactionIsolationLevel
     }
     model: {
@@ -1707,6 +1729,80 @@ export namespace Prisma {
           }
         }
       }
+      QrCheckoutSession: {
+        payload: Prisma.$QrCheckoutSessionPayload<ExtArgs>
+        fields: Prisma.QrCheckoutSessionFieldRefs
+        operations: {
+          findUnique: {
+            args: Prisma.QrCheckoutSessionFindUniqueArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QrCheckoutSessionPayload> | null
+          }
+          findUniqueOrThrow: {
+            args: Prisma.QrCheckoutSessionFindUniqueOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QrCheckoutSessionPayload>
+          }
+          findFirst: {
+            args: Prisma.QrCheckoutSessionFindFirstArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QrCheckoutSessionPayload> | null
+          }
+          findFirstOrThrow: {
+            args: Prisma.QrCheckoutSessionFindFirstOrThrowArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QrCheckoutSessionPayload>
+          }
+          findMany: {
+            args: Prisma.QrCheckoutSessionFindManyArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QrCheckoutSessionPayload>[]
+          }
+          create: {
+            args: Prisma.QrCheckoutSessionCreateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QrCheckoutSessionPayload>
+          }
+          createMany: {
+            args: Prisma.QrCheckoutSessionCreateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          createManyAndReturn: {
+            args: Prisma.QrCheckoutSessionCreateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QrCheckoutSessionPayload>[]
+          }
+          delete: {
+            args: Prisma.QrCheckoutSessionDeleteArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QrCheckoutSessionPayload>
+          }
+          update: {
+            args: Prisma.QrCheckoutSessionUpdateArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QrCheckoutSessionPayload>
+          }
+          deleteMany: {
+            args: Prisma.QrCheckoutSessionDeleteManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateMany: {
+            args: Prisma.QrCheckoutSessionUpdateManyArgs<ExtArgs>
+            result: BatchPayload
+          }
+          updateManyAndReturn: {
+            args: Prisma.QrCheckoutSessionUpdateManyAndReturnArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QrCheckoutSessionPayload>[]
+          }
+          upsert: {
+            args: Prisma.QrCheckoutSessionUpsertArgs<ExtArgs>
+            result: $Utils.PayloadToResult<Prisma.$QrCheckoutSessionPayload>
+          }
+          aggregate: {
+            args: Prisma.QrCheckoutSessionAggregateArgs<ExtArgs>
+            result: $Utils.Optional<AggregateQrCheckoutSession>
+          }
+          groupBy: {
+            args: Prisma.QrCheckoutSessionGroupByArgs<ExtArgs>
+            result: $Utils.Optional<QrCheckoutSessionGroupByOutputType>[]
+          }
+          count: {
+            args: Prisma.QrCheckoutSessionCountArgs<ExtArgs>
+            result: $Utils.Optional<QrCheckoutSessionCountAggregateOutputType> | number
+          }
+        }
+      }
     }
   } & {
     other: {
@@ -1736,14 +1832,6 @@ export namespace Prisma {
   export type ErrorFormat = 'pretty' | 'colorless' | 'minimal'
   export interface PrismaClientOptions {
     /**
-     * Overwrites the datasource url from your schema.prisma file
-     */
-    datasources?: Datasources
-    /**
-     * Overwrites the datasource url from your schema.prisma file
-     */
-    datasourceUrl?: string
-    /**
      * @default "colorless"
      */
     errorFormat?: ErrorFormat
@@ -1769,7 +1857,7 @@ export namespace Prisma {
      *  { emit: 'stdout', level: 'error' }
      * 
      * ```
-     * Read more in our [docs](https://www.prisma.io/docs/reference/tools-and-interfaces/prisma-client/logging#the-log-option).
+     * Read more in our [docs](https://pris.ly/d/logging).
      */
     log?: (LogLevel | LogDefinition)[]
     /**
@@ -1785,7 +1873,11 @@ export namespace Prisma {
     /**
      * Instance of a Driver Adapter, e.g., like one provided by `@prisma/adapter-planetscale`
      */
-    adapter?: runtime.SqlDriverAdapterFactory | null
+    adapter?: runtime.SqlDriverAdapterFactory
+    /**
+     * Prisma Accelerate URL allowing the client to connect through Accelerate instead of a direct database.
+     */
+    accelerateUrl?: string
     /**
      * Global configuration for omitting model fields by default.
      * 
@@ -1801,6 +1893,22 @@ export namespace Prisma {
      * ```
      */
     omit?: Prisma.GlobalOmitConfig
+    /**
+     * SQL commenter plugins that add metadata to SQL queries as comments.
+     * Comments follow the sqlcommenter format: https://google.github.io/sqlcommenter/
+     * 
+     * @example
+     * ```
+     * const prisma = new PrismaClient({
+     *   adapter,
+     *   comments: [
+     *     traceContext(),
+     *     queryInsights(),
+     *   ],
+     * })
+     * ```
+     */
+    comments?: runtime.SqlCommenterPlugin[]
   }
   export type GlobalOmitConfig = {
     user?: UserOmit
@@ -1814,6 +1922,7 @@ export namespace Prisma {
     cashRegister?: CashRegisterOmit
     systemConfig?: SystemConfigOmit
     activityLog?: ActivityLogOmit
+    qrCheckoutSession?: QrCheckoutSessionOmit
   }
 
   /* Types for Logging */
@@ -3089,6 +3198,11 @@ export namespace Prisma {
      * Skip the first `n` Users.
      */
     skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Users.
+     */
     distinct?: UserScalarFieldEnum | UserScalarFieldEnum[]
   }
 
@@ -4244,6 +4358,11 @@ export namespace Prisma {
      * Skip the first `n` Categories.
      */
     skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Categories.
+     */
     distinct?: CategoryScalarFieldEnum | CategoryScalarFieldEnum[]
   }
 
@@ -5521,6 +5640,11 @@ export namespace Prisma {
      * Skip the first `n` Products.
      */
     skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Products.
+     */
     distinct?: ProductScalarFieldEnum | ProductScalarFieldEnum[]
   }
 
@@ -6712,6 +6836,11 @@ export namespace Prisma {
      * Skip the first `n` Customers.
      */
     skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Customers.
+     */
     distinct?: CustomerScalarFieldEnum | CustomerScalarFieldEnum[]
   }
 
@@ -7914,6 +8043,11 @@ export namespace Prisma {
      * Skip the first `n` StockMovements.
      */
     skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of StockMovements.
+     */
     distinct?: StockMovementScalarFieldEnum | StockMovementScalarFieldEnum[]
   }
 
@@ -9066,6 +9200,11 @@ export namespace Prisma {
      * Skip the first `n` ProductBatches.
      */
     skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ProductBatches.
+     */
     distinct?: ProductBatchScalarFieldEnum | ProductBatchScalarFieldEnum[]
   }
 
@@ -10339,6 +10478,11 @@ export namespace Prisma {
      * Skip the first `n` Sales.
      */
     skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of Sales.
+     */
     distinct?: SaleScalarFieldEnum | SaleScalarFieldEnum[]
   }
 
@@ -11535,6 +11679,11 @@ export namespace Prisma {
      * Skip the first `n` SaleItems.
      */
     skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of SaleItems.
+     */
     distinct?: SaleItemScalarFieldEnum | SaleItemScalarFieldEnum[]
   }
 
@@ -12821,6 +12970,11 @@ export namespace Prisma {
      * Skip the first `n` CashRegisters.
      */
     skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of CashRegisters.
+     */
     distinct?: CashRegisterScalarFieldEnum | CashRegisterScalarFieldEnum[]
   }
 
@@ -13881,6 +14035,11 @@ export namespace Prisma {
      * Skip the first `n` SystemConfigs.
      */
     skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of SystemConfigs.
+     */
     distinct?: SystemConfigScalarFieldEnum | SystemConfigScalarFieldEnum[]
   }
 
@@ -14976,6 +15135,11 @@ export namespace Prisma {
      * Skip the first `n` ActivityLogs.
      */
     skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of ActivityLogs.
+     */
     distinct?: ActivityLogScalarFieldEnum | ActivityLogScalarFieldEnum[]
   }
 
@@ -15195,6 +15359,1153 @@ export namespace Prisma {
 
 
   /**
+   * Model QrCheckoutSession
+   */
+
+  export type AggregateQrCheckoutSession = {
+    _count: QrCheckoutSessionCountAggregateOutputType | null
+    _avg: QrCheckoutSessionAvgAggregateOutputType | null
+    _sum: QrCheckoutSessionSumAggregateOutputType | null
+    _min: QrCheckoutSessionMinAggregateOutputType | null
+    _max: QrCheckoutSessionMaxAggregateOutputType | null
+  }
+
+  export type QrCheckoutSessionAvgAggregateOutputType = {
+    total: Decimal | null
+  }
+
+  export type QrCheckoutSessionSumAggregateOutputType = {
+    total: Decimal | null
+  }
+
+  export type QrCheckoutSessionMinAggregateOutputType = {
+    id: string | null
+    codigoRecaudacion: string | null
+    idTransaccion: string | null
+    identificadorDeuda: string | null
+    userId: string | null
+    customerId: string | null
+    cashRegisterId: string | null
+    total: Decimal | null
+    notes: string | null
+    status: $Enums.QrCheckoutStatus | null
+    saleId: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type QrCheckoutSessionMaxAggregateOutputType = {
+    id: string | null
+    codigoRecaudacion: string | null
+    idTransaccion: string | null
+    identificadorDeuda: string | null
+    userId: string | null
+    customerId: string | null
+    cashRegisterId: string | null
+    total: Decimal | null
+    notes: string | null
+    status: $Enums.QrCheckoutStatus | null
+    saleId: string | null
+    createdAt: Date | null
+    updatedAt: Date | null
+  }
+
+  export type QrCheckoutSessionCountAggregateOutputType = {
+    id: number
+    codigoRecaudacion: number
+    idTransaccion: number
+    identificadorDeuda: number
+    userId: number
+    customerId: number
+    cashRegisterId: number
+    items: number
+    total: number
+    notes: number
+    status: number
+    saleId: number
+    createdAt: number
+    updatedAt: number
+    _all: number
+  }
+
+
+  export type QrCheckoutSessionAvgAggregateInputType = {
+    total?: true
+  }
+
+  export type QrCheckoutSessionSumAggregateInputType = {
+    total?: true
+  }
+
+  export type QrCheckoutSessionMinAggregateInputType = {
+    id?: true
+    codigoRecaudacion?: true
+    idTransaccion?: true
+    identificadorDeuda?: true
+    userId?: true
+    customerId?: true
+    cashRegisterId?: true
+    total?: true
+    notes?: true
+    status?: true
+    saleId?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type QrCheckoutSessionMaxAggregateInputType = {
+    id?: true
+    codigoRecaudacion?: true
+    idTransaccion?: true
+    identificadorDeuda?: true
+    userId?: true
+    customerId?: true
+    cashRegisterId?: true
+    total?: true
+    notes?: true
+    status?: true
+    saleId?: true
+    createdAt?: true
+    updatedAt?: true
+  }
+
+  export type QrCheckoutSessionCountAggregateInputType = {
+    id?: true
+    codigoRecaudacion?: true
+    idTransaccion?: true
+    identificadorDeuda?: true
+    userId?: true
+    customerId?: true
+    cashRegisterId?: true
+    items?: true
+    total?: true
+    notes?: true
+    status?: true
+    saleId?: true
+    createdAt?: true
+    updatedAt?: true
+    _all?: true
+  }
+
+  export type QrCheckoutSessionAggregateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which QrCheckoutSession to aggregate.
+     */
+    where?: QrCheckoutSessionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of QrCheckoutSessions to fetch.
+     */
+    orderBy?: QrCheckoutSessionOrderByWithRelationInput | QrCheckoutSessionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the start position
+     */
+    cursor?: QrCheckoutSessionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` QrCheckoutSessions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` QrCheckoutSessions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Count returned QrCheckoutSessions
+    **/
+    _count?: true | QrCheckoutSessionCountAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to average
+    **/
+    _avg?: QrCheckoutSessionAvgAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to sum
+    **/
+    _sum?: QrCheckoutSessionSumAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the minimum value
+    **/
+    _min?: QrCheckoutSessionMinAggregateInputType
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
+     * 
+     * Select which fields to find the maximum value
+    **/
+    _max?: QrCheckoutSessionMaxAggregateInputType
+  }
+
+  export type GetQrCheckoutSessionAggregateType<T extends QrCheckoutSessionAggregateArgs> = {
+        [P in keyof T & keyof AggregateQrCheckoutSession]: P extends '_count' | 'count'
+      ? T[P] extends true
+        ? number
+        : GetScalarType<T[P], AggregateQrCheckoutSession[P]>
+      : GetScalarType<T[P], AggregateQrCheckoutSession[P]>
+  }
+
+
+
+
+  export type QrCheckoutSessionGroupByArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    where?: QrCheckoutSessionWhereInput
+    orderBy?: QrCheckoutSessionOrderByWithAggregationInput | QrCheckoutSessionOrderByWithAggregationInput[]
+    by: QrCheckoutSessionScalarFieldEnum[] | QrCheckoutSessionScalarFieldEnum
+    having?: QrCheckoutSessionScalarWhereWithAggregatesInput
+    take?: number
+    skip?: number
+    _count?: QrCheckoutSessionCountAggregateInputType | true
+    _avg?: QrCheckoutSessionAvgAggregateInputType
+    _sum?: QrCheckoutSessionSumAggregateInputType
+    _min?: QrCheckoutSessionMinAggregateInputType
+    _max?: QrCheckoutSessionMaxAggregateInputType
+  }
+
+  export type QrCheckoutSessionGroupByOutputType = {
+    id: string
+    codigoRecaudacion: string
+    idTransaccion: string | null
+    identificadorDeuda: string | null
+    userId: string
+    customerId: string
+    cashRegisterId: string
+    items: JsonValue
+    total: Decimal
+    notes: string | null
+    status: $Enums.QrCheckoutStatus
+    saleId: string | null
+    createdAt: Date
+    updatedAt: Date
+    _count: QrCheckoutSessionCountAggregateOutputType | null
+    _avg: QrCheckoutSessionAvgAggregateOutputType | null
+    _sum: QrCheckoutSessionSumAggregateOutputType | null
+    _min: QrCheckoutSessionMinAggregateOutputType | null
+    _max: QrCheckoutSessionMaxAggregateOutputType | null
+  }
+
+  type GetQrCheckoutSessionGroupByPayload<T extends QrCheckoutSessionGroupByArgs> = Prisma.PrismaPromise<
+    Array<
+      PickEnumerable<QrCheckoutSessionGroupByOutputType, T['by']> &
+        {
+          [P in ((keyof T) & (keyof QrCheckoutSessionGroupByOutputType))]: P extends '_count'
+            ? T[P] extends boolean
+              ? number
+              : GetScalarType<T[P], QrCheckoutSessionGroupByOutputType[P]>
+            : GetScalarType<T[P], QrCheckoutSessionGroupByOutputType[P]>
+        }
+      >
+    >
+
+
+  export type QrCheckoutSessionSelect<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    codigoRecaudacion?: boolean
+    idTransaccion?: boolean
+    identificadorDeuda?: boolean
+    userId?: boolean
+    customerId?: boolean
+    cashRegisterId?: boolean
+    items?: boolean
+    total?: boolean
+    notes?: boolean
+    status?: boolean
+    saleId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["qrCheckoutSession"]>
+
+  export type QrCheckoutSessionSelectCreateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    codigoRecaudacion?: boolean
+    idTransaccion?: boolean
+    identificadorDeuda?: boolean
+    userId?: boolean
+    customerId?: boolean
+    cashRegisterId?: boolean
+    items?: boolean
+    total?: boolean
+    notes?: boolean
+    status?: boolean
+    saleId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["qrCheckoutSession"]>
+
+  export type QrCheckoutSessionSelectUpdateManyAndReturn<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetSelect<{
+    id?: boolean
+    codigoRecaudacion?: boolean
+    idTransaccion?: boolean
+    identificadorDeuda?: boolean
+    userId?: boolean
+    customerId?: boolean
+    cashRegisterId?: boolean
+    items?: boolean
+    total?: boolean
+    notes?: boolean
+    status?: boolean
+    saleId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }, ExtArgs["result"]["qrCheckoutSession"]>
+
+  export type QrCheckoutSessionSelectScalar = {
+    id?: boolean
+    codigoRecaudacion?: boolean
+    idTransaccion?: boolean
+    identificadorDeuda?: boolean
+    userId?: boolean
+    customerId?: boolean
+    cashRegisterId?: boolean
+    items?: boolean
+    total?: boolean
+    notes?: boolean
+    status?: boolean
+    saleId?: boolean
+    createdAt?: boolean
+    updatedAt?: boolean
+  }
+
+  export type QrCheckoutSessionOmit<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = $Extensions.GetOmit<"id" | "codigoRecaudacion" | "idTransaccion" | "identificadorDeuda" | "userId" | "customerId" | "cashRegisterId" | "items" | "total" | "notes" | "status" | "saleId" | "createdAt" | "updatedAt", ExtArgs["result"]["qrCheckoutSession"]>
+
+  export type $QrCheckoutSessionPayload<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    name: "QrCheckoutSession"
+    objects: {}
+    scalars: $Extensions.GetPayloadResult<{
+      id: string
+      codigoRecaudacion: string
+      idTransaccion: string | null
+      identificadorDeuda: string | null
+      userId: string
+      customerId: string
+      cashRegisterId: string
+      items: Prisma.JsonValue
+      total: Prisma.Decimal
+      notes: string | null
+      status: $Enums.QrCheckoutStatus
+      saleId: string | null
+      createdAt: Date
+      updatedAt: Date
+    }, ExtArgs["result"]["qrCheckoutSession"]>
+    composites: {}
+  }
+
+  type QrCheckoutSessionGetPayload<S extends boolean | null | undefined | QrCheckoutSessionDefaultArgs> = $Result.GetResult<Prisma.$QrCheckoutSessionPayload, S>
+
+  type QrCheckoutSessionCountArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> =
+    Omit<QrCheckoutSessionFindManyArgs, 'select' | 'include' | 'distinct' | 'omit'> & {
+      select?: QrCheckoutSessionCountAggregateInputType | true
+    }
+
+  export interface QrCheckoutSessionDelegate<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> {
+    [K: symbol]: { types: Prisma.TypeMap<ExtArgs>['model']['QrCheckoutSession'], meta: { name: 'QrCheckoutSession' } }
+    /**
+     * Find zero or one QrCheckoutSession that matches the filter.
+     * @param {QrCheckoutSessionFindUniqueArgs} args - Arguments to find a QrCheckoutSession
+     * @example
+     * // Get one QrCheckoutSession
+     * const qrCheckoutSession = await prisma.qrCheckoutSession.findUnique({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUnique<T extends QrCheckoutSessionFindUniqueArgs>(args: SelectSubset<T, QrCheckoutSessionFindUniqueArgs<ExtArgs>>): Prisma__QrCheckoutSessionClient<$Result.GetResult<Prisma.$QrCheckoutSessionPayload<ExtArgs>, T, "findUnique", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find one QrCheckoutSession that matches the filter or throw an error with `error.code='P2025'`
+     * if no matches were found.
+     * @param {QrCheckoutSessionFindUniqueOrThrowArgs} args - Arguments to find a QrCheckoutSession
+     * @example
+     * // Get one QrCheckoutSession
+     * const qrCheckoutSession = await prisma.qrCheckoutSession.findUniqueOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findUniqueOrThrow<T extends QrCheckoutSessionFindUniqueOrThrowArgs>(args: SelectSubset<T, QrCheckoutSessionFindUniqueOrThrowArgs<ExtArgs>>): Prisma__QrCheckoutSessionClient<$Result.GetResult<Prisma.$QrCheckoutSessionPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first QrCheckoutSession that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QrCheckoutSessionFindFirstArgs} args - Arguments to find a QrCheckoutSession
+     * @example
+     * // Get one QrCheckoutSession
+     * const qrCheckoutSession = await prisma.qrCheckoutSession.findFirst({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirst<T extends QrCheckoutSessionFindFirstArgs>(args?: SelectSubset<T, QrCheckoutSessionFindFirstArgs<ExtArgs>>): Prisma__QrCheckoutSessionClient<$Result.GetResult<Prisma.$QrCheckoutSessionPayload<ExtArgs>, T, "findFirst", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find the first QrCheckoutSession that matches the filter or
+     * throw `PrismaKnownClientError` with `P2025` code if no matches were found.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QrCheckoutSessionFindFirstOrThrowArgs} args - Arguments to find a QrCheckoutSession
+     * @example
+     * // Get one QrCheckoutSession
+     * const qrCheckoutSession = await prisma.qrCheckoutSession.findFirstOrThrow({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     */
+    findFirstOrThrow<T extends QrCheckoutSessionFindFirstOrThrowArgs>(args?: SelectSubset<T, QrCheckoutSessionFindFirstOrThrowArgs<ExtArgs>>): Prisma__QrCheckoutSessionClient<$Result.GetResult<Prisma.$QrCheckoutSessionPayload<ExtArgs>, T, "findFirstOrThrow", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Find zero or more QrCheckoutSessions that matches the filter.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QrCheckoutSessionFindManyArgs} args - Arguments to filter and select certain fields only.
+     * @example
+     * // Get all QrCheckoutSessions
+     * const qrCheckoutSessions = await prisma.qrCheckoutSession.findMany()
+     * 
+     * // Get first 10 QrCheckoutSessions
+     * const qrCheckoutSessions = await prisma.qrCheckoutSession.findMany({ take: 10 })
+     * 
+     * // Only select the `id`
+     * const qrCheckoutSessionWithIdOnly = await prisma.qrCheckoutSession.findMany({ select: { id: true } })
+     * 
+     */
+    findMany<T extends QrCheckoutSessionFindManyArgs>(args?: SelectSubset<T, QrCheckoutSessionFindManyArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QrCheckoutSessionPayload<ExtArgs>, T, "findMany", GlobalOmitOptions>>
+
+    /**
+     * Create a QrCheckoutSession.
+     * @param {QrCheckoutSessionCreateArgs} args - Arguments to create a QrCheckoutSession.
+     * @example
+     * // Create one QrCheckoutSession
+     * const QrCheckoutSession = await prisma.qrCheckoutSession.create({
+     *   data: {
+     *     // ... data to create a QrCheckoutSession
+     *   }
+     * })
+     * 
+     */
+    create<T extends QrCheckoutSessionCreateArgs>(args: SelectSubset<T, QrCheckoutSessionCreateArgs<ExtArgs>>): Prisma__QrCheckoutSessionClient<$Result.GetResult<Prisma.$QrCheckoutSessionPayload<ExtArgs>, T, "create", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Create many QrCheckoutSessions.
+     * @param {QrCheckoutSessionCreateManyArgs} args - Arguments to create many QrCheckoutSessions.
+     * @example
+     * // Create many QrCheckoutSessions
+     * const qrCheckoutSession = await prisma.qrCheckoutSession.createMany({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     *     
+     */
+    createMany<T extends QrCheckoutSessionCreateManyArgs>(args?: SelectSubset<T, QrCheckoutSessionCreateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Create many QrCheckoutSessions and returns the data saved in the database.
+     * @param {QrCheckoutSessionCreateManyAndReturnArgs} args - Arguments to create many QrCheckoutSessions.
+     * @example
+     * // Create many QrCheckoutSessions
+     * const qrCheckoutSession = await prisma.qrCheckoutSession.createManyAndReturn({
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Create many QrCheckoutSessions and only return the `id`
+     * const qrCheckoutSessionWithIdOnly = await prisma.qrCheckoutSession.createManyAndReturn({
+     *   select: { id: true },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    createManyAndReturn<T extends QrCheckoutSessionCreateManyAndReturnArgs>(args?: SelectSubset<T, QrCheckoutSessionCreateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QrCheckoutSessionPayload<ExtArgs>, T, "createManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Delete a QrCheckoutSession.
+     * @param {QrCheckoutSessionDeleteArgs} args - Arguments to delete one QrCheckoutSession.
+     * @example
+     * // Delete one QrCheckoutSession
+     * const QrCheckoutSession = await prisma.qrCheckoutSession.delete({
+     *   where: {
+     *     // ... filter to delete one QrCheckoutSession
+     *   }
+     * })
+     * 
+     */
+    delete<T extends QrCheckoutSessionDeleteArgs>(args: SelectSubset<T, QrCheckoutSessionDeleteArgs<ExtArgs>>): Prisma__QrCheckoutSessionClient<$Result.GetResult<Prisma.$QrCheckoutSessionPayload<ExtArgs>, T, "delete", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Update one QrCheckoutSession.
+     * @param {QrCheckoutSessionUpdateArgs} args - Arguments to update one QrCheckoutSession.
+     * @example
+     * // Update one QrCheckoutSession
+     * const qrCheckoutSession = await prisma.qrCheckoutSession.update({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    update<T extends QrCheckoutSessionUpdateArgs>(args: SelectSubset<T, QrCheckoutSessionUpdateArgs<ExtArgs>>): Prisma__QrCheckoutSessionClient<$Result.GetResult<Prisma.$QrCheckoutSessionPayload<ExtArgs>, T, "update", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+    /**
+     * Delete zero or more QrCheckoutSessions.
+     * @param {QrCheckoutSessionDeleteManyArgs} args - Arguments to filter QrCheckoutSessions to delete.
+     * @example
+     * // Delete a few QrCheckoutSessions
+     * const { count } = await prisma.qrCheckoutSession.deleteMany({
+     *   where: {
+     *     // ... provide filter here
+     *   }
+     * })
+     * 
+     */
+    deleteMany<T extends QrCheckoutSessionDeleteManyArgs>(args?: SelectSubset<T, QrCheckoutSessionDeleteManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more QrCheckoutSessions.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QrCheckoutSessionUpdateManyArgs} args - Arguments to update one or more rows.
+     * @example
+     * // Update many QrCheckoutSessions
+     * const qrCheckoutSession = await prisma.qrCheckoutSession.updateMany({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: {
+     *     // ... provide data here
+     *   }
+     * })
+     * 
+     */
+    updateMany<T extends QrCheckoutSessionUpdateManyArgs>(args: SelectSubset<T, QrCheckoutSessionUpdateManyArgs<ExtArgs>>): Prisma.PrismaPromise<BatchPayload>
+
+    /**
+     * Update zero or more QrCheckoutSessions and returns the data updated in the database.
+     * @param {QrCheckoutSessionUpdateManyAndReturnArgs} args - Arguments to update many QrCheckoutSessions.
+     * @example
+     * // Update many QrCheckoutSessions
+     * const qrCheckoutSession = await prisma.qrCheckoutSession.updateManyAndReturn({
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * 
+     * // Update zero or more QrCheckoutSessions and only return the `id`
+     * const qrCheckoutSessionWithIdOnly = await prisma.qrCheckoutSession.updateManyAndReturn({
+     *   select: { id: true },
+     *   where: {
+     *     // ... provide filter here
+     *   },
+     *   data: [
+     *     // ... provide data here
+     *   ]
+     * })
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * 
+     */
+    updateManyAndReturn<T extends QrCheckoutSessionUpdateManyAndReturnArgs>(args: SelectSubset<T, QrCheckoutSessionUpdateManyAndReturnArgs<ExtArgs>>): Prisma.PrismaPromise<$Result.GetResult<Prisma.$QrCheckoutSessionPayload<ExtArgs>, T, "updateManyAndReturn", GlobalOmitOptions>>
+
+    /**
+     * Create or update one QrCheckoutSession.
+     * @param {QrCheckoutSessionUpsertArgs} args - Arguments to update or create a QrCheckoutSession.
+     * @example
+     * // Update or create a QrCheckoutSession
+     * const qrCheckoutSession = await prisma.qrCheckoutSession.upsert({
+     *   create: {
+     *     // ... data to create a QrCheckoutSession
+     *   },
+     *   update: {
+     *     // ... in case it already exists, update
+     *   },
+     *   where: {
+     *     // ... the filter for the QrCheckoutSession we want to update
+     *   }
+     * })
+     */
+    upsert<T extends QrCheckoutSessionUpsertArgs>(args: SelectSubset<T, QrCheckoutSessionUpsertArgs<ExtArgs>>): Prisma__QrCheckoutSessionClient<$Result.GetResult<Prisma.$QrCheckoutSessionPayload<ExtArgs>, T, "upsert", GlobalOmitOptions>, never, ExtArgs, GlobalOmitOptions>
+
+
+    /**
+     * Count the number of QrCheckoutSessions.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QrCheckoutSessionCountArgs} args - Arguments to filter QrCheckoutSessions to count.
+     * @example
+     * // Count the number of QrCheckoutSessions
+     * const count = await prisma.qrCheckoutSession.count({
+     *   where: {
+     *     // ... the filter for the QrCheckoutSessions we want to count
+     *   }
+     * })
+    **/
+    count<T extends QrCheckoutSessionCountArgs>(
+      args?: Subset<T, QrCheckoutSessionCountArgs>,
+    ): Prisma.PrismaPromise<
+      T extends $Utils.Record<'select', any>
+        ? T['select'] extends true
+          ? number
+          : GetScalarType<T['select'], QrCheckoutSessionCountAggregateOutputType>
+        : number
+    >
+
+    /**
+     * Allows you to perform aggregations operations on a QrCheckoutSession.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QrCheckoutSessionAggregateArgs} args - Select which aggregations you would like to apply and on what fields.
+     * @example
+     * // Ordered by age ascending
+     * // Where email contains prisma.io
+     * // Limited to the 10 users
+     * const aggregations = await prisma.user.aggregate({
+     *   _avg: {
+     *     age: true,
+     *   },
+     *   where: {
+     *     email: {
+     *       contains: "prisma.io",
+     *     },
+     *   },
+     *   orderBy: {
+     *     age: "asc",
+     *   },
+     *   take: 10,
+     * })
+    **/
+    aggregate<T extends QrCheckoutSessionAggregateArgs>(args: Subset<T, QrCheckoutSessionAggregateArgs>): Prisma.PrismaPromise<GetQrCheckoutSessionAggregateType<T>>
+
+    /**
+     * Group by QrCheckoutSession.
+     * Note, that providing `undefined` is treated as the value not being there.
+     * Read more here: https://pris.ly/d/null-undefined
+     * @param {QrCheckoutSessionGroupByArgs} args - Group by arguments.
+     * @example
+     * // Group by city, order by createdAt, get count
+     * const result = await prisma.user.groupBy({
+     *   by: ['city', 'createdAt'],
+     *   orderBy: {
+     *     createdAt: true
+     *   },
+     *   _count: {
+     *     _all: true
+     *   },
+     * })
+     * 
+    **/
+    groupBy<
+      T extends QrCheckoutSessionGroupByArgs,
+      HasSelectOrTake extends Or<
+        Extends<'skip', Keys<T>>,
+        Extends<'take', Keys<T>>
+      >,
+      OrderByArg extends True extends HasSelectOrTake
+        ? { orderBy: QrCheckoutSessionGroupByArgs['orderBy'] }
+        : { orderBy?: QrCheckoutSessionGroupByArgs['orderBy'] },
+      OrderFields extends ExcludeUnderscoreKeys<Keys<MaybeTupleToUnion<T['orderBy']>>>,
+      ByFields extends MaybeTupleToUnion<T['by']>,
+      ByValid extends Has<ByFields, OrderFields>,
+      HavingFields extends GetHavingFields<T['having']>,
+      HavingValid extends Has<ByFields, HavingFields>,
+      ByEmpty extends T['by'] extends never[] ? True : False,
+      InputErrors extends ByEmpty extends True
+      ? `Error: "by" must not be empty.`
+      : HavingValid extends False
+      ? {
+          [P in HavingFields]: P extends ByFields
+            ? never
+            : P extends string
+            ? `Error: Field "${P}" used in "having" needs to be provided in "by".`
+            : [
+                Error,
+                'Field ',
+                P,
+                ` in "having" needs to be provided in "by"`,
+              ]
+        }[HavingFields]
+      : 'take' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "take", you also need to provide "orderBy"'
+      : 'skip' extends Keys<T>
+      ? 'orderBy' extends Keys<T>
+        ? ByValid extends True
+          ? {}
+          : {
+              [P in OrderFields]: P extends ByFields
+                ? never
+                : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+            }[OrderFields]
+        : 'Error: If you provide "skip", you also need to provide "orderBy"'
+      : ByValid extends True
+      ? {}
+      : {
+          [P in OrderFields]: P extends ByFields
+            ? never
+            : `Error: Field "${P}" in "orderBy" needs to be provided in "by"`
+        }[OrderFields]
+    >(args: SubsetIntersection<T, QrCheckoutSessionGroupByArgs, OrderByArg> & InputErrors): {} extends InputErrors ? GetQrCheckoutSessionGroupByPayload<T> : Prisma.PrismaPromise<InputErrors>
+  /**
+   * Fields of the QrCheckoutSession model
+   */
+  readonly fields: QrCheckoutSessionFieldRefs;
+  }
+
+  /**
+   * The delegate class that acts as a "Promise-like" for QrCheckoutSession.
+   * Why is this prefixed with `Prisma__`?
+   * Because we want to prevent naming conflicts as mentioned in
+   * https://github.com/prisma/prisma-client-js/issues/707
+   */
+  export interface Prisma__QrCheckoutSessionClient<T, Null = never, ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
+    readonly [Symbol.toStringTag]: "PrismaPromise"
+    /**
+     * Attaches callbacks for the resolution and/or rejection of the Promise.
+     * @param onfulfilled The callback to execute when the Promise is resolved.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of which ever callback is executed.
+     */
+    then<TResult1 = T, TResult2 = never>(onfulfilled?: ((value: T) => TResult1 | PromiseLike<TResult1>) | undefined | null, onrejected?: ((reason: any) => TResult2 | PromiseLike<TResult2>) | undefined | null): $Utils.JsPromise<TResult1 | TResult2>
+    /**
+     * Attaches a callback for only the rejection of the Promise.
+     * @param onrejected The callback to execute when the Promise is rejected.
+     * @returns A Promise for the completion of the callback.
+     */
+    catch<TResult = never>(onrejected?: ((reason: any) => TResult | PromiseLike<TResult>) | undefined | null): $Utils.JsPromise<T | TResult>
+    /**
+     * Attaches a callback that is invoked when the Promise is settled (fulfilled or rejected). The
+     * resolved value cannot be modified from the callback.
+     * @param onfinally The callback to execute when the Promise is settled (fulfilled or rejected).
+     * @returns A Promise for the completion of the callback.
+     */
+    finally(onfinally?: (() => void) | undefined | null): $Utils.JsPromise<T>
+  }
+
+
+
+
+  /**
+   * Fields of the QrCheckoutSession model
+   */
+  interface QrCheckoutSessionFieldRefs {
+    readonly id: FieldRef<"QrCheckoutSession", 'String'>
+    readonly codigoRecaudacion: FieldRef<"QrCheckoutSession", 'String'>
+    readonly idTransaccion: FieldRef<"QrCheckoutSession", 'String'>
+    readonly identificadorDeuda: FieldRef<"QrCheckoutSession", 'String'>
+    readonly userId: FieldRef<"QrCheckoutSession", 'String'>
+    readonly customerId: FieldRef<"QrCheckoutSession", 'String'>
+    readonly cashRegisterId: FieldRef<"QrCheckoutSession", 'String'>
+    readonly items: FieldRef<"QrCheckoutSession", 'Json'>
+    readonly total: FieldRef<"QrCheckoutSession", 'Decimal'>
+    readonly notes: FieldRef<"QrCheckoutSession", 'String'>
+    readonly status: FieldRef<"QrCheckoutSession", 'QrCheckoutStatus'>
+    readonly saleId: FieldRef<"QrCheckoutSession", 'String'>
+    readonly createdAt: FieldRef<"QrCheckoutSession", 'DateTime'>
+    readonly updatedAt: FieldRef<"QrCheckoutSession", 'DateTime'>
+  }
+    
+
+  // Custom InputTypes
+  /**
+   * QrCheckoutSession findUnique
+   */
+  export type QrCheckoutSessionFindUniqueArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QrCheckoutSession
+     */
+    select?: QrCheckoutSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QrCheckoutSession
+     */
+    omit?: QrCheckoutSessionOmit<ExtArgs> | null
+    /**
+     * Filter, which QrCheckoutSession to fetch.
+     */
+    where: QrCheckoutSessionWhereUniqueInput
+  }
+
+  /**
+   * QrCheckoutSession findUniqueOrThrow
+   */
+  export type QrCheckoutSessionFindUniqueOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QrCheckoutSession
+     */
+    select?: QrCheckoutSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QrCheckoutSession
+     */
+    omit?: QrCheckoutSessionOmit<ExtArgs> | null
+    /**
+     * Filter, which QrCheckoutSession to fetch.
+     */
+    where: QrCheckoutSessionWhereUniqueInput
+  }
+
+  /**
+   * QrCheckoutSession findFirst
+   */
+  export type QrCheckoutSessionFindFirstArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QrCheckoutSession
+     */
+    select?: QrCheckoutSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QrCheckoutSession
+     */
+    omit?: QrCheckoutSessionOmit<ExtArgs> | null
+    /**
+     * Filter, which QrCheckoutSession to fetch.
+     */
+    where?: QrCheckoutSessionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of QrCheckoutSessions to fetch.
+     */
+    orderBy?: QrCheckoutSessionOrderByWithRelationInput | QrCheckoutSessionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for QrCheckoutSessions.
+     */
+    cursor?: QrCheckoutSessionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` QrCheckoutSessions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` QrCheckoutSessions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of QrCheckoutSessions.
+     */
+    distinct?: QrCheckoutSessionScalarFieldEnum | QrCheckoutSessionScalarFieldEnum[]
+  }
+
+  /**
+   * QrCheckoutSession findFirstOrThrow
+   */
+  export type QrCheckoutSessionFindFirstOrThrowArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QrCheckoutSession
+     */
+    select?: QrCheckoutSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QrCheckoutSession
+     */
+    omit?: QrCheckoutSessionOmit<ExtArgs> | null
+    /**
+     * Filter, which QrCheckoutSession to fetch.
+     */
+    where?: QrCheckoutSessionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of QrCheckoutSessions to fetch.
+     */
+    orderBy?: QrCheckoutSessionOrderByWithRelationInput | QrCheckoutSessionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for searching for QrCheckoutSessions.
+     */
+    cursor?: QrCheckoutSessionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` QrCheckoutSessions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` QrCheckoutSessions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of QrCheckoutSessions.
+     */
+    distinct?: QrCheckoutSessionScalarFieldEnum | QrCheckoutSessionScalarFieldEnum[]
+  }
+
+  /**
+   * QrCheckoutSession findMany
+   */
+  export type QrCheckoutSessionFindManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QrCheckoutSession
+     */
+    select?: QrCheckoutSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QrCheckoutSession
+     */
+    omit?: QrCheckoutSessionOmit<ExtArgs> | null
+    /**
+     * Filter, which QrCheckoutSessions to fetch.
+     */
+    where?: QrCheckoutSessionWhereInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/sorting Sorting Docs}
+     * 
+     * Determine the order of QrCheckoutSessions to fetch.
+     */
+    orderBy?: QrCheckoutSessionOrderByWithRelationInput | QrCheckoutSessionOrderByWithRelationInput[]
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination#cursor-based-pagination Cursor Docs}
+     * 
+     * Sets the position for listing QrCheckoutSessions.
+     */
+    cursor?: QrCheckoutSessionWhereUniqueInput
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Take `±n` QrCheckoutSessions from the position of the cursor.
+     */
+    take?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/pagination Pagination Docs}
+     * 
+     * Skip the first `n` QrCheckoutSessions.
+     */
+    skip?: number
+    /**
+     * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+     * 
+     * Filter by unique combinations of QrCheckoutSessions.
+     */
+    distinct?: QrCheckoutSessionScalarFieldEnum | QrCheckoutSessionScalarFieldEnum[]
+  }
+
+  /**
+   * QrCheckoutSession create
+   */
+  export type QrCheckoutSessionCreateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QrCheckoutSession
+     */
+    select?: QrCheckoutSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QrCheckoutSession
+     */
+    omit?: QrCheckoutSessionOmit<ExtArgs> | null
+    /**
+     * The data needed to create a QrCheckoutSession.
+     */
+    data: XOR<QrCheckoutSessionCreateInput, QrCheckoutSessionUncheckedCreateInput>
+  }
+
+  /**
+   * QrCheckoutSession createMany
+   */
+  export type QrCheckoutSessionCreateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to create many QrCheckoutSessions.
+     */
+    data: QrCheckoutSessionCreateManyInput | QrCheckoutSessionCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * QrCheckoutSession createManyAndReturn
+   */
+  export type QrCheckoutSessionCreateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QrCheckoutSession
+     */
+    select?: QrCheckoutSessionSelectCreateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the QrCheckoutSession
+     */
+    omit?: QrCheckoutSessionOmit<ExtArgs> | null
+    /**
+     * The data used to create many QrCheckoutSessions.
+     */
+    data: QrCheckoutSessionCreateManyInput | QrCheckoutSessionCreateManyInput[]
+    skipDuplicates?: boolean
+  }
+
+  /**
+   * QrCheckoutSession update
+   */
+  export type QrCheckoutSessionUpdateArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QrCheckoutSession
+     */
+    select?: QrCheckoutSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QrCheckoutSession
+     */
+    omit?: QrCheckoutSessionOmit<ExtArgs> | null
+    /**
+     * The data needed to update a QrCheckoutSession.
+     */
+    data: XOR<QrCheckoutSessionUpdateInput, QrCheckoutSessionUncheckedUpdateInput>
+    /**
+     * Choose, which QrCheckoutSession to update.
+     */
+    where: QrCheckoutSessionWhereUniqueInput
+  }
+
+  /**
+   * QrCheckoutSession updateMany
+   */
+  export type QrCheckoutSessionUpdateManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * The data used to update QrCheckoutSessions.
+     */
+    data: XOR<QrCheckoutSessionUpdateManyMutationInput, QrCheckoutSessionUncheckedUpdateManyInput>
+    /**
+     * Filter which QrCheckoutSessions to update
+     */
+    where?: QrCheckoutSessionWhereInput
+    /**
+     * Limit how many QrCheckoutSessions to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * QrCheckoutSession updateManyAndReturn
+   */
+  export type QrCheckoutSessionUpdateManyAndReturnArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QrCheckoutSession
+     */
+    select?: QrCheckoutSessionSelectUpdateManyAndReturn<ExtArgs> | null
+    /**
+     * Omit specific fields from the QrCheckoutSession
+     */
+    omit?: QrCheckoutSessionOmit<ExtArgs> | null
+    /**
+     * The data used to update QrCheckoutSessions.
+     */
+    data: XOR<QrCheckoutSessionUpdateManyMutationInput, QrCheckoutSessionUncheckedUpdateManyInput>
+    /**
+     * Filter which QrCheckoutSessions to update
+     */
+    where?: QrCheckoutSessionWhereInput
+    /**
+     * Limit how many QrCheckoutSessions to update.
+     */
+    limit?: number
+  }
+
+  /**
+   * QrCheckoutSession upsert
+   */
+  export type QrCheckoutSessionUpsertArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QrCheckoutSession
+     */
+    select?: QrCheckoutSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QrCheckoutSession
+     */
+    omit?: QrCheckoutSessionOmit<ExtArgs> | null
+    /**
+     * The filter to search for the QrCheckoutSession to update in case it exists.
+     */
+    where: QrCheckoutSessionWhereUniqueInput
+    /**
+     * In case the QrCheckoutSession found by the `where` argument doesn't exist, create a new QrCheckoutSession with this data.
+     */
+    create: XOR<QrCheckoutSessionCreateInput, QrCheckoutSessionUncheckedCreateInput>
+    /**
+     * In case the QrCheckoutSession was found with the provided `where` argument, update it with this data.
+     */
+    update: XOR<QrCheckoutSessionUpdateInput, QrCheckoutSessionUncheckedUpdateInput>
+  }
+
+  /**
+   * QrCheckoutSession delete
+   */
+  export type QrCheckoutSessionDeleteArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QrCheckoutSession
+     */
+    select?: QrCheckoutSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QrCheckoutSession
+     */
+    omit?: QrCheckoutSessionOmit<ExtArgs> | null
+    /**
+     * Filter which QrCheckoutSession to delete.
+     */
+    where: QrCheckoutSessionWhereUniqueInput
+  }
+
+  /**
+   * QrCheckoutSession deleteMany
+   */
+  export type QrCheckoutSessionDeleteManyArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Filter which QrCheckoutSessions to delete
+     */
+    where?: QrCheckoutSessionWhereInput
+    /**
+     * Limit how many QrCheckoutSessions to delete.
+     */
+    limit?: number
+  }
+
+  /**
+   * QrCheckoutSession without action
+   */
+  export type QrCheckoutSessionDefaultArgs<ExtArgs extends $Extensions.InternalArgs = $Extensions.DefaultArgs> = {
+    /**
+     * Select specific fields to fetch from the QrCheckoutSession
+     */
+    select?: QrCheckoutSessionSelect<ExtArgs> | null
+    /**
+     * Omit specific fields from the QrCheckoutSession
+     */
+    omit?: QrCheckoutSessionOmit<ExtArgs> | null
+  }
+
+
+  /**
    * Enums
    */
 
@@ -15396,12 +16707,39 @@ export namespace Prisma {
   export type ActivityLogScalarFieldEnum = (typeof ActivityLogScalarFieldEnum)[keyof typeof ActivityLogScalarFieldEnum]
 
 
+  export const QrCheckoutSessionScalarFieldEnum: {
+    id: 'id',
+    codigoRecaudacion: 'codigoRecaudacion',
+    idTransaccion: 'idTransaccion',
+    identificadorDeuda: 'identificadorDeuda',
+    userId: 'userId',
+    customerId: 'customerId',
+    cashRegisterId: 'cashRegisterId',
+    items: 'items',
+    total: 'total',
+    notes: 'notes',
+    status: 'status',
+    saleId: 'saleId',
+    createdAt: 'createdAt',
+    updatedAt: 'updatedAt'
+  };
+
+  export type QrCheckoutSessionScalarFieldEnum = (typeof QrCheckoutSessionScalarFieldEnum)[keyof typeof QrCheckoutSessionScalarFieldEnum]
+
+
   export const SortOrder: {
     asc: 'asc',
     desc: 'desc'
   };
 
   export type SortOrder = (typeof SortOrder)[keyof typeof SortOrder]
+
+
+  export const JsonNullValueInput: {
+    JsonNull: typeof JsonNull
+  };
+
+  export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
 
 
   export const QueryMode: {
@@ -15418,6 +16756,15 @@ export namespace Prisma {
   };
 
   export type NullsOrder = (typeof NullsOrder)[keyof typeof NullsOrder]
+
+
+  export const JsonNullValueFilter: {
+    DbNull: typeof DbNull,
+    JsonNull: typeof JsonNull,
+    AnyNull: typeof AnyNull
+  };
+
+  export type JsonNullValueFilter = (typeof JsonNullValueFilter)[keyof typeof JsonNullValueFilter]
 
 
   /**
@@ -15611,6 +16958,34 @@ export namespace Prisma {
    * Reference to a field of type 'CashRegisterStatus[]'
    */
   export type ListEnumCashRegisterStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'CashRegisterStatus[]'>
+    
+
+
+  /**
+   * Reference to a field of type 'Json'
+   */
+  export type JsonFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'Json'>
+    
+
+
+  /**
+   * Reference to a field of type 'QueryMode'
+   */
+  export type EnumQueryModeFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QueryMode'>
+    
+
+
+  /**
+   * Reference to a field of type 'QrCheckoutStatus'
+   */
+  export type EnumQrCheckoutStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QrCheckoutStatus'>
+    
+
+
+  /**
+   * Reference to a field of type 'QrCheckoutStatus[]'
+   */
+  export type ListEnumQrCheckoutStatusFieldRefInput<$PrismaModel> = FieldRefInputType<$PrismaModel, 'QrCheckoutStatus[]'>
     
 
 
@@ -16614,6 +17989,105 @@ export namespace Prisma {
     ipAddress?: StringNullableWithAggregatesFilter<"ActivityLog"> | string | null
     userAgent?: StringNullableWithAggregatesFilter<"ActivityLog"> | string | null
     createdAt?: DateTimeWithAggregatesFilter<"ActivityLog"> | Date | string
+  }
+
+  export type QrCheckoutSessionWhereInput = {
+    AND?: QrCheckoutSessionWhereInput | QrCheckoutSessionWhereInput[]
+    OR?: QrCheckoutSessionWhereInput[]
+    NOT?: QrCheckoutSessionWhereInput | QrCheckoutSessionWhereInput[]
+    id?: StringFilter<"QrCheckoutSession"> | string
+    codigoRecaudacion?: StringFilter<"QrCheckoutSession"> | string
+    idTransaccion?: StringNullableFilter<"QrCheckoutSession"> | string | null
+    identificadorDeuda?: StringNullableFilter<"QrCheckoutSession"> | string | null
+    userId?: StringFilter<"QrCheckoutSession"> | string
+    customerId?: StringFilter<"QrCheckoutSession"> | string
+    cashRegisterId?: StringFilter<"QrCheckoutSession"> | string
+    items?: JsonFilter<"QrCheckoutSession">
+    total?: DecimalFilter<"QrCheckoutSession"> | Decimal | DecimalJsLike | number | string
+    notes?: StringNullableFilter<"QrCheckoutSession"> | string | null
+    status?: EnumQrCheckoutStatusFilter<"QrCheckoutSession"> | $Enums.QrCheckoutStatus
+    saleId?: StringNullableFilter<"QrCheckoutSession"> | string | null
+    createdAt?: DateTimeFilter<"QrCheckoutSession"> | Date | string
+    updatedAt?: DateTimeFilter<"QrCheckoutSession"> | Date | string
+  }
+
+  export type QrCheckoutSessionOrderByWithRelationInput = {
+    id?: SortOrder
+    codigoRecaudacion?: SortOrder
+    idTransaccion?: SortOrderInput | SortOrder
+    identificadorDeuda?: SortOrderInput | SortOrder
+    userId?: SortOrder
+    customerId?: SortOrder
+    cashRegisterId?: SortOrder
+    items?: SortOrder
+    total?: SortOrder
+    notes?: SortOrderInput | SortOrder
+    status?: SortOrder
+    saleId?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type QrCheckoutSessionWhereUniqueInput = Prisma.AtLeast<{
+    id?: string
+    codigoRecaudacion?: string
+    saleId?: string
+    AND?: QrCheckoutSessionWhereInput | QrCheckoutSessionWhereInput[]
+    OR?: QrCheckoutSessionWhereInput[]
+    NOT?: QrCheckoutSessionWhereInput | QrCheckoutSessionWhereInput[]
+    idTransaccion?: StringNullableFilter<"QrCheckoutSession"> | string | null
+    identificadorDeuda?: StringNullableFilter<"QrCheckoutSession"> | string | null
+    userId?: StringFilter<"QrCheckoutSession"> | string
+    customerId?: StringFilter<"QrCheckoutSession"> | string
+    cashRegisterId?: StringFilter<"QrCheckoutSession"> | string
+    items?: JsonFilter<"QrCheckoutSession">
+    total?: DecimalFilter<"QrCheckoutSession"> | Decimal | DecimalJsLike | number | string
+    notes?: StringNullableFilter<"QrCheckoutSession"> | string | null
+    status?: EnumQrCheckoutStatusFilter<"QrCheckoutSession"> | $Enums.QrCheckoutStatus
+    createdAt?: DateTimeFilter<"QrCheckoutSession"> | Date | string
+    updatedAt?: DateTimeFilter<"QrCheckoutSession"> | Date | string
+  }, "id" | "codigoRecaudacion" | "saleId">
+
+  export type QrCheckoutSessionOrderByWithAggregationInput = {
+    id?: SortOrder
+    codigoRecaudacion?: SortOrder
+    idTransaccion?: SortOrderInput | SortOrder
+    identificadorDeuda?: SortOrderInput | SortOrder
+    userId?: SortOrder
+    customerId?: SortOrder
+    cashRegisterId?: SortOrder
+    items?: SortOrder
+    total?: SortOrder
+    notes?: SortOrderInput | SortOrder
+    status?: SortOrder
+    saleId?: SortOrderInput | SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+    _count?: QrCheckoutSessionCountOrderByAggregateInput
+    _avg?: QrCheckoutSessionAvgOrderByAggregateInput
+    _max?: QrCheckoutSessionMaxOrderByAggregateInput
+    _min?: QrCheckoutSessionMinOrderByAggregateInput
+    _sum?: QrCheckoutSessionSumOrderByAggregateInput
+  }
+
+  export type QrCheckoutSessionScalarWhereWithAggregatesInput = {
+    AND?: QrCheckoutSessionScalarWhereWithAggregatesInput | QrCheckoutSessionScalarWhereWithAggregatesInput[]
+    OR?: QrCheckoutSessionScalarWhereWithAggregatesInput[]
+    NOT?: QrCheckoutSessionScalarWhereWithAggregatesInput | QrCheckoutSessionScalarWhereWithAggregatesInput[]
+    id?: StringWithAggregatesFilter<"QrCheckoutSession"> | string
+    codigoRecaudacion?: StringWithAggregatesFilter<"QrCheckoutSession"> | string
+    idTransaccion?: StringNullableWithAggregatesFilter<"QrCheckoutSession"> | string | null
+    identificadorDeuda?: StringNullableWithAggregatesFilter<"QrCheckoutSession"> | string | null
+    userId?: StringWithAggregatesFilter<"QrCheckoutSession"> | string
+    customerId?: StringWithAggregatesFilter<"QrCheckoutSession"> | string
+    cashRegisterId?: StringWithAggregatesFilter<"QrCheckoutSession"> | string
+    items?: JsonWithAggregatesFilter<"QrCheckoutSession">
+    total?: DecimalWithAggregatesFilter<"QrCheckoutSession"> | Decimal | DecimalJsLike | number | string
+    notes?: StringNullableWithAggregatesFilter<"QrCheckoutSession"> | string | null
+    status?: EnumQrCheckoutStatusWithAggregatesFilter<"QrCheckoutSession"> | $Enums.QrCheckoutStatus
+    saleId?: StringNullableWithAggregatesFilter<"QrCheckoutSession"> | string | null
+    createdAt?: DateTimeWithAggregatesFilter<"QrCheckoutSession"> | Date | string
+    updatedAt?: DateTimeWithAggregatesFilter<"QrCheckoutSession"> | Date | string
   }
 
   export type UserCreateInput = {
@@ -17734,6 +19208,125 @@ export namespace Prisma {
     createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
   }
 
+  export type QrCheckoutSessionCreateInput = {
+    id?: string
+    codigoRecaudacion: string
+    idTransaccion?: string | null
+    identificadorDeuda?: string | null
+    userId: string
+    customerId: string
+    cashRegisterId: string
+    items: JsonNullValueInput | InputJsonValue
+    total: Decimal | DecimalJsLike | number | string
+    notes?: string | null
+    status?: $Enums.QrCheckoutStatus
+    saleId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type QrCheckoutSessionUncheckedCreateInput = {
+    id?: string
+    codigoRecaudacion: string
+    idTransaccion?: string | null
+    identificadorDeuda?: string | null
+    userId: string
+    customerId: string
+    cashRegisterId: string
+    items: JsonNullValueInput | InputJsonValue
+    total: Decimal | DecimalJsLike | number | string
+    notes?: string | null
+    status?: $Enums.QrCheckoutStatus
+    saleId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type QrCheckoutSessionUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    codigoRecaudacion?: StringFieldUpdateOperationsInput | string
+    idTransaccion?: NullableStringFieldUpdateOperationsInput | string | null
+    identificadorDeuda?: NullableStringFieldUpdateOperationsInput | string | null
+    userId?: StringFieldUpdateOperationsInput | string
+    customerId?: StringFieldUpdateOperationsInput | string
+    cashRegisterId?: StringFieldUpdateOperationsInput | string
+    items?: JsonNullValueInput | InputJsonValue
+    total?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    notes?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: EnumQrCheckoutStatusFieldUpdateOperationsInput | $Enums.QrCheckoutStatus
+    saleId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type QrCheckoutSessionUncheckedUpdateInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    codigoRecaudacion?: StringFieldUpdateOperationsInput | string
+    idTransaccion?: NullableStringFieldUpdateOperationsInput | string | null
+    identificadorDeuda?: NullableStringFieldUpdateOperationsInput | string | null
+    userId?: StringFieldUpdateOperationsInput | string
+    customerId?: StringFieldUpdateOperationsInput | string
+    cashRegisterId?: StringFieldUpdateOperationsInput | string
+    items?: JsonNullValueInput | InputJsonValue
+    total?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    notes?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: EnumQrCheckoutStatusFieldUpdateOperationsInput | $Enums.QrCheckoutStatus
+    saleId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type QrCheckoutSessionCreateManyInput = {
+    id?: string
+    codigoRecaudacion: string
+    idTransaccion?: string | null
+    identificadorDeuda?: string | null
+    userId: string
+    customerId: string
+    cashRegisterId: string
+    items: JsonNullValueInput | InputJsonValue
+    total: Decimal | DecimalJsLike | number | string
+    notes?: string | null
+    status?: $Enums.QrCheckoutStatus
+    saleId?: string | null
+    createdAt?: Date | string
+    updatedAt?: Date | string
+  }
+
+  export type QrCheckoutSessionUpdateManyMutationInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    codigoRecaudacion?: StringFieldUpdateOperationsInput | string
+    idTransaccion?: NullableStringFieldUpdateOperationsInput | string | null
+    identificadorDeuda?: NullableStringFieldUpdateOperationsInput | string | null
+    userId?: StringFieldUpdateOperationsInput | string
+    customerId?: StringFieldUpdateOperationsInput | string
+    cashRegisterId?: StringFieldUpdateOperationsInput | string
+    items?: JsonNullValueInput | InputJsonValue
+    total?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    notes?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: EnumQrCheckoutStatusFieldUpdateOperationsInput | $Enums.QrCheckoutStatus
+    saleId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
+  export type QrCheckoutSessionUncheckedUpdateManyInput = {
+    id?: StringFieldUpdateOperationsInput | string
+    codigoRecaudacion?: StringFieldUpdateOperationsInput | string
+    idTransaccion?: NullableStringFieldUpdateOperationsInput | string | null
+    identificadorDeuda?: NullableStringFieldUpdateOperationsInput | string | null
+    userId?: StringFieldUpdateOperationsInput | string
+    customerId?: StringFieldUpdateOperationsInput | string
+    cashRegisterId?: StringFieldUpdateOperationsInput | string
+    items?: JsonNullValueInput | InputJsonValue
+    total?: DecimalFieldUpdateOperationsInput | Decimal | DecimalJsLike | number | string
+    notes?: NullableStringFieldUpdateOperationsInput | string | null
+    status?: EnumQrCheckoutStatusFieldUpdateOperationsInput | $Enums.QrCheckoutStatus
+    saleId?: NullableStringFieldUpdateOperationsInput | string | null
+    createdAt?: DateTimeFieldUpdateOperationsInput | Date | string
+    updatedAt?: DateTimeFieldUpdateOperationsInput | Date | string
+  }
+
   export type StringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -18756,6 +20349,129 @@ export namespace Prisma {
     userAgent?: SortOrder
     createdAt?: SortOrder
   }
+  export type JsonFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<JsonFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+  }
+
+  export type EnumQrCheckoutStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.QrCheckoutStatus | EnumQrCheckoutStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.QrCheckoutStatus[] | ListEnumQrCheckoutStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.QrCheckoutStatus[] | ListEnumQrCheckoutStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumQrCheckoutStatusFilter<$PrismaModel> | $Enums.QrCheckoutStatus
+  }
+
+  export type QrCheckoutSessionCountOrderByAggregateInput = {
+    id?: SortOrder
+    codigoRecaudacion?: SortOrder
+    idTransaccion?: SortOrder
+    identificadorDeuda?: SortOrder
+    userId?: SortOrder
+    customerId?: SortOrder
+    cashRegisterId?: SortOrder
+    items?: SortOrder
+    total?: SortOrder
+    notes?: SortOrder
+    status?: SortOrder
+    saleId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type QrCheckoutSessionAvgOrderByAggregateInput = {
+    total?: SortOrder
+  }
+
+  export type QrCheckoutSessionMaxOrderByAggregateInput = {
+    id?: SortOrder
+    codigoRecaudacion?: SortOrder
+    idTransaccion?: SortOrder
+    identificadorDeuda?: SortOrder
+    userId?: SortOrder
+    customerId?: SortOrder
+    cashRegisterId?: SortOrder
+    total?: SortOrder
+    notes?: SortOrder
+    status?: SortOrder
+    saleId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type QrCheckoutSessionMinOrderByAggregateInput = {
+    id?: SortOrder
+    codigoRecaudacion?: SortOrder
+    idTransaccion?: SortOrder
+    identificadorDeuda?: SortOrder
+    userId?: SortOrder
+    customerId?: SortOrder
+    cashRegisterId?: SortOrder
+    total?: SortOrder
+    notes?: SortOrder
+    status?: SortOrder
+    saleId?: SortOrder
+    createdAt?: SortOrder
+    updatedAt?: SortOrder
+  }
+
+  export type QrCheckoutSessionSumOrderByAggregateInput = {
+    total?: SortOrder
+  }
+  export type JsonWithAggregatesFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<JsonWithAggregatesFilterBase<$PrismaModel>>, Exclude<keyof Required<JsonWithAggregatesFilterBase<$PrismaModel>>, 'path'>>,
+        Required<JsonWithAggregatesFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<JsonWithAggregatesFilterBase<$PrismaModel>>, 'path'>>
+
+  export type JsonWithAggregatesFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedJsonFilter<$PrismaModel>
+    _max?: NestedJsonFilter<$PrismaModel>
+  }
+
+  export type EnumQrCheckoutStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.QrCheckoutStatus | EnumQrCheckoutStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.QrCheckoutStatus[] | ListEnumQrCheckoutStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.QrCheckoutStatus[] | ListEnumQrCheckoutStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumQrCheckoutStatusWithAggregatesFilter<$PrismaModel> | $Enums.QrCheckoutStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumQrCheckoutStatusFilter<$PrismaModel>
+    _max?: NestedEnumQrCheckoutStatusFilter<$PrismaModel>
+  }
 
   export type SaleCreateNestedManyWithoutUserInput = {
     create?: XOR<SaleCreateWithoutUserInput, SaleUncheckedCreateWithoutUserInput> | SaleCreateWithoutUserInput[] | SaleUncheckedCreateWithoutUserInput[]
@@ -19457,6 +21173,10 @@ export namespace Prisma {
     update?: XOR<XOR<UserUpdateToOneWithWhereWithoutActivityLogsInput, UserUpdateWithoutActivityLogsInput>, UserUncheckedUpdateWithoutActivityLogsInput>
   }
 
+  export type EnumQrCheckoutStatusFieldUpdateOperationsInput = {
+    set?: $Enums.QrCheckoutStatus
+  }
+
   export type NestedStringFilter<$PrismaModel = never> = {
     equals?: string | StringFieldRefInput<$PrismaModel>
     in?: string[] | ListStringFieldRefInput<$PrismaModel>
@@ -19836,6 +21556,46 @@ export namespace Prisma {
     _count?: NestedIntFilter<$PrismaModel>
     _min?: NestedEnumCashRegisterStatusFilter<$PrismaModel>
     _max?: NestedEnumCashRegisterStatusFilter<$PrismaModel>
+  }
+
+  export type NestedEnumQrCheckoutStatusFilter<$PrismaModel = never> = {
+    equals?: $Enums.QrCheckoutStatus | EnumQrCheckoutStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.QrCheckoutStatus[] | ListEnumQrCheckoutStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.QrCheckoutStatus[] | ListEnumQrCheckoutStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumQrCheckoutStatusFilter<$PrismaModel> | $Enums.QrCheckoutStatus
+  }
+  export type NestedJsonFilter<$PrismaModel = never> =
+    | PatchUndefined<
+        Either<Required<NestedJsonFilterBase<$PrismaModel>>, Exclude<keyof Required<NestedJsonFilterBase<$PrismaModel>>, 'path'>>,
+        Required<NestedJsonFilterBase<$PrismaModel>>
+      >
+    | OptionalFlat<Omit<Required<NestedJsonFilterBase<$PrismaModel>>, 'path'>>
+
+  export type NestedJsonFilterBase<$PrismaModel = never> = {
+    equals?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+    path?: string[]
+    mode?: QueryMode | EnumQueryModeFieldRefInput<$PrismaModel>
+    string_contains?: string | StringFieldRefInput<$PrismaModel>
+    string_starts_with?: string | StringFieldRefInput<$PrismaModel>
+    string_ends_with?: string | StringFieldRefInput<$PrismaModel>
+    array_starts_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_ends_with?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    array_contains?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | null
+    lt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    lte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gt?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    gte?: InputJsonValue | JsonFieldRefInput<$PrismaModel>
+    not?: InputJsonValue | JsonFieldRefInput<$PrismaModel> | JsonNullValueFilter
+  }
+
+  export type NestedEnumQrCheckoutStatusWithAggregatesFilter<$PrismaModel = never> = {
+    equals?: $Enums.QrCheckoutStatus | EnumQrCheckoutStatusFieldRefInput<$PrismaModel>
+    in?: $Enums.QrCheckoutStatus[] | ListEnumQrCheckoutStatusFieldRefInput<$PrismaModel>
+    notIn?: $Enums.QrCheckoutStatus[] | ListEnumQrCheckoutStatusFieldRefInput<$PrismaModel>
+    not?: NestedEnumQrCheckoutStatusWithAggregatesFilter<$PrismaModel> | $Enums.QrCheckoutStatus
+    _count?: NestedIntFilter<$PrismaModel>
+    _min?: NestedEnumQrCheckoutStatusFilter<$PrismaModel>
+    _max?: NestedEnumQrCheckoutStatusFilter<$PrismaModel>
   }
 
   export type SaleCreateWithoutUserInput = {

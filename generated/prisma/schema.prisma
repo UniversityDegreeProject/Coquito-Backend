@@ -8,7 +8,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("POSTGRES_URL")
 }
 
 // ============================================
@@ -385,4 +384,42 @@ model ActivityLog {
   @@index([entity, entityId])
   @@index([createdAt])
   @@map("activity_logs")
+}
+
+// ============================================
+// MODELO DE CHECKOUT QR (Reserva de stock para pagos por QR)
+// ============================================
+
+enum QrCheckoutStatus {
+  Reservado // Stock reservado, esperando confirmación de pago
+  Completado // Pago confirmado y venta registrada
+  Cancelado // Reserva liberada (cajero canceló o cambió de método)
+}
+
+model QrCheckoutSession {
+  id String @id @default(uuid())
+
+  // Identificadores de Libélula
+  codigoRecaudacion  String  @unique @map("codigo_recaudacion")
+  idTransaccion      String? @map("id_transaccion")
+  identificadorDeuda String? @map("identificador_deuda")
+
+  // Snapshot del contexto de la venta al generar el QR
+  userId         String  @map("user_id")
+  customerId     String  @map("customer_id")
+  cashRegisterId String  @map("cash_register_id")
+  items          Json // [{ productId, quantity, unitPrice, batchId?, isVariableWeight }]
+  total          Decimal @db.Decimal(10, 2)
+  notes          String?
+
+  // Estado de la reserva e idempotencia
+  status QrCheckoutStatus @default(Reservado)
+  saleId String?          @unique @map("sale_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@index([createdAt])
+  @@map("qr_checkout_sessions")
 }

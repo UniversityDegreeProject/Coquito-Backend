@@ -13,6 +13,7 @@ import {
 import { PaymentRepository } from "../../../domain/repositories/payment.repository";
 import { ActivityLogger } from "../../../domain/services/activity-logger.service";
 import { SocketService } from "../../socket/socket.service";
+import { prismaClient } from "../../../data/postgres";
 
 export class SaleController {
   constructor(
@@ -46,6 +47,19 @@ export class SaleController {
       if (!createSaleDto.codigoRecaudacion) {
         return res.status(400).json({
           error: "El código de recaudación es requerido para pagos por QR",
+        });
+      }
+
+      //? Las ventas QR se registran automáticamente vía /api/payments/status.
+      //? Si ya existe una sesión QR para este código, se rechaza para evitar
+      //? una doble venta y un doble descuento de stock.
+      const existingSession = await prismaClient.qrCheckoutSession.findUnique({
+        where: { codigoRecaudacion: createSaleDto.codigoRecaudacion },
+      });
+      if (existingSession) {
+        return res.status(409).json({
+          error:
+            "Esta venta QR ya fue procesada automáticamente al confirmarse el pago",
         });
       }
 
