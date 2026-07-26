@@ -15,12 +15,18 @@ export const createUserSchema = zod.object({
     .string({ error: "Contraseña es requerida" })
     .min(6, { error: "Contraseña debe tener al menos 6 caracteres" })
     .max(16, { error: "Contraseña debe estar entre 6 y 16 caracteres" })
-    .regex(
-      /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{6,}$/,
+    .refine(
+      (val) => {
+        const hasNumber = /\d/.test(val);
+        const hasUppercase = /[A-Z]/.test(val);
+        const hasLowercase = /[a-z]/.test(val);
+        const hasSpecialChar = /[^A-Za-z0-9]/.test(val);
+        return hasNumber && hasUppercase && hasLowercase && hasSpecialChar;
+      },
       {
-        error:
+        message:
           "Contraseña debe tener al menos una letra mayuscula, una letra minuscula, un numero y un caracter especial",
-      }
+      },
     )
     .optional(),
   firstName: zod
