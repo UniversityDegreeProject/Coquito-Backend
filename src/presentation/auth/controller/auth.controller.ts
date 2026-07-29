@@ -22,6 +22,7 @@ import { BcryptAdapter, JwtAdapter } from "../../../config";
 import { EmailService } from "../../../domain/services/email.service";
 import { ActivityLogger } from "../../../domain/services/activity-logger.service";
 import { SocketService } from "../../socket/socket.service";
+import { messageNotifications } from "../views/email.notifications";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -185,7 +186,12 @@ export class AuthController {
     const { token } = req.params;
 
     if (!token) {
-      return res.status(400).json({ error: "Token no proporcionado" });
+      return res
+        .status(400)
+        .type("html")
+        .send(
+          messageNotifications.emailVerifiedError("Token no proporcionado"),
+        );
     }
 
     new VerifyEmailUseCaseImpl(
@@ -196,10 +202,20 @@ export class AuthController {
       .execute(token)
       .then((result) => {
         SocketService.emit("user:updated", { message: "Email verificado" });
-        return res.status(200).send(result.message);
+        return res.status(200).type("html").send(result.message);
       })
       .catch((error) => {
-        return this.handleHttpStatusError(error, res);
+        console.error(error);
+        const message =
+          error instanceof HttpCustomErrors
+            ? error.message
+            : "Error interno al verificar el email";
+        const status =
+          error instanceof HttpCustomErrors ? error.statusCode : 500;
+        return res
+          .status(status)
+          .type("html")
+          .send(messageNotifications.emailVerifiedError(message));
       });
   };
 

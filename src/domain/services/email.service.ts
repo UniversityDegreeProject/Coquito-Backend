@@ -57,7 +57,7 @@ export class EmailService {
             <div class="header">¡Bienvenido a Embutidos Coquito!</div>
             <p>Hola <strong>${username}</strong>,</p>
             <p>Gracias por ser parte de "Embutidos Coquito". Para activar tu cuenta, por favor verifica tu email haciendo clic en el siguiente botón:</p>
-            <span>Verificar email -> </span><a href="${verificationLink}" class="button">${email}</a>
+            <span>Verificar email → </span><a href="${verificationLink}" class="button">Verificar email</a>
             <p class="footer">
               Este enlace expirará en 15 minutos.<br>
               Si no solicitaste esta verificación, ignora este mensaje.
